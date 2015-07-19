@@ -1,21 +1,22 @@
 #!/usr/bin/perl -w
 
+use FindBin;
 
 BEGIN {
  push(@INC, "$ENV{HOME}/local/perl");
  push(@INC, "$ENV{HOME}/lib");
+ push(@INC, "$FindBin::Bin");
 }
 use strict;
 use Carp qw( confess longmess );
 use Data::Dumper;
-use FindBin;
 use Text::Template;
 use File::Basename;
 use POSIX qw(strftime);
 
 #use XML::Simple qw(:strict);
 
-use Mot::Xml;
+use My::Xml;
 
 
 # ===========================================================================
