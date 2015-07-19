@@ -1,0 +1,25 @@
+digraph xsnth \{
+  // TODO V Make ranksep dependent on the number of $hEntityNames. Unless I can find a way to get graphviz to automatically make it look nice.
+  ranksep={$GraphVizRankSeperation};
+  ratio=auto;
+  \{ node [shape=rectangle]
+{ 
+  foreach my $nId (keys %hEntityNames) {
+    if ( $nId != $TheWorkId ) {
+       $OUT .= "Entity_$nId [ label=\"$hEntityNames{$nId}{'Name'}\" ];\n";
+    }
+  }
+}
+  \}
+  \{ node [shap=circle]
+    Entity_{$TheWorkId} [ label="{$hEntityNames{$TheWorkId}{'Name'}}" ];
+  \}
+  \{ edge [style=solid]
+{
+  foreach my $nId (keys %hRelationNames) {
+     $OUT .= "Entity_$hRelationNames{$nId}{'EntityAId'} -> Entity_$hRelationNames{$nId}{'EntityBId'} [ label=\"$hRelationNames{$nId}{'Name'}\" arrowhead=\"none\" ];\n";
+  }
+
+}
+  \}
+\}

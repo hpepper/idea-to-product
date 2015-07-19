@@ -1,0 +1,20 @@
+% http://en.wikibooks.org/wiki/LaTeX/Importing_Graphics
+\begin\{figure\}[!htbp]
+  \caption\{{$GraphicsCaption}\}
+  \includegraphics[width=0.8\textwidth]\{{$IncludeGraphicsName}\}
+\end\{figure\}
+
+\begin\{table\}[!htbp]
+  \begin\{tabular\}\{|l|l|l|\} \hline
+  Name & Description & Reference \\ \hline
+  \multicolumn\{3\}\{|l|\}\{Entities\} \\ \hline
+    { foreach my $refhEntity (@arEntityList) {
+        $OUT .= "$refhEntity->{Name} & $refhEntity->{Summary} & \\\\ \\hline\n";
+        }
+    }
+  \multicolumn\{3\}\{|l|\}\{Relations\} \\ \hline
+    is-part-of &  & \\ \hline
+  \end\{tabular\}
+  \caption\{{$TableCaption}\}
+\end\{table\}
+

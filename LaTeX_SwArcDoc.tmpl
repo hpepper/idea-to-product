@@ -1,0 +1,427 @@
+%% LyX 2.0.6 created this file.  For more info, see http://www.lyx.org/.
+%% Do not edit unless you really know what you are doing.
+%% Software Architechture Documentation.
+\documentclass[english]\{book\}
+\usepackage[T1]\{fontenc\}
+\usepackage[latin9]\{inputenc\}
+\usepackage\{babel\}
+\usepackage\{graphicx\}
+
+
+\begin\{document\}
+
+% TODO V Change this to a \maketitle environment so that I can include graphics etc.
+\title\{{$Project{'Title'}}\}
+
+
+% TODO V Support multiple authors.
+\author\{{$Project{'Author'}}\}
+
+
+\date\{{$Project{'ReleaseDate'}}\\
+Issue: {$Project{'Issue'}}
+\}
+
+% TODO V Add Summary.
+\maketitle
+\pagebreak\{\}
+
+\tableofcontents\{\}
+
+\pagebreak\{\}
+
+\listoffigures
+
+\pagebreak\{\}
+
+\listoftables
+
+\pagebreak\{\}
+
+%\part\{Requirement documentation\}
+\part\{{$Project{'Title'}} Software architecture Documentation beyond views\}
+
+
+\chapter\{Introduction\}
+
+
+
+\section\{Purpose\}
+
+
+\section\{Scope\}
+
+
+\section\{References\}
+
+
+\section\{Acronyms\}
+
+
+\subsection\{Notations used in this document\}
+\section\{Architecture document roadmap\}
+\label\{labelArchitectureDocumentRoadmap\}
+
+\subsection\{Description of this documentation package\}
+This section describes the structure and contents of the entire software architecture documentation package.
+
+This architecture documentation package is arranged in two parts:
+\begin\{itemize\}
+\item Part I: contains the information that applies to more than one view, including this roadmap of the entire package.
+\item Part II: contains the architectural views.(TODO explain what architectural views are).
+\end\{itemize\}
+
+\begin\{itemize\}
+\item Section \ref\{labelArchitectureDocumentRoadmap\}, Architecture document roadmap on page \pageref\{labelArchitectureDocumentRoadmap\}: lists and outlines the contents of the
+overall documentation package and explains how stakeholder concerns can be addressed by
+the individual parts. This is the first document that a new stakeholder should read.
+\end\{itemize\}
+
+\subsection\{How stakeholders can use this document\}
+
+
+\paragraph*\{Someone new to the project\}
+
+Read the documentation roadmap for an understanding of the documentation
+package and the view template to understand how views are documented. 
+\begin\{itemize\}
+\item system overview and system-level design rationale. 
+\item top-level view packets of the 
+
+\begin\{itemize\}
+\item module decomposition view. 
+\item pipe-and-filter view. 
+\item deployment view. 
+\item work assignment view.
+\end\{itemize\}
+\end\{itemize\}
+
+\paragraph*\{Security analyst\}
+
+Read the deployment view to understand the physical environment in
+which the system operates. 
+
+
+\paragraph*\{Maintainer\}
+
+Read the system-level rationale in Volume I. decomposition view to
+understand the units of implementation that exist and the area of
+responsibility of each. 
+\begin\{itemize\}
+\item generalization view to see how the units relate to one another in
+terms of generalization and specialization. 
+\item Especially read the rationale in each view and in each interface specification. 
+\item top-level view packet of the deployment view to understand where each
+software unit is allocated. 
+\item implementation view to understand how the code units are allocated
+to the development environment. 
+\end\{itemize\}
+
+\paragraph*\{Developer\}
+
+Read the 
+\begin\{itemize\}
+\item decomposition view to understand the basic units of software in the
+system, 
+\item uses view to see how the current subset being developed is structured, 
+\item implementation view to see where the software resides in the development
+environment, 
+\item layered view to see which software developers are allowed to use 
+\item work assignment view to understand the other organizational units
+with which developers must coordinate. 
+\item interface specifications of other units to find out how to use them. 
+\item Then, using the mapping between views, read the relevant parts of
+the other views that reveal how their units are deployed onto hardware
+or manifested as runtime components. 
+\end\{itemize\}
+
+\paragraph*\{Project manager\}
+
+
+\paragraph*\{Performance engineer\}
+
+
+\paragraph*\{Customer/Acquirer\}
+
+\section\{Software Architecture view template\}
+\subsection\{How the view documentation is structured\}
+
+Each view is presented as a number of related view packets.
+
+A view packet is a small, relatively self-contained bundle of information about the system or a particular part of the system, rendered
+in the language-element and relation types-of the view to which it belongs.
+
+Two view packets are related to each other as either
+\begin\{itemize\}
+\item parent/child: because one shows a refinement of the information in the other
+\item siblings: because both are children of another view packet.
+\end\{itemize\}
+
+
+Each view packet has the following subsections:
+\paragraph\{Primary presentation\} that shows the elements and their relationships that populate the view
+packet.
+
+The primary presentation contains the information important to convey about the system,
+in the vocabulary of that view, first.
+
+It includes the primary elements and relations of the
+view packet, but under some circumstances might not include all of them.
+
+ For example, the
+primary presentation may show the elements and relations that come into play during normal
+operation, relegating error handling or exception processing to the supporting documentation.
+
+The primary presentation is usually graphical. If so, the presentation will include a key that
+explains the meaning of every symbol used. 
+
+The first part of the key identifies the notation: If
+a defined notation is being used, the key will name it and cite the document that defines it or
+defines the version of it being used. If the notation is informal, the key will say so and proceed
+to define the symbology and the meaning, if any, of colors, position, or other informationcarrying
+aspects of the diagram.
+
+\paragraph\{Element catalog\} detailing at least those elements depicted in the primary presentation and
+others that were omitted from the primary presentation.
+
+Specific parts of the catalog include
+\subparagraph\{Elements and their properties\} This section names each element in the view packet and
+lists the properties of that element.
+
+ For example, elements in a module decomposition
+view have the property of "responsibility," an explanation of each module's role in the
+system, and elements in a communicating-process view have timing parameters, among
+other things, as properties.
+\subparagraph\{Relations and their properties\} Each view has a specific type of relation that it depicts
+among the elements in that view. However, if the primary presentation does not show
+all the relations or if there are exceptions to what is depicted in the primary presentation,
+this section will record that information.
+\subparagraph\{Element interface\} An interface is a boundary across which elements interact or communicate
+with each other.
+
+This section is where element interfaces are documented.
+
+\subparagraph\{Element behavior\} Some elements have complex interactions with their environment
+and for purposes of understanding or analysis, the element's behavior is documented.
+The behavior of elements is specified in component-and-connector views in (TODO C Provide the actual references here:)Volume
+II, Chapters 5, 6, and 7.
+
+\paragraph\{Context diagram\} showing how the system depicted in the view packet relates to its environment.
+
+\paragraph\{Variability guide\} showing how to exercise any variation points that are a part of the architecture
+shown in this view packet.
+
+\paragraph\{Architecture background\} explaining why the design reflected in the view packet came to be.
+The goal of this section is to explain why the design is as it is and to provide a convincing
+argument that it is sound. Architecture background includes
+\subparagraph\{Design rationale\} This explains why the design decisions reflected in the view packet were
+made and gives a list of rejected alternatives and why they were rejected. This will prevent
+future architects from pursuing dead ends in the face of required changes.
+
+\subparagraph\{Analysis results\} This documents the results of analyses that have been conducted,
+such as the results of performance or security analyses, or a list of what would have to
+change in the face of a particular kind of system modification.
+
+\subparagraph\{Assumptions\} This documents any assumptions the architect made when crafting the
+design.
+
+ Assumptions are generally about either environment or need.
+
+Environmental assumptions document what the architect assumes is available in the
+environment that can be used by the system being designed. They also include assumptions
+about invariants in the environment.
+
+ For example, a navigation system architect
+might make assumptions about the stability of Earth's geographic and/or magnetic
+poles.
+
+ Finally, assumptions about the environment may be about the development
+environment: tool suites available or the skill levels of the implementation teams, for
+example.
+
+Assumptions about need state why the design provided is sufficient for what's needed.
+
+For example, if a navigation system's software interface provides location information in
+a single geographic frame of reference, the architect is assuming that is sufficient, and
+that alternative frames of reference are not useful.
+
+
+\paragraph\{Other information\} This section includes nonarchitectural and organization-specific information.
+will usually include
+management or configuration control information, change histories, bibliographic references or lists of useful companion documents,
+mapping to requirements, and the like.
+
+\paragraph\{Related view packets\} This section will name other view packets that are related to the one
+being described in a parent/child or sibling capacity.
+
+\subsection\{UML notation used in this document\}
+TODO C Also include a description of the UML used in this document.
+
+
+\chapter\{System overview\}
+
+
+
+\section\{Overview\}
+
+
+\subsection\{Background\}
+{$Project{'Background'}}
+
+\subsection\{Broad requirements\}
+{ foreach my $szUuid (keys %{$Project{'hBroadRequirements'}}) {
+    $OUT .= "\\paragraph{$szUuid - $Project{hBroadRequirements}{$szUuid}}\n";
+  }
+}
+
+
+
+\subsection\{What will not be done\}
+{$Project{'WhatWillNotBeDone'}}
+
+
+\subsection\{Deploying the product\}
+
+
+\subsubsection\{Prototype deployment\}
+{$Project{'PrototypeDeployment'}}
+
+\subsubsection\{Production deployment\}
+{$Project{'ProductionDeployment'}}
+
+\subsubsection\{Planned upgrades\}
+{$Project{'PlannedUpgrades'}}
+
+\subsubsection\{Intended operational life\}
+{$Project{'IntendedOperationalLife'}}
+
+
+\subsection\{System level context diagram\}
+\input\{{$Project{'ContextModelFileName'}}\}
+
+\subsection\{Physical entities\}
+%TODO V Support this when needed.
+
+\subsection\{FAQ\}
+%TODO N it would be nice to have it here.
+
+\chapter\{Mapping between views\}
+This chapter establishes the relationship between corresponding elements and structures that appear
+in different views in part (TODO V Provide reference to the correct part). Not all pairwise view combinations have a mapping in this
+section, and not every element is mapped. The emphasis is on mappings that provide useful insights.
+The following table summarizes the mappings in this chapter. The table cells tell which section
+contains a mapping between the corresponding views on the cell's row and column header.
+
+\section\{Excerpts from a Software Architecture Documentation Package\}
+
+\section\{Mapping Between Module Decomposition View and Module Generalization View\}
+
+\section\{Mapping Between Module Decomposition View and C\&C Shared-Data View\}
+
+\section\{Mapping Between Module Decomposition View and C\&C Communicating-Processes view\}
+
+
+\section\{Mapping Between Module Decomposition View, Module Uses View, Allocation Implementation View, and Allocation Work Assignment View\}
+
+TODO is this always valid: 
+\{\em The segments and subsystems named in the two allocation views and the module uses view are
+exactly the same elements as those named in the module decomposition view.\}
+
+\chapter\{Directory\}
+The directory is an index of all the elements, relations, and properties that appear in any of the views.
+This index is intended to help a reader find all places where a particular kind of element, relation,
+or property is used.
+
+\begin\{table\}[here]
+  \begin\{tabular\}\{|l|l|l|\} \hline
+Item & Type & Reference \\ \hline
+  \end\{tabular\}
+  \caption\{Context model names\}
+\end\{table\}
+
+
+\chapter\{Rationale, Background, and Design constraints\}
+The following records those contextual and requirements aspects that were the primary
+motivators behind the major architectural decisions.
+
+There were, of course, a large number of specific
+requirements that had to be satisfied, but these are the major ones that had profound architectural
+influence.
+
+\subsection\{Why the architecture is the way it is\}
+
+\paragraph\{Business context\}
+
+\paragraph\{SIPOC\}
+TODO SUPPORT SIPOC
+{ $Project{"SystemLevelSipoc"} }
+
+\paragraph\{Key data management features\}
+\paragraph\{Key data ingest features\}
+\paragraph\{Key data processing features\}
+\paragraph\{Key user interface features\}
+
+
+\part\{Volume II software architecture views\}
+
+% TODO V make the view chapters dynamic, so that their selection is based on what is actually in the xml.
+
+\chapter\{Module decomposition view\}
+The decomposition view consists of (TODO C Provide Packet count) view packets.
+ View packet 1 shows the decomposition of the top level module (XXX TODO systemName) system into 
+(TODO C Make this correct foreach project:) a group of three segments, each of which is further decomposed into a number of subsystems.
+
+ Subsequent view packets (2-XXX) show the further decomposition of each of the subsystems.
+% TODO C Make it configurable what the top level ID is.
+%\section\{Overview of the module decomposition\}
+%\input\{moduleComponentDiagramTree_15\}
+
+% TODO C Should I use 'include' or 'input'?
+{ foreach my $szModuleDecompositionName (@arModuleDecompositionViewPackets) {
+    $OUT .= "\\input{$szModuleDecompositionName}\n";
+  }
+}
+
+\chapter\{Module uses view\}
+
+% TODO C possibly include this chapter instead
+%    And then autogenerate the chapter, where each section is added, as an include, when it is being generated.
+\chapter\{Module generalization view\}
+
+% Include the Module generalization view packets here.
+
+
+\chapter\{Module layered view\}
+
+% TODO V If the list is not empty then print the chapter header.
+\chapter\{C\&C comunicating-processes view\}
+
+{ foreach my $szViewPacketName (@arCnCCommunicatingProcessesViewPackets) {
+    $OUT .= "\\input{$szViewPacketName}\n";
+  }
+}
+
+
+
+
+\chapter\{Allocation deployment view\}
+
+\chapter\{Allocation implementation view\}
+
+\chapter\{Allocation work assignment view\}
+
+\part\{Appendix?\}
+
+
+\section\{Requirement captures\}
+
+
+
+
+\section\{Open issues/questions\}
+
+
+\section\{Design decissions\}
+
+
+\end\{document\}

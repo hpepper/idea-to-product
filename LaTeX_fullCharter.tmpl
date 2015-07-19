@@ -1,0 +1,100 @@
+---+++ %TOPIC%
+
+| Project Name: | {$CharterName}  | Expected gain:  | |
+| Project type: | {$ProjectType} | Business unit: | |
+| Project owner: | | Start Date: | |
+| Project Champion: | | Completion date: | |
+| _Vision Statement:_ | {$PitchFiveSeconds} |||
+
+
+---++++!!Mission Statement
+For {$ForTargetCustomers} who {$WhoStatementOfNeedOrOpportunity}, the {$TheProductName} is {$IsAProductCategory} that {$ThatKeyBenefitCompellingReassonToBuyUse}
+Unlike {$UnlikePrimaryCompetitiveAltenativeOrCurrentSystemOrProcess} our product {$OurProductPrimaryDiffAndAdvantageOfNewProduct}
+
+---++++!!Product
+{$Product}
+
+---++++!!Business Opportunity
+{$CurrentState}
+{$WhatHasChanged}
+{$WhatCouldTheConcequencesBe} {$ConsequencesIfNotChanged}
+{$DesiredState}
+{$When}
+{$GainAtDesiredState}
+
+---++++!!Project Description
+{$PitchFiveMinutes}
+{ 
+  foreach my $szLine (@KeyFeatures) {
+     $OUT .= "   * $szLine\n";
+  }
+}
+
+---++++!!Project scope
+
+   * In-Scope:
+{ 
+  foreach my $szLine (@InScope) {
+     $OUT .= "      * $szLine\n";
+  }
+}
+
+   * Out-of-Scope:
+{ 
+  foreach my $szLine (@OutOfScope) {
+     $OUT .= "      * $szLine\n";
+  }
+}
+
+
+---++++!!Project Objective
+{ 
+  foreach my $hProjectObjective (@ProjectObjectives) {
+     $OUT .= "   * To $hProjectObjective->{Action} $hProjectObjective->{CardinalObjective} of $hProjectObjective->{ProjectSubject} in $hProjectObjective->{MarketSegment} $hProjectObjective->{Direction} of $hProjectObjective->{Measure} to $hProjectObjective->{Target} by $hProjectObjective->{Deadline}\n";
+  }
+}
+
+
+| | Baseline | Goal | Maximum | Units |
+| RTY | {$calculatedRty} | {$RolledThroughputYieldGoal} | {$RolledThroughputYieldMaximum} | % |
+| CONC | | | | $K/yr |
+| C-P | | | | Units |
+
+---++++!!Business Fit
+   $ Why should we take this project on: 
+   $ What is the motivation for doing this project now: {$Motive}
+   $ What are the consequences of not doing this project now:  {$ConsequencesIfNotChanged}
+   $ Is the project aligned with other business initiatives:  
+   $ What will be the impact on other business units and employees: {$ImpactOnOtherBusinessUnits}
+   $ Link To Grand Parent Charter Business Objective: 
+   $ What business objectives are supported by this project: 
+ | *BO* | *Rating* | *Comment* |
+ | | |
+ | | |
+ | | |
+
+---++++!!Team Members
+
+---++++!!Market segments
+
+---++++!!Project priorities
+
+---++++!!Schedule
+| Project start: | |
+| "M" complete | |
+| "A" complete | |
+| "D" complete | |
+| "C" complete | |
+| Project completion | |
+| Safety Reviews | |
+
+MGPP
+---++++!!Risks
+
+---++++!!Support Required
+{ 
+  foreach my $szLine (@SupportRequired) {
+     $OUT .= "   * $szLine\n";
+  }
+}
+

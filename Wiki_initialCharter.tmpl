@@ -1,0 +1,58 @@
+---+ %TOPIC%
+
+---++ Project name
+{$ProposalName}
+
+---++ Opportunity statement
+{$CurrentState}
+{$WhatHasChanged}
+{$WhatCouldTheConcequencesBe} {$ConsequencesIfNotChanged}
+{$DesiredState}
+{$When}
+{$GainAtDesiredState}
+
+---++ Needs and dependencies
+
+---+++ Dependency on other products
+{ 
+  foreach my $szProduct (keys %ExternalProductDependency) {
+     $OUT .= "   * $szProduct: $ExternalProductDependency{$szProduct}\n";
+  }
+}
+
+
+---+++ Technology dependencies/needs
+{ 
+  foreach my $szLine (@TechnologyDependencies) {
+     $OUT .= "   * $szLine\n";
+  }
+}
+
+---+++ Knowledge needs
+{ 
+  foreach my $szLine (@KnowledgeDependencies) {
+     $OUT .= "   * $szLine\n";
+  }
+}
+
+---++ Key objectives
+{ 
+  foreach my $szLine (@KeyObjectives) {
+     $OUT .= "   * $szLine\n";
+  }
+}
+
+
+---++ Motive
+{$Motive}
+
+---++ Initial Market segment
+{$InitialMarketSegment}
+
+---++ What
+{$WhatIsBeingChangedOrProduced}
+
+---++ Vision
+For {$ForTargetCustomers} who {$WhoStatementOfNeedOrOpportunity}, the {$TheProductName} is {$IsAProductCategory} that {$ThatKeyBenefitCompellingReassonToBuyUse}
+Unlike {$UnlikePrimaryCompetitiveAltenativeOrCurrentSystemOrProcess} our product {$OurProductPrimaryDiffAndAdvantageOfNewProduct}
+

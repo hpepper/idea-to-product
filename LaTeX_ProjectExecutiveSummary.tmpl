@@ -1,0 +1,105 @@
+\begin\{tabular\}\{|l|l|l|l|\} \hline
+Version date & \em\{{ $szDateGenerated }\} & Reference & \\ \hline
+Project Name & \em\{{ $ProjectName }\} & Project Type & \em\{{ $ProjectType }\} \\ \hline
+Project Purpose & \multicolumn\{3\}\{|l|\}\{\em\{{ $ProjectDescription }\}\} \\ \hline
+Project Owner & \em\{{$ProjectOwner }\} & Business Mgr & \em\{{ $BusinessManager }\}  \\ \hline 
+Tech lead & \em\{{ $TechLead }\} & & \\ \hline  
+Period covered & \em\{{ $PeriodCovered }\} & & \\ \hline  
+\end\{tabular\}
+% TODO V Add some pretty picture or context model or something.
+
+\paragraph\{Outstanding events this period\}
+
+
+\paragraph\{Activities finished this period\}
+
+
+\paragraph\{Current issues\}
+\begin\{description\}
+{ 
+  foreach my $hIssue (@ProjectIssues) {
+     $OUT .= "\\item [$hIssue->{Id} - $hIssue->{Headline}] $hIssue->{Description}\n";
+  }
+}
+\end\{description\}
+
+\paragraph\{Broad requirements\}
+
+\begin\{itemize\}
+{ 
+  foreach my $szUuid (keys %hBroadRequirements) {
+$OUT .= "\\item $szUuid- $hBroadRequirements{$szUuid}\n";
+  }
+}
+\end\{itemize\}
+
+
+\paragraph\{Major milestones and deliverables\}
+\begin\{description\}
+{  foreach my $hStoryCard (@ProjectStoryCards) {
+     $OUT .= "\\item [$hStoryCard->{Id} - $hStoryCard->{Headline}] Complexity:$hStoryCard->{Complexity}\n";
+  }
+}
+\end\{description\}
+
+%\begin\{table\}[here]
+%\begin\{tabular\}\{|l|l|l|l|l|l|\} \hline
+%Epic & Complexity & Plan start & Plan finish & Actual start & Actual Finish \\ \hline
+%     $OUT .= "$hStoryCard->{Id} - $hStoryCard->{Headline} & $hStoryCard->{Complexity} & & & & \\\\ \\hline\n";
+%\end\{tabular\}
+%\end\{table\}
+
+% deliver what to whom, where and when.
+
+
+\paragraph\{Project Description\}
+{$PitchFiveMinutes}
+\begin\{itemize\}
+{ 
+  foreach my $szLine (@KeyFeatures) {
+     $OUT .= "\\item $szLine\n";
+  }
+}
+\end\{itemize\}
+
+\paragraph\{Project scope\}
+
+\subparagraph\{In-Scope:\}
+\begin\{itemize\}
+{ 
+  foreach my $szLine (@InScope) {
+     $OUT .= "\\item $szLine\n";
+  }
+}
+\end\{itemize\}
+
+\subparagraph\{Out-of-Scope:\}
+\begin\{itemize\}
+{ 
+  foreach my $szLine (@OutOfScope) {
+     $OUT .= "\\item $szLine\n";
+  }
+}
+\end\{itemize\}
+
+% Was forecasted risks
+\paragraph\{Project risks\}
+\begin\{description\}
+{ 
+  foreach my $hRisk (@ProjectRisks) {
+     $OUT .= "\\item [$hRisk->{Id} - $hRisk->{Name}] $hRisk->{Description}\n";
+  }
+}
+\end\{description\}
+
+\paragraph\{Project trend\}
+% Draw a graph here.
+
+\paragraph\{Achievements\}
+\begin\{tabular\}\{|l|l|\} \hline
+Achievment & Date \\ \hline
+% TODO C Add achievment list here.
+\end\{tabular\}
+
+% TODO V Maybe pulle more of the Charter informatin in here.
+

@@ -1,0 +1,88 @@
+I think that somehow I need to have a way of looking at 'Features' in the
+SwArchDoc. 
+And right now I'm not sure how 'Feature' fits in with the Default SwArchDoc
+concept. Since a feature goes accross all three view types.
+   * Should I have each 'feature' have its own subsection under each view type.
+   * Or should I have 'Feature' as a view type? (I like this idea right now).
+      * Though it is not realy a seperate view type but just a different way
+      * of looking at the SW.???
+'Feature' would probably be more of a CnC view type. Or mostly use the CnC
+view type to show the feature architecture.
+
+
+
+
+---+ ADL - architectural description languages
+   * http://www.ece.odu.edu/~rdmckenz/papers/SIMULATION%20A030081.pdf
+
+From: ACME: An Architecture Description Interchange Language; David Garlan Robert Monroe David Wile; January 14, 1997
+
+   * components
+   * connectors
+   * systems - Collection of comopnents and connectors.
+   * ports - Attachment points for connectors, that connect components
+   * together.
+   * roles - 
+   * representations
+   * rep-maps:
+
+---++++ Components
+represent the primary computational
+elements and data stores of a system. Intu-
+itively, they correspond to the boxes in box-and-
+line descriptions of software architectures. Typi-
+cal examples of components include such things as
+clients, servers, lters, objects, blackboards, and
+databases.
+
+---++++ Connectors
+represent interactions among components. 
+Computationally speaking, connectors mediate the communication and coordination activ-
+ities among components. Informally they provide
+the \glue" for architectural designs, and intuitively,
+they correspond to the lines in box-and-line de-
+scriptions. Examples include simple forms of in-
+teraction, such as pipes, procedure call, and event broadcast. But connectors may also represent more
+complex interactions, such as a client-server proto-
+col or a SQL link between a database and an ap-
+plication.
+
+---++++ Systems 
+represent configurations of components
+and connectors
+
+---++++ Roles
+Connectors also have interfaces that are dened by a
+set of roles. Each role of a connector denes a partic-
+ipant of the interaction represented by the connector.
+Binary connectors have two roles such as the caller and
+callee roles of an RPC connector, the reading and writ-
+ing roles of a pipe, or the sender and receiver roles
+of a message passing connector. Other kinds of con-
+nectors may have more than two roles. For exam-
+ple an event broadcast connector might have a single
+event-announcer role and an arbitrary number of event-
+receiver roles
+
+---++ Component diagram
+
+
+---+++ CnC view diagram
+Each CnC component can related to multiple other CnC components.
+
+I would expect that a child view would explode one of the, current view packet
+components, into subcomponents and display the inter-relationship of the sub
+components.
+
+A CnC view packet can then refer to a system id.
+
+<System Id="" Name="">
+  <Description></Description>
+  <!-- there can be multiple ComponentId entries. -->
+  <ComponentId></ComponentId>
+  <!-- There can be multiple RelationId entries -->
+  <RelationId></RelationId>
+</System>
+
+---
+

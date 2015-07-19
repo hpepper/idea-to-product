@@ -1,0 +1,26 @@
+% http://en.wikibooks.org/wiki/LaTeX/Importing_Graphics
+\begin\{table\}[here]
+  \begin\{tabular\}\{|l|l|l|\} \hline
+  Name & Description & Reference \\ \hline
+  \multicolumn\{3\}\{|l|\}\{\{\bf Supplier\}\} \\ \hline {  foreach my $szName (@Supplier) { $OUT .= "\n$szName  & & \\\\ \\hline"; } }
+  \multicolumn\{3\}\{|l|\}\{\{\bf Input\}\} \\ \hline{  foreach my $szName (@Input) {
+$OUT .= "\n$szName  & & \\\\ \\hline";
+     }
+}
+  \multicolumn\{3\}\{|l|\}\{\{\bf Process\}\} \\ \hline
+  \multicolumn\{3\}\{|l|\}\{\{\bf Output\}\} \\ \hline {  foreach my $szName (@Output) {
+$OUT .= "\n$szName  & & \\\\ \\hline";
+     }
+  }
+  \multicolumn\{3\}\{|l|\}\{\{\bf Customer\}\} \\ \hline {  foreach my $szName (@Customer) {
+$OUT .= "\n$szName  & & \\\\ \\hline";
+     }
+  }
+  \end\{tabular\}
+  \caption\{SIPOC: {$hSipocEntries{"Headline"} }\}
+\end\{table\}
+
+%  <%  $hSipocEntries["Step"].each do |szName| -%>
+%    <%= szName %> & & \\ \hline
+%  <% end -%>
+

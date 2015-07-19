@@ -1,0 +1,1167 @@
+<!ELEMENT Product (
+  Description,
+  InitialVision,
+  MissionStatement
+)>
+<!ATTLIST Product Id CDATA #REQUIRED>
+<!ATTLIST Product Name CDATA #REQUIRED>
+
+<!ELEMENT Description (#PCDATA)>
+<!ELEMENT InitialVision (#PCDATA)>
+<!ELEMENT MissionStatement (#PCDATA)>
+
+
+<!ELEMENT ObjectiveType (
+  Description
+)>
+<!ATTLIST ObjectiveType Id CDATA #REQUIRED>
+<!ATTLIST ObjectiveType Name CDATA #REQUIRED>
+
+
+
+<!ELEMENT ObjectiveTypeLUT (
+  ObjectiveId,
+  ObjectiveTypeId
+)>
+<!ATTLIST ObjectiveTypeLUT Id CDATA #REQUIRED>
+
+<!ELEMENT ObjectiveId (#PCDATA)>
+<!ELEMENT ObjectiveTypeId (#PCDATA)>
+
+
+<!ELEMENT KeyIndicators (
+  Description,
+  Type,
+  State,
+  Priority,
+  Comment
+)>
+<!ATTLIST KeyIndicators Id CDATA #REQUIRED>
+<!ATTLIST KeyIndicators HeadLine CDATA #REQUIRED>
+
+<!ELEMENT Type (#PCDATA)>
+<!ELEMENT State (#PCDATA)>
+<!ELEMENT Priority (#PCDATA)>
+<!ELEMENT Comment (#PCDATA)>
+
+
+<!ELEMENT KeyIndicatorType (
+  Description
+)>
+<!ATTLIST KeyIndicatorType Id CDATA #REQUIRED>
+<!ATTLIST KeyIndicatorType Name CDATA #REQUIRED>
+
+
+
+<!ELEMENT BusinessCase (
+  ProjectId,
+  ExecutiveSummary,
+  CompanyOverview,
+  BusinessEnvironment,
+  CompanyDescription,
+  State,
+  Comment
+)>
+<!ATTLIST BusinessCase Id CDATA #REQUIRED>
+
+<!ELEMENT ProjectId (#PCDATA)>
+<!ELEMENT ExecutiveSummary (#PCDATA)>
+<!ELEMENT CompanyOverview (#PCDATA)>
+<!ELEMENT BusinessEnvironment (#PCDATA)>
+<!ELEMENT CompanyDescription (#PCDATA)>
+
+
+<!ELEMENT Project (
+  ProductId,
+  CharterId,
+  ParentId,
+  ProjectTypeId,
+  Description
+)>
+<!ATTLIST Project Id CDATA #REQUIRED>
+<!ATTLIST Project Name CDATA #REQUIRED>
+
+<!ELEMENT ProductId (#PCDATA)>
+<!ELEMENT ParentId (#PCDATA)>
+<!ELEMENT ProjectTypeId (#PCDATA)>
+
+
+<!ELEMENT ProjectType (
+  Description
+)>
+<!ATTLIST ProjectType Id CDATA #REQUIRED>
+<!ATTLIST ProjectType Type CDATA #REQUIRED>
+
+<!ELEMENT Component (
+  Summary,
+  Responsibilities,
+  VisibilityOfInterfaces,
+  MappingToCodeUnits,
+  TestInformation,
+  ImplementationConstraints,
+  Performance,
+  Capacity,
+  Reliability,
+  ResourceRequirement,
+  Functionality,
+  Security,
+  SchedulerPriority
+)>
+<!ATTLIST Component Id CDATA #REQUIRED>
+<!ATTLIST Component Name CDATA #REQUIRED>
+
+<!ELEMENT Responsibilities  (#PCDATA)>
+<!ELEMENT VisibilityOfInterfaces  (#PCDATA)>
+<!ELEMENT MappingToCodeUnits  (#PCDATA)>
+<!ELEMENT TestInformation  (#PCDATA)>
+<!ELEMENT ImplementationConstraints  (#PCDATA)>
+<!ELEMENT  Performance (#PCDATA)>
+<!ELEMENT  Capacity (#PCDATA)>
+<!ELEMENT  Reliability (#PCDATA)>
+<!ELEMENT  ResourceRequirement (#PCDATA)>
+<!ELEMENT  Functionality (#PCDATA)>
+<!ELEMENT  Security (#PCDATA)>
+<!ELEMENT  SchedulerPriority (#PCDATA)>
+
+
+<!ELEMENT ModuleRelations (
+  ModuleAId,
+  ModuleBId,
+  RelationType,
+  IsPartOfVisibilityProperty,
+  DependsOnConstraints,
+  IsAProperties
+)>
+<!ATTLIST ModuleRelations Id CDATA #REQUIRED>
+
+<!ELEMENT ModuleAId   (#PCDATA)>
+<!ELEMENT ModuleBId   (#PCDATA)>
+<!ELEMENT IsPartOfVisibilityProperty   (#PCDATA)>
+<!ELEMENT DependsOnConstraints    (#PCDATA)>
+<!ELEMENT IsAProperties   (#PCDATA)>
+
+
+<!ELEMENT Connector (
+  Type,
+  Protocol,
+  Performance,
+  Capacity,
+  Reliability,
+  ResourceRequirement,
+  Functionality,
+  Security
+)>
+<!ATTLIST Connector Id CDATA #REQUIRED>
+<!ATTLIST Connector Name CDATA #REQUIRED>
+
+<!ELEMENT Protocol   (#PCDATA)>
+
+
+<!ELEMENT ComponentRelation (
+  Style,
+  RelationType,
+  ComponentId,
+  ComponentType,
+  ComponentPort,
+  ConnectorId
+)>
+<!ATTLIST ComponentRelation Id CDATA #REQUIRED>
+
+<!ELEMENT Style (#PCDATA)>
+<!ELEMENT ComponentType (#PCDATA)>
+<!ELEMENT ComponentPort (#PCDATA)>
+<!ATTLIST ComponentPort Type CDATA #REQUIRED>
+
+<!ELEMENT ConnectorId (#PCDATA)>
+
+
+<!ELEMENT Implementation (
+  VersionPath,
+  RelativeTopDirectory,
+  VersionSelection,
+  FileWithMainProcess
+)>
+<!ATTLIST Implementation Id CDATA #REQUIRED>
+<!ELEMENT  VersionPath (#PCDATA)>
+<!ELEMENT  RelativeTopDirectory (#PCDATA)>
+<!ELEMENT  VersionSelection (#PCDATA)>
+<!ELEMENT  FileWithMainProcess (#PCDATA)>
+
+<!ELEMENT ImplementationRelation (
+  ComponentId,
+  ImplementationId
+)>
+<!ATTLIST ImplementationRelation Id CDATA #REQUIRED>
+<!ELEMENT  ImplementationId (#PCDATA)>
+
+
+
+<!ELEMENT StoryCard (
+  ProjectId,
+  Description,
+  State,
+  Priority,
+  Comment,
+  ParentId,
+  StatementOfWork
+)>
+<!ATTLIST StoryCard Id CDATA #REQUIRED>
+<!ATTLIST StoryCard HeadLine CDATA #REQUIRED>
+
+<!ELEMENT StatementOfWork (#PCDATA)>
+
+<!ELEMENT Stakeholder (
+  Description
+)>
+<!ATTLIST Stakeholder Id CDATA #REQUIRED>
+<!ATTLIST Stakeholder Name CDATA #REQUIRED>
+
+
+<!ELEMENT Dictionary (
+  DocumentGroupId,
+  DictionaryDescription+
+)>
+<!ATTLIST Dictionary Id CDATA #REQUIRED>
+<!ATTLIST Dictionary Word CDATA #REQUIRED>
+
+<!ELEMENT DocumentGroupId (#PCDATA)>
+
+
+<!ELEMENT DictionaryDescription (
+  Description
+)>
+<!ATTLIST DictionaryDescription StakeHolderId CDATA #REQUIRED>
+
+
+
+<!ELEMENT Design (
+  Description,
+  DesignOption+,
+  SelectedOptionId,
+  SelectionReasoning
+)>
+<!ATTLIST Design Id CDATA #REQUIRED>
+<!ATTLIST Design Headline CDATA #REQUIRED>
+
+<!ELEMENT SelectedOptionId (#PCDATA)>
+<!ELEMENT SelectionReasoning (#PCDATA)>
+
+
+<!ELEMENT DesignOption (
+  Order,
+  Description,
+  OptionEvaluation+
+)>
+<!ATTLIST DesignOption Id CDATA #REQUIRED>
+<!ATTLIST DesignOption Headline CDATA #REQUIRED>
+
+<!ELEMENT Order (#PCDATA)>
+
+
+<!ELEMENT OptionEvaluation (
+  Description,
+  Rating
+)>
+<!ATTLIST OptionEvaluation Id CDATA #REQUIRED>
+<!ATTLIST OptionEvaluation Type CDATA #REQUIRED>
+
+<!ELEMENT Rating (#PCDATA)>
+
+
+<!ELEMENT History (
+  PId,
+  Date,
+  Description
+)>
+<!ATTLIST History Id CDATA #REQUIRED>
+<!ATTLIST History Name CDATA #REQUIRED>
+
+<!ELEMENT PId (#PCDATA)>
+<!ELEMENT Date (#PCDATA)>
+
+
+<!ELEMENT Requirement (
+  uuid,
+  Group,
+  Who,
+  What,
+  When,
+  Where,
+  Constraint,
+  Comment,
+  SourceRequirement,
+  RelatedUseCase,
+  Status,
+  Owner
+)>
+<!ATTLIST Requirement Id CDATA #REQUIRED>
+<!ATTLIST Requirement Headline CDATA #REQUIRED>
+
+<!ELEMENT uuid (#PCDATA)>
+<!ELEMENT Group (#PCDATA)>
+<!ELEMENT Who (#PCDATA)>
+<!ELEMENT What (#PCDATA)>
+<!ELEMENT When (#PCDATA)>
+<!ELEMENT Where (#PCDATA)>
+<!ELEMENT Constraint (#PCDATA)>
+<!ELEMENT SourceRequirement (#PCDATA)>
+<!ELEMENT RelatedUseCase (#PCDATA)>
+<!ELEMENT Status (#PCDATA)>
+<!ELEMENT Owner (#PCDATA)>
+
+
+<!ELEMENT TestCase (
+  Purpose,
+  PreConditions,
+  ScenarioId,
+  PostConditions,
+  Notes
+)>
+<!ATTLIST TestCase Id CDATA #REQUIRED>
+<!ATTLIST TestCase Name CDATA #REQUIRED>
+
+<!ELEMENT Purpose (#PCDATA)>
+<!ELEMENT PreConditions (#PCDATA)>
+<!ELEMENT ScenarioId (#PCDATA)>
+<!ELEMENT PostConditions (#PCDATA)>
+<!ELEMENT Notes (#PCDATA)>
+
+
+<!ELEMENT AcceptanceTest (
+  LinkTypeId,
+  LinkId,
+  Description
+)>
+<!ATTLIST AcceptanceTest Id CDATA #REQUIRED>
+<!ATTLIST AcceptanceTest Name CDATA #REQUIRED>
+
+<!ELEMENT LinkTypeId (#PCDATA)>
+<!ELEMENT LinkId (#PCDATA)>
+
+
+<!ELEMENT Activity (
+  Description
+)>
+<!ATTLIST Activity Id CDATA #REQUIRED>
+<!ATTLIST Activity Name CDATA #REQUIRED>
+
+
+
+<!ELEMENT CustomerPriority (
+  Description
+)>
+<!ATTLIST CustomerPriority Id CDATA #REQUIRED>
+<!ATTLIST CustomerPriority Name CDATA #REQUIRED>
+
+
+
+<!ELEMENT DependencyLookUpTable (
+  DependentTypeIdLeft,
+  DependentIdLeft,
+  DependentTypeIdRight,
+  DependentIdRight
+)>
+<!ATTLIST DependencyLookUpTable Id CDATA #REQUIRED>
+<!ATTLIST DependencyLookUpTable Name CDATA #REQUIRED>
+
+<!ELEMENT DependentTypeIdLeft (#PCDATA)>
+<!ELEMENT DependentIdLeft (#PCDATA)>
+<!ELEMENT DependentTypeIdRight (#PCDATA)>
+<!ELEMENT DependentIdRight (#PCDATA)>
+
+
+<!ELEMENT DependencyType (
+  Description
+)>
+<!ATTLIST DependencyType Id CDATA #REQUIRED>
+<!ATTLIST DependencyType Name CDATA #REQUIRED>
+
+
+
+<!ELEMENT ReqStatus (
+  Description
+)>
+<!ATTLIST ReqStatus Id CDATA #REQUIRED>
+<!ATTLIST ReqStatus Name CDATA #REQUIRED>
+
+
+
+<!ELEMENT Risk (
+  Description
+)>
+<!ATTLIST Risk Id CDATA #REQUIRED>
+<!ATTLIST Risk Name CDATA #REQUIRED>
+
+
+
+<!ELEMENT UseCase (
+  LinkTypeId,
+  LinkId,
+  Description,
+  RelatedRequirementId,
+  PreConditions,
+  GoalInContext,
+  SuccessfulEndConditions,
+  FailedEndConditions,
+  PrimaryActors,
+  SecondaryActors,
+  Trigger,
+  FrequencyOfUse,
+  MainFlowId,
+  ExceptionFlowIdentifier,
+  Priority,
+  SpecialRequirements,
+  Assumptions,
+  Notes,
+  OpenIssues
+)>
+<!ATTLIST UseCase Id CDATA #REQUIRED>
+<!ATTLIST UseCase Name CDATA #REQUIRED>
+
+<!ELEMENT Actors (#PCDATA)>
+<!ELEMENT MainFlowId (#PCDATA)>
+<!ELEMENT RelatedRequirementId (#PCDATA)>
+<!ELEMENT GoalInContext (#PCDATA)>
+<!ELEMENT SuccessfulEndConditions (#PCDATA)>
+<!ELEMENT FailedEndConditions (#PCDATA)>
+<!ELEMENT PrimaryActors (#PCDATA)>
+<!ELEMENT SecondaryActors (#PCDATA)>
+<!ELEMENT Trigger (#PCDATA)>
+<!ELEMENT FrequencyOfUse (#PCDATA)>
+<!ELEMENT ExceptionFlowIdentifier (#PCDATA)>
+<!ELEMENT Assumptions (#PCDATA)>
+<!ELEMENT SpecialRequirements (#PCDATA)>
+<!ELEMENT OpenIssues (#PCDATA)>
+
+
+<!ELEMENT UseCaseEntry (
+  UseCaseFlowId,
+  StoryCardId,
+  Order,
+  SubUseCaseId
+)>
+<!ATTLIST UseCaseEntry Id CDATA #REQUIRED>
+<!ATTLIST UseCaseEntry Description CDATA #REQUIRED>
+
+<!ELEMENT UseCaseFlowId (#PCDATA)>
+<!ELEMENT StoryCardId (#PCDATA)>
+<!ELEMENT SubUseCaseId (#PCDATA)>
+
+<!ELEMENT UseCaseExceptionEntry (
+  ExceptionFlowId,
+  UseCaseId,
+  StoryCardId,
+  Order,
+  SubUseCaseId
+)>
+<!ATTLIST UseCaseExceptionEntry Id CDATA #REQUIRED>
+<!ATTLIST UseCaseExceptionEntry Description CDATA #REQUIRED>
+
+<!ELEMENT ExceptionFlowId (#PCDATA)>
+<!ELEMENT UseCaseId (#PCDATA)>
+
+
+<!ELEMENT Documentation (
+  StakeholderId,
+  DocumentGroupId,
+  Order,
+  Content
+)>
+<!ATTLIST Documentation Id CDATA #REQUIRED>
+<!ATTLIST Documentation Name CDATA #REQUIRED>
+
+<!ELEMENT StakeholderId (#PCDATA)>
+<!ELEMENT Content (#PCDATA)>
+
+
+<!ELEMENT Work (
+  LinkTypeId,
+  LinkId,
+  Order,
+  Estimate,
+  TimeUnit,
+  UnLoaded
+)>
+<!ATTLIST Work Id CDATA #REQUIRED>
+<!ATTLIST Work Name CDATA #REQUIRED>
+
+<!ELEMENT Estimate (#PCDATA)>
+<!ELEMENT TimeUnit (#PCDATA)>
+<!ELEMENT UnLoaded (#PCDATA)>
+
+
+<!ELEMENT ProcessChart (
+  ProcessChartType,
+  Description
+)>
+<!ATTLIST ProcessChart Id CDATA #REQUIRED>
+<!ATTLIST ProcessChart Name CDATA #REQUIRED>
+
+<!ELEMENT ProcessChartType (#PCDATA)>
+
+
+<!ELEMENT Object (
+  Attributes,
+  Operations,
+  ObjectToObject
+)>
+<!ATTLIST Object Id CDATA #REQUIRED>
+<!ATTLIST Object Name CDATA #REQUIRED>
+
+<!ELEMENT Attributes (#PCDATA)>
+<!ELEMENT Operations (#PCDATA)>
+<!ELEMENT ObjectToObject (#PCDATA)>
+
+
+<!ELEMENT ObjectLink (
+  LeftLinkType,
+  LeftLinkId,
+  RightLinkType,
+  RightLinkId,
+  StreamDirective
+)>
+<!ATTLIST ObjectLink Id CDATA #REQUIRED>
+
+<!ELEMENT LeftLinkType (#PCDATA)>
+<!ELEMENT LeftLinkId (#PCDATA)>
+<!ELEMENT RightLinkType (#PCDATA)>
+<!ELEMENT RightLinkId (#PCDATA)>
+<!ELEMENT StreamDirective (#PCDATA)>
+
+
+<!ELEMENT ObjectToObjectLUT (
+  fromobjectId,
+  toobjectId
+)>
+<!ATTLIST ObjectToObjectLUT Id CDATA #REQUIRED>
+
+<!ELEMENT fromobjectId (#PCDATA)>
+<!ELEMENT toobjectId (#PCDATA)>
+
+
+<!ELEMENT ObjectClass (
+  Description
+)>
+<!ATTLIST ObjectClass Id CDATA #REQUIRED>
+<!ATTLIST ObjectClass Name CDATA #REQUIRED>
+
+
+
+<!ELEMENT LinkType (
+  Description
+)>
+<!ATTLIST LinkType Id CDATA #REQUIRED>
+<!ATTLIST LinkType Name CDATA #REQUIRED>
+
+
+
+<!ELEMENT DocumentStructure (
+  Description,
+  DocumentSubGroupId
+)>
+<!ATTLIST DocumentStructure Id CDATA #REQUIRED>
+<!ATTLIST DocumentStructure Name CDATA #REQUIRED>
+
+<!ELEMENT DocumentSubGroupId (#PCDATA)>
+
+
+<!ELEMENT DocumentPart (
+  Order,
+  Description,
+  DocumentGroupId,
+  DocumentSubGroupId
+)>
+<!ATTLIST DocumentPart Id CDATA #REQUIRED>
+<!ATTLIST DocumentPart Name CDATA #REQUIRED>
+
+
+
+<!ELEMENT DocumentGroupName (
+  Description
+)>
+<!ATTLIST DocumentGroupName Id CDATA #REQUIRED>
+<!ATTLIST DocumentGroupName GroupName CDATA #REQUIRED>
+
+
+
+<!ELEMENT InitialCharter (
+  ReleatedSipocId,
+  OpporttunityStatment,
+  ExternalProductDependency+,
+  TechnologyNeed+,
+  KnowledgeNeed+,
+  KeyObjective+,
+  Motive,
+  InitialMarketSegment,
+  WhatIsBeingChangedOrProduced,
+  MissionStatment
+)>
+<!ATTLIST InitialCharter  Id CDATA #REQUIRED>
+<!ATTLIST InitialCharter  ProposalName CDATA #REQUIRED>
+
+<!ELEMENT InitialCharterId (#PCDATA)>
+
+<!ELEMENT  ReleatedSipocId (#PCDATA)>
+<!ELEMENT  ExternalProductDependency (#PCDATA)>
+<!ATTLIST ExternalProductDependency ProductName CDATA #REQUIRED>
+<!ATTLIST ExternalProductDependency Dependency CDATA #REQUIRED>
+
+<!ELEMENT  TechnologyNeed (#PCDATA)>
+<!ELEMENT  KnowledgeNeed (#PCDATA)>
+<!ELEMENT  KeyObjective (#PCDATA)>
+<!ELEMENT  Motive (#PCDATA)>
+<!ELEMENT  InitialMarketSegment (#PCDATA)>
+<!ELEMENT  WhatIsBeingChangedOrProduced (#PCDATA)>
+
+
+<!ELEMENT  OpporttunityStatment (
+  CurrentState,
+  WhatHasChanged,
+  WhatCouldTheConcequencesBe,
+  ConsequencesIfNotChanged,
+  DesiredState,
+  When,
+  GainAtDesiredState
+)>
+
+<!ELEMENT  CurrentState   (#PCDATA)>
+<!ELEMENT  WhatHasChanged   (#PCDATA)>
+<!ELEMENT  WhatCouldTheConcequencesBe   (#PCDATA)>
+<!ELEMENT  ConsequencesIfNotChanged   (#PCDATA)>
+<!ELEMENT  DesiredState   (#PCDATA)>
+<!ELEMENT  GainAtDesiredState   (#PCDATA)>
+
+
+<!ELEMENT  MissionStatment (
+  ForTargetCustomers,
+  WhoStatementOfNeedOrOpportunity,
+  TheProductName,
+  IsAProductCategory,
+  ThatKeyBenefitCompellingReassonToBuyUse,
+  UnlikePrimaryCompetitiveAltenativeOrCurrentSystemOrProcess,
+  OurProductPrimaryDiffAndAdvantageOfNewProduct
+)>
+
+<!ELEMENT  ForTargetCustomers   (#PCDATA)>
+<!ELEMENT  WhoStatementOfNeedOrOpportunity   (#PCDATA)>
+<!ELEMENT  TheProductName   (#PCDATA)>
+<!ELEMENT  IsAProductCategory   (#PCDATA)>
+<!ELEMENT  ThatKeyBenefitCompellingReassonToBuyUse   (#PCDATA)>
+<!ELEMENT  UnlikePrimaryCompetitiveAltenativeOrCurrentSystemOrProcess   (#PCDATA)>
+<!ELEMENT  OurProductPrimaryDiffAndAdvantageOfNewProduct   (#PCDATA)>
+
+<!ELEMENT Charter (
+  InitialCharterId,
+  BusinessUnit,
+  ProjectOwner,
+  ProjectTypeId,
+  ProductHeadline,
+  Process,
+  CurrentState,
+  ObjectiveBeingAffected,
+  MeasurableEffect,
+  DesiredState,
+  GainAtDesiredState,
+  PitchFiveSeconds,
+  PitchThirtySeconds,
+  PitchFiveMinutes,
+  KeyFeature+,
+  ProjectScope,
+  ProjectObjectives+,
+  RolledThroughputYieldGoal,
+  RolledThroughputYieldMaximum,
+  RtyProcess,
+  ImpactOnOtherBusinessUnits+,
+  SupportRequired+,
+  NetPresentValue,
+  Status
+)>
+<!ATTLIST Charter Id CDATA #REQUIRED>
+<!ATTLIST Charter Name CDATA #REQUIRED>
+
+<!ELEMENT BusinessUnit (#PCDATA)>
+<!ELEMENT ProductHeadline (#PCDATA)>
+<!ELEMENT ProjectOwner (#PCDATA)>
+<!ELEMENT Process (#PCDATA)>
+<!ELEMENT ObjectiveBeingAffected (#PCDATA)>
+<!ELEMENT MeasurableEffect (#PCDATA)>
+<!ELEMENT PitchFiveSeconds (#PCDATA)>
+<!ELEMENT PitchThirtySeconds (#PCDATA)>
+<!ELEMENT PitchFiveMinutes (#PCDATA)>
+<!ELEMENT KeyFeature (#PCDATA)>
+<!ELEMENT RolledThroughputYieldGoal (#PCDATA)>
+<!ELEMENT RolledThroughputYieldMaximum (#PCDATA)>
+<!ELEMENT ImpactOnOtherBusinessUnits (#PCDATA)>
+<!ELEMENT SupportRequired (#PCDATA)>
+<!ELEMENT NetPresentValue (#PCDATA)>
+
+<!ELEMENT ProjectScope (
+  ContextModelId,
+  InScope+,
+  OutOfScope+
+)>
+<!ELEMENT ContextModelId (#PCDATA)>
+<!ELEMENT InScope (#PCDATA)>
+<!ELEMENT OutOfScope (#PCDATA)>
+
+<!ELEMENT ProjectObjectives (
+  Action,
+  CardinalObjective,
+  ProjectSubject,
+  MarketSegment,
+  Direction,
+  Measure,
+  Target,
+  Deadline
+)>
+<!ELEMENT Action  (#PCDATA)>
+<!ELEMENT CardinalObjective  (#PCDATA)>
+<!ELEMENT ProjectSubject  (#PCDATA)>
+<!ELEMENT MarketSegment (#PCDATA)>
+<!ELEMENT Direction  (#PCDATA)>
+<!ELEMENT Measure  (#PCDATA)>
+<!ELEMENT Target  (#PCDATA)>
+<!ELEMENT Deadline  (#PCDATA)>
+
+<!ELEMENT RtyProcess (
+  QuantityIn,
+  QuantityScrapped,
+  QuantityReworked,
+  CostOfScrappedPerUnit,
+  CostOfReworkedPerUnit,
+  CycleTimeMinutes
+)>
+<!ATTLIST RtyProcess Name CDATA #REQUIRED>
+
+<!ELEMENT QuantityIn  (#PCDATA)>
+<!ELEMENT QuantityScrapped (#PCDATA)>
+<!ELEMENT QuantityReworked  (#PCDATA)>
+<!ELEMENT CostOfScrappedPerUnit  (#PCDATA)>
+<!ELEMENT CostOfReworkedPerUnit  (#PCDATA)>
+<!ELEMENT CycleTimeMinutes  (#PCDATA)>
+
+<!ELEMENT LinkCharteToStorycard (
+  CharterId,
+  StoryCardId
+)>
+<!ATTLIST LinkCharteToStorycard Id CDATA #REQUIRED>
+
+<!ELEMENT CharterId (#PCDATA)>
+
+
+<!ELEMENT LinkCharteToProjectobjective (
+  CharterId,
+  ProjectObjectiveId
+)>
+<!ATTLIST LinkCharteToProjectobjective Id CDATA #REQUIRED>
+
+<!ELEMENT ProjectObjectiveId (#PCDATA)>
+
+
+<!ELEMENT ProjectObjective (
+  ProjectObjectiveActionId,
+  SixSigmaCardinalObjectiveId,
+  MarketSegment,
+  ObjectiveDirectionId,
+  Measure,
+  Target,
+  Deadline,
+  State,
+  Priority,
+  Comment
+)>
+<!ATTLIST ProjectObjective Id CDATA #REQUIRED>
+<!ATTLIST ProjectObjective Project CDATA #REQUIRED>
+
+<!ELEMENT ProjectObjectiveActionId (#PCDATA)>
+<!ELEMENT SixSigmaCardinalObjectiveId (#PCDATA)>
+<!ELEMENT ObjectiveDirectionId (#PCDATA)>
+
+
+<!ELEMENT ProjectObjectiveAction (
+  Description
+)>
+<!ATTLIST ProjectObjectiveAction Id CDATA #REQUIRED>
+<!ATTLIST ProjectObjectiveAction Name CDATA #REQUIRED>
+
+
+
+<!ELEMENT SixSigmaCardinalObjective (
+  Description
+)>
+<!ATTLIST SixSigmaCardinalObjective Id CDATA #REQUIRED>
+<!ATTLIST SixSigmaCardinalObjective Name CDATA #REQUIRED>
+
+
+
+<!ELEMENT ObjectiveDirection (
+  Description
+)>
+<!ATTLIST ObjectiveDirection Id CDATA #REQUIRED>
+<!ATTLIST ObjectiveDirection Name CDATA #REQUIRED>
+
+
+
+<!ELEMENT CharterObjectiveOutline (
+  CharterId
+)>
+<!ATTLIST CharterObjectiveOutline Id CDATA #REQUIRED>
+<!ATTLIST CharterObjectiveOutline Headline CDATA #REQUIRED>
+
+
+<!ELEMENT CharterObjectiveOutlineLinkToCardinalObjective (
+  Comment,
+  SixSigmaCardinalObjectiveId
+)>
+<!ATTLIST CharterObjectiveOutlineLinkToCardinalObjective Id CDATA #REQUIRED>
+
+
+<!ELEMENT Sipoc (
+  Description,
+  Supplier+,
+  Input+,
+  Step+,
+  Output+,
+  Customer+
+)>
+<!ATTLIST Sipoc Id CDATA #REQUIRED>
+<!ATTLIST Sipoc Headline CDATA #REQUIRED>
+
+<!ELEMENT Supplier (#PCDATA)>
+<!ELEMENT Input (#PCDATA)>
+
+<!ELEMENT Step (#PCDATA)>
+<!ATTLIST Step Order CDATA #REQUIRED>
+<!ATTLIST Step Value CDATA #REQUIRED>
+
+
+<!ELEMENT Output (#PCDATA)>
+<!ELEMENT Customer (#PCDATA)>
+
+
+<!ELEMENT LeftOver (
+  TechEstimate,
+  Triage
+)>
+
+<!ELEMENT TechEstimate (#PCDATA)>
+<!ELEMENT Triage (#PCDATA)>
+
+
+<!ELEMENT ProjectHopper (
+  CharterId+
+)>
+<!ATTLIST ProjectHopper Id CDATA #REQUIRED>
+<!ATTLIST ProjectHopper Name CDATA #REQUIRED>
+
+
+
+
+
+
+<!-- CONTEXT MODEL -->
+<!ELEMENT ContextModel (
+  TheWorkEntityId,
+  Entity+,
+  Relation+
+)>
+<!ATTLIST ContextModel Id CDATA #REQUIRED>
+<!ATTLIST ContextModel Title CDATA #REQUIRED>
+
+
+<!ELEMENT TheWorkEntityId (#PCDATA)>
+<!ELEMENT Entity (
+  Summary,
+  Description
+)>
+<!ATTLIST Entity Id CDATA #REQUIRED>
+<!ATTLIST Entity Name CDATA #REQUIRED>
+
+<!-- TODO V also support links to other places, for the Entity? -->
+<!ELEMENT Summary (#PCDATA)>
+
+<!ELEMENT Relation (
+  Summary,
+  Description
+)>
+<!ATTLIST Relation EntityAId CDATA #REQUIRED>
+<!ATTLIST Relation EntityBId CDATA #REQUIRED>
+<!ATTLIST Relation Name CDATA #REQUIRED>
+
+<!-- COMPONENT DIAGRAM -->
+<!ELEMENT ArchElement (
+  ElementType,
+  Summary,
+  Description
+)>
+<!ATTLIST ArchElement Id CDATA #REQUIRED>
+<!ATTLIST ArchElement Title CDATA #REQUIRED>
+
+<!ELEMENT ElementType  (#PCDATA)>
+
+
+<!ELEMENT ComponentDiagram (
+  ArchElementSystemId,
+  ArchElementId,
+  DirectionalRelation+
+)>
+<!ATTLIST ComponentDiagram Id CDATA #REQUIRED>
+<!ATTLIST ComponentDiagram Title CDATA #REQUIRED>
+
+<!ELEMENT ArchElementSystemId (#PCDATA)>
+<!ELEMENT ArchElementId (#PCDATA)>
+<!ELEMENT DirectionalRelation (
+  RelationType,
+  Summary,
+  Description
+)>
+<!-- 'relation' has no directional they are equal. 'directionalrelation' has a direction. -->
+<!ATTLIST DirectionalRelation SourceId CDATA #REQUIRED>
+<!ATTLIST DirectionalRelation DestinationId CDATA #REQUIRED>
+
+<!ELEMENT RelationType (#PCDATA)>
+
+
+
+
+<!-- FEATURE IMPLEMENTATION PLAN -->
+<!ELEMENT FeatureImplementationPlan (
+  Issue,
+  Revision,
+  Draft,
+  ReleaseDate,
+  Author,
+  SourceReference,
+  DistributionFolder,
+  DistributionDirectName,
+  Background,
+  ContextModelId,
+  RequirementId*,
+  WhatWillNotBeDone,
+  PrototypeDeployment,
+  ProductionDeployment,
+  PlannedUpgrades,
+  IntendedOperationalLife,
+  PhysicalEntities,
+  FaqId,
+  SipocId+,
+  ModuleDecompositionViewPacketId,
+  ModuleUsesViewPacketId,
+  ModuleGeneralizationViewPacketId,
+  ModuleLayeredViewPacketId,
+  CnCPipeAndFilterViewPacketId,
+  CnCSharedDataViewPacketId,
+  CnCPublishSubscribeProcessesViewPacketId,
+  CnCClientServerProcessesViewPacketId,
+  CnCPeerToPeerProcessesViewPacketId,
+  CnCCommunicatingProcessesViewPacketId,
+  AllocationDeploymentViewPacketId,
+  AllocationImplementationViewPacketId,
+  AllocationWorkAssignmentViewPacketId
+)>
+<!ATTLIST FeatureImplementationPlan Id CDATA #REQUIRED>
+<!ATTLIST FeatureImplementationPlan Title CDATA #REQUIRED>
+
+<!ELEMENT  Issue (#PCDATA)>
+<!ELEMENT  Revision (#PCDATA)>
+<!ELEMENT  Draft (#PCDATA)>
+<!ELEMENT  ReleaseDate (#PCDATA)>
+<!ELEMENT  Author (#PCDATA)>
+<!ELEMENT  SourceReference (#PCDATA)>
+<!ELEMENT  DistributionFolder (#PCDATA)>
+<!ELEMENT  DistributionDirectName (#PCDATA)>
+<!ELEMENT  Background (#PCDATA)>
+<!ELEMENT  RequirementId (#PCDATA)>
+<!ELEMENT  WhatWillNotBeDone (#PCDATA)>
+<!ELEMENT  PrototypeDeployment (#PCDATA)>
+<!ELEMENT  ProductionDeployment (#PCDATA)>
+<!ELEMENT  PlannedUpgrades (#PCDATA)>
+<!ELEMENT  IntendedOperationalLife (#PCDATA)>
+<!ELEMENT  PhysicalEntities (#PCDATA)>
+<!ELEMENT  FaqId (#PCDATA)>
+<!ELEMENT  SipocId (#PCDATA)>
+<!ELEMENT  ModuleDecompositionViewPacketId (#PCDATA)>
+<!ATTLIST  ModuleDecompositionViewPacketId Order CDATA #REQUIRED>
+<!ELEMENT  ModuleUsesViewPacketId (#PCDATA)>
+<!ATTLIST  ModuleUsesViewPacketId Order CDATA #REQUIRED>
+<!ELEMENT  ModuleGeneralizationViewPacketId (#PCDATA)>
+<!ATTLIST  ModuleGeneralizationViewPacketId Order CDATA #REQUIRED>
+<!ELEMENT  ModuleLayeredViewPacketId (#PCDATA)>
+<!ATTLIST  ModuleLayeredViewPacketId Order CDATA #REQUIRED>
+<!ELEMENT  CnCPipeAndFilterViewPacketId (#PCDATA)>
+<!ATTLIST  CnCPipeAndFilterViewPacketId Order CDATA #REQUIRED>
+<!ELEMENT  CnCSharedDataViewPacketId (#PCDATA)>
+<!ATTLIST  CnCSharedDataViewPacketId Order CDATA #REQUIRED>
+<!ELEMENT  CnCPublishSubscribeProcessesViewPacketId (#PCDATA)>
+<!ATTLIST  CnCPublishSubscribeProcessesViewPacketId Order CDATA #REQUIRED>
+<!ELEMENT  CnCClientServerProcessesViewPacketId (#PCDATA)>
+<!ATTLIST  CnCClientServerProcessesViewPacketId Order CDATA #REQUIRED>
+<!ELEMENT  CnCPeerToPeerProcessesViewPacketId (#PCDATA)>
+<!ATTLIST  CnCPeerToPeerProcessesViewPacketId Order CDATA #REQUIRED>
+<!ELEMENT  CnCCommunicatingProcessesViewPacketId (#PCDATA)>
+<!ATTLIST  CnCCommunicatingProcessesViewPacketId Order CDATA #REQUIRED>
+<!ELEMENT  AllocationDeploymentViewPacketId (#PCDATA)>
+<!ATTLIST  AllocationDeploymentViewPacketId Order CDATA #REQUIRED>
+<!ELEMENT  AllocationImplementationViewPacketId (#PCDATA)>
+<!ATTLIST  AllocationImplementationViewPacketId Order CDATA #REQUIRED>
+<!ELEMENT  AllocationWorkAssignmentViewPacketId (#PCDATA)>
+<!ATTLIST  AllocationWorkAssignmentViewPacketId Order CDATA #REQUIRED>
+
+<!-- FEATURE SOFTWAREARCHITECTUREDOCUMENTATION  PLAN -->
+<!ELEMENT SoftwareArchitectureDocumentation (
+  Issue,
+  Revision,
+  Draft,
+  Status,
+  ReleaseDate,
+  Author,
+  SourceReference,
+  DistributionFolder,
+  DistributionDirectName,
+  IssuingOrganization,
+  Summary,
+  Background,
+  ContextModelId,
+  RequirementId*,
+  WhatWillNotBeDone,
+  PrototypeDeployment,
+  ProductionDeployment,
+  PlannedUpgrades,
+  IntendedOperationalLife,
+  PhysicalEntities,
+  FaqId,
+  SipocId+,
+  ModuleDecompositionViewPacketId,
+  ModuleUsesViewPacketId,
+  ModuleGeneralizationViewPacketId,
+  ModuleLayeredViewPacketId,
+  CnCPipeAndFilterViewPacketId,
+  CnCSharedDataViewPacketId,
+  CnCPublishSubscribeProcessesViewPacketId,
+  CnCClientServerProcessesViewPacketId,
+  CnCPeerToPeerProcessesViewPacketId,
+  CnCCommunicatingProcessesViewPacketId,
+  AllocationDeploymentViewPacketId,
+  AllocationImplementationViewPacketId,
+  AllocationWorkAssignmentViewPacketId
+)>
+<!ATTLIST SoftwareArchitectureDocumentation Id CDATA #REQUIRED>
+<!ATTLIST SoftwareArchitectureDocumentation Title CDATA #REQUIRED>
+
+<!ELEMENT IssuingOrganization  (#PCDATA)>
+
+<!-- VIEWPACKET -->
+<!ELEMENT ViewPacket (
+  ViewPacketType,
+  ViewPacketStyle,
+  ComponentId+
+)>
+<!ATTLIST ViewPacket Id CDATA #REQUIRED>
+<!ATTLIST ViewPacket Title  CDATA #REQUIRED>
+
+<!ELEMENT  ViewPacketType (#PCDATA)>
+<!ELEMENT  ViewPacketStyle (#PCDATA)>
+<!ELEMENT  ComponentId (#PCDATA)>
+
+
+<!ELEMENT Idea (
+  TriageLevel,
+  SortOrder,
+  IdeaStatus,
+  Headline,
+  Description,
+  Purpose,
+  ProblemThatIsSolved,
+  WhosProblemIsIt,
+  IsItImportantToThem,
+  WhatIndicatesTheyWillPayForTheSolution,
+  ThoughChallenge+,
+  ProofOfConcept,
+  HardestRemainingWork,
+  WhyHasNoOneDoneThisBefore,
+  WhyAreYouTheRightPersonToSolveIt,
+  WhyShouldOurOrgFundYourWork
+)>
+<!ATTLIST Idea Id CDATA #REQUIRED>
+<!ATTLIST Idea Name CDATA #REQUIRED>
+
+<!ELEMENT  TriageLevel (#PCDATA)>
+<!ELEMENT  SortOrder (#PCDATA)>
+<!ELEMENT  IdeaStatus (#PCDATA)>
+<!ELEMENT  Headline (#PCDATA)>
+<!ELEMENT  ProblemThatIsSolved (#PCDATA)>
+<!ELEMENT  WhosProblemIsIt (#PCDATA)>
+<!ELEMENT  IsItImportantToThem (#PCDATA)>
+<!ELEMENT  WhatIndicatesTheyWillPayForTheSolution (#PCDATA)>
+<!ELEMENT  ThoughChallenge (
+  Solution
+)>
+<!ATTLIST ThoughChallenge Id CDATA #REQUIRED>
+<!ATTLIST ThoughChallenge Challenge CDATA #REQUIRED>
+<!ELEMENT  Solution (#PCDATA)>
+
+<!ELEMENT  ProofOfConcept (#PCDATA)>
+<!ELEMENT  HardestRemainingWork (#PCDATA)>
+<!ELEMENT  WhyHasNoOneDoneThisBefore (#PCDATA)>
+<!ELEMENT  WhyAreYouTheRightPersonToSolveIt (#PCDATA)>
+<!ELEMENT  WhyShouldOurOrgFundYourWork (#PCDATA)>
+
+
+
+<!-- =========================== ideatoproduct ==================== -->
+<!ELEMENT ideatoproduct (
+  Idea+,
+  Sipoc+,
+  InitialCharter+,
+  Charter+,
+  ProjectHopper+,
+  ContextModel+,
+  Product+,
+  ObjectiveType+,
+  ObjectiveTypeLUT+,
+  KeyIndicators+,
+  KeyIndicatorType+,
+  BusinessCase+,
+  Project+,
+  ProjectType+,
+  SoftwareArchitectureDocumentation*,
+  FeatureImplementationPlan*,
+  ViewPacket*,
+  Component*,
+  ModuleRelations*,
+  Connector*,
+  ComponentRelation*,
+  Implementation*,
+  ImplementationRelation*,
+  StoryCard*,
+  Stakeholder*,
+  Dictionary+,
+  Design+,
+  History+,
+  Requirement+,
+  TestCase+,
+  AcceptanceTest+,
+  Activity+,
+  CustomerPriority+,
+  DependencyLookUpTable+,
+  DependencyType+,
+  ReqStatus+,
+  Risk+,
+  UseCase+,
+  UseCaseEntry+,
+  UseCaseExceptionEntry+,
+  Documentation+,
+  Work+,
+  ProcessChart+,
+  Object+,
+  ObjectLink+,
+  ObjectToObjectLUT+,
+  ObjectClass+,
+  LinkType+,
+  DocumentStructure+,
+  DocumentPart+,
+  DocumentGroupName+,
+  LeftOver+
+)>
+<!ATTLIST ideatoproduct Version CDATA #REQUIRED>
+

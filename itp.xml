@@ -1,0 +1,442 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE ideatoproduct SYSTEM "ideatoproduct.dtd">
+
+<ideatoproduct Version="0.2.0">
+
+<!-- Should I have an idea-bank page that holds the differen ideas, who came up with the, who works on them etc. -->
+<!-- Mainly based on The Myths of Innovation (Scott Berkun) -->
+<Idea Id="" Name="">
+  <!-- Triage level can be: C=Critical, V=Value-adding, N=Nice-to-have -->
+  <TriageLevel></TriageLevel>
+  <!-- Order-level the idea should be listed in. -->
+  <SortOrder></SortOrder>
+  <!-- Idea status: Captured, Dropped, Chartered(an initial or full charter has been created.) Stewing(There is a better work for the breweing/cultivation of the idea)Nurture? -->
+  <IdeaStatus></IdeaStatus>
+  <Headline></Headline>
+  <Description></Description>
+  <Purpose></Purpose>
+  <ProblemThatIsSolved></ProblemThatIsSolved>
+  <WhosProblemIsIt></WhosProblemIsIt>
+  <IsItImportantToThem></IsItImportantToThem>
+  <WhatIndicatesTheyWillPayForTheSolution></WhatIndicatesTheyWillPayForTheSolution>
+  <!-- There can be multiple technical challenges. -->
+  <ThoughChallenge Id="" Challenge="">
+    <!-- A challenge can have multiple solutions. -->
+    <Solution></Solution>
+  </ThoughChallenge>
+   <!-- Do you have a prototype, sample or demonstration aka. PoC. -->
+  <ProofOfConcept></ProofOfConcept>
+  <HardestRemainingWork></HardestRemainingWork>
+  <WhyHasNoOneDoneThisBefore></WhyHasNoOneDoneThisBefore>
+  <WhyAreYouTheRightPersonToSolveIt></WhyAreYouTheRightPersonToSolveIt>
+  <WhyShouldOurOrgFundYourWork></WhyShouldOurOrgFundYourWork>
+</Idea>
+
+
+<!--
+  <IdeaChallenge Id="" Description="">
+  <IdeaChallengeSolution Id="" Description="">
+-->
+
+<!-- Described in SixSigmaDmadvDefine. -->
+<Sipoc Id="" Headline="">
+  <Description></Description>
+  <Supplier></Supplier>
+  <Input></Input>
+  <!-- content of 'value' can be VA(ValueAdding) or NVA(Non-value-adding). -->
+  <Step Order="" Value=""></Step>
+  <Output></Output>
+  <Customer></Customer>
+</Sipoc>
+
+
+<InitialCharter Id="" ProposalName="">
+  <!-- an initial charter can have multiple related sipocs. -->
+  <ReleatedSipocId></ReleatedSipocId>
+  <OpporttunityStatment>
+    <CurrentState></CurrentState>
+    <WhatHasChanged></WhatHasChanged>
+    <WhatCouldTheConcequencesBe></WhatCouldTheConcequencesBe>
+    <ConsequencesIfNotChanged></ConsequencesIfNotChanged>
+    <DesiredState></DesiredState>
+    <When></When>
+    <GainAtDesiredState></GainAtDesiredState>
+  </OpporttunityStatment>
+  <ExternalProductDependency ProductName="" Dependency=""></ExternalProductDependency>
+  <TechnologyNeed></TechnologyNeed>
+  <KnowledgeNeed></KnowledgeNeed>
+  <!-- three to five; See SixSigmaObjectives for information. -->
+  <KeyObjective></KeyObjective>
+  <KeyObjective></KeyObjective>
+  <KeyObjective></KeyObjective>
+  <Motive></Motive>
+  <InitialMarketSegment></InitialMarketSegment>
+  <WhatIsBeingChangedOrProduced></WhatIsBeingChangedOrProduced>
+  <MissionStatment>
+    <ForTargetCustomers></ForTargetCustomers>
+    <WhoStatementOfNeedOrOpportunity></WhoStatementOfNeedOrOpportunity>
+    <TheProductName></TheProductName>
+    <IsAProductCategory></IsAProductCategory>
+    <ThatKeyBenefitCompellingReassonToBuyUse></ThatKeyBenefitCompellingReassonToBuyUse>
+    <UnlikePrimaryCompetitiveAltenativeOrCurrentSystemOrProcess></UnlikePrimaryCompetitiveAltenativeOrCurrentSystemOrProcess>
+    <OurProductPrimaryDiffAndAdvantageOfNewProduct></OurProductPrimaryDiffAndAdvantageOfNewProduct>
+  </MissionStatment>
+</InitialCharter>
+
+
+
+<!-- Project hopper. Information extracted from the charter:
+  NPV, Project type, Project owner, Project champion, Start date, completion date, mission statement. -->
+
+<ProjectHopper Id="" Name="">
+  <!-- ther can be multiple charterid references. -->
+  <CharterId></CharterId>
+</ProjectHopper>
+
+<ContextModel Id="" Title="">
+  <TheWorkEntityId></TheWorkEntityId>
+  <Entity Id="" Name=""><Summary></Summary><Description></Description></Entity>
+  <Relation EntityAId="" EntityBId="" Name=""><Summary></Summary><Description></Description></Relation>
+</ContextModel>
+
+
+<Product Id="" Name="">
+  <Description></Description>
+  <InitialVision></InitialVision>
+  <MissionStatement></MissionStatement>
+</Product>
+
+<ObjectiveType Id="" Name="">
+  <Description></Description>
+</ObjectiveType>
+
+<ObjectiveTypeLUT Id="">
+  <ObjectiveId></ObjectiveId>
+  <ObjectiveTypeId></ObjectiveTypeId>
+</ObjectiveTypeLUT>
+
+<KeyIndicators Id="" HeadLine="">
+  <Description></Description>
+  <Type></Type>
+  <State></State>
+  <Priority></Priority>
+  <Comment></Comment>
+</KeyIndicators>
+
+<KeyIndicatorType Id="" Name="">
+  <Description></Description>
+</KeyIndicatorType>
+
+<BusinessCase Id="">
+  <ProjectId></ProjectId>
+  <ExecutiveSummary></ExecutiveSummary>
+  <CompanyOverview></CompanyOverview>
+  <BusinessEnvironment></BusinessEnvironment>
+  <CompanyDescription></CompanyDescription>
+  <State></State>
+  <Comment></Comment>
+</BusinessCase>
+
+<Project Id="" Name="">
+  <ProductId></ProductId>
+  <CharterId></CharterId>
+  <ParentId></ParentId>
+  <ProjectTypeId></ProjectTypeId>
+  <Description></Description>
+</Project>
+
+<ProjectType Id="1" Type="Blitz">
+  <Description></Description>
+</ProjectType>
+
+<SoftwareArchitectureDocumentation Id="" Title="">
+  <Issue></Issue>
+  <Revision></Revision>
+  <Draft></Draft>
+  <ReleaseDate></ReleaseDate>
+  <Author></Author> 
+  <SourceReference></SourceReference>
+  <DistributionFolder></DistributionFolder>
+  <DistributionDirectName></DistributionDirectName>
+  <!-- This is the BusinessOpportunity of the charter. -->
+  <Background></Background>
+  <ContextModelId></ContextModelId>
+  <RequirementId></RequirementId>
+  <WhatWillNotBeDone></WhatWillNotBeDone>
+  <!-- Deploying the product. -->
+  <PrototypeDeployment></PrototypeDeployment>
+  <ProductionDeployment></ProductionDeployment>
+  <PlannedUpgrades></PlannedUpgrades>
+  <IntendedOperationalLife></IntendedOperationalLife>
+  <PhysicalEntities></PhysicalEntities>
+  <FaqId></FaqId>
+
+<!-- this goes into the: Rationale, Background, and Design Constraints -->
+  <SipocId></SipocId>
+
+<!-- this goes into ? -->
+  <ModuleDecompositionViewPacketId Order=""></ModuleDecompositionViewPacketId>
+  <ModuleUsesViewPacketId Order=""></ModuleUsesViewPacketId>
+  <ModuleGeneralizationViewPacketId Order=""></ModuleGeneralizationViewPacketId>
+  <ModuleLayeredViewPacketId Order=""></ModuleLayeredViewPacketId>
+  <CnCPipeAndFilterViewPacketId Order=""></CnCPipeAndFilterViewPacketId>
+  <CnCSharedDataViewPacketId Order=""></CnCSharedDataViewPacketId>
+  <CnCPublishSubscribeProcessesViewPacketId Order=""></CnCPublishSubscribeProcessesViewPacketId>
+  <CnCClientServerProcessesViewPacketId Order=""></CnCClientServerProcessesViewPacketId>
+  <CnCPeerToPeerProcessesViewPacketId Order=""></CnCPeerToPeerProcessesViewPacketId>
+  <CnCCommunicatingProcessesViewPacketId Order=""></CnCCommunicatingProcessesViewPacketId>
+  <AllocationDeploymentViewPacketId Order=""></AllocationDeploymentViewPacketId>
+  <AllocationImplementationViewPacketId Order=""></AllocationImplementationViewPacketId>
+  <AllocationWorkAssignmentViewPacketId Order=""></AllocationWorkAssignmentViewPacketId>
+</SoftwareArchitectureDocumentation>
+
+<ViewPacket Id="" Title="">
+  <!-- Types: 
+     Module - the system as units of implementation
+     C&C(Component-and-Connector) - the system as units of runtime execution
+     Allocation - the mapping from software elements to environmental structures.
+    -->
+  <ViewPacketType>Module</ViewPacketType>
+  <ViewPacketStyle>Decomposition</ViewPacketStyle>
+  <!-- used by the: PrimaryPresentation. -->
+  <ComponentDiagramId></ComponentDiagramId>
+  <!--  have a related view list. -->
+  <!--  TODO V calculate parent view packets. -->
+  <!--  TODO V Calculate siblings? -->
+  <!--  TODO V calculate children. -->
+</ViewPacket>
+
+<ArchElement Id="" Title="">
+  <!-- 
+      Module
+      Layer
+    -->
+  <ElementType></ElementType>
+  <Summary></Summary>
+  <Description></Description>
+</ArchElement>
+
+<ArchElement Id="" Title="">
+  <ElementType></ElementType>
+  <Summary></Summary>
+  <Description></Description>
+  <!-- capture relations to other view packets. -->
+</ArchElement>
+
+<ComponentDiagram Id="" Title="">
+  <!-- the ArchElementSystemId is the element/segment that is the what is the root. -->
+  <ArchElementSystemId></ArchElementSystemId>
+  <ArchElementId></ArchElementId>
+  <!-- 'is-part-of' Right now I'll list the source and destination in the graphviz will need to draw it. 
+         But if I put the Source/Destination-id in relation that is correct to the 'is-part-of'
+          Then I would always have to look at the relation type to do it right.
+    -->
+  <DirectionalRelation SourceId="" DestinationId=""><RelationType>is-part-of</RelationType><Summary></Summary><Description></Description></DirectionalRelation>
+</ComponentDiagram>
+
+
+
+
+<StoryCard Id="" HeadLine="">
+  <ProjectId></ProjectId>
+  <Description></Description>
+  <State></State>
+  <Priority></Priority>
+  <Comment></Comment>
+  <ParentId></ParentId>
+  <StatementOfWork></StatementOfWork>
+</StoryCard>
+
+<Dictionary Id="" Word="">
+  <DocumentGroupId></DocumentGroupId>
+  <DictionaryDescription StakeHolderId="">
+    <Description></Description>
+  </DictionaryDescription>
+</Dictionary>
+
+<Design Id="" Headline="">
+  <Description></Description>
+  <DesignOption Id="" Headline="">
+    <Order></Order>
+    <Description></Description>
+    <OptionEvaluation Id="" Type="">
+      <Description></Description>
+      <Rating></Rating>
+    </OptionEvaluation>
+  </DesignOption>
+  <SelectedOptionId></SelectedOptionId>
+  <SelectionReasoning></SelectionReasoning>
+</Design>
+
+<History Id="" Name="">
+  <PId></PId>
+  <Date></Date>
+  <Description></Description>
+</History>
+
+<Requirement Id="" Headline="">
+  <uuid></uuid>
+  <Group></Group>
+  <Who></Who>
+  <What></What>
+  <When></When>
+  <Where></Where>
+  <Constraint></Constraint>
+  <Comment></Comment>
+  <SourceRequirement></SourceRequirement>
+  <RelatedUseCase></RelatedUseCase>
+  <Status></Status>
+  <Owner></Owner>
+</Requirement>
+
+<TestCase Id="" Name="">
+  <Purpose></Purpose>
+  <PreConditions></PreConditions>
+  <ScenarioId></ScenarioId>
+  <PostConditions></PostConditions>
+  <Notes></Notes>
+</TestCase>
+
+<AcceptanceTest Id="" Name="">
+  <LinkTypeId></LinkTypeId>
+  <LinkId></LinkId>
+  <Description></Description>
+</AcceptanceTest>
+
+<Activity Id="" Name="">
+  <Description></Description>
+</Activity>
+
+<CustomerPriority Id="" Name="">
+  <Description></Description>
+</CustomerPriority>
+
+<DependencyLookUpTable Id="" Name="">
+  <DependentTypeIdLeft></DependentTypeIdLeft>
+  <DependentIdLeft></DependentIdLeft>
+  <DependentTypeIdRight></DependentTypeIdRight>
+  <DependentIdRight></DependentIdRight>
+</DependencyLookUpTable>
+
+<DependencyType Id="" Name="">
+  <Description></Description>
+</DependencyType>
+
+<ReqStatus Id="" Name="">
+  <Description></Description>
+</ReqStatus>
+
+<Risk Id="" Name="">
+  <Description></Description>
+</Risk>
+
+<UseCase Id="" Name="">
+  <LinkTypeId></LinkTypeId>
+  <LinkId></LinkId>
+  <Description></Description>
+  <!-- there can be multiple entries of the RelatedRequirementId -->
+  <RelatedRequirementId></RelatedRequirementId>
+  <PreConditions></PreConditions>
+  <GoalInContext></GoalInContext>
+  <SuccessfulEndConditions></SuccessfulEndConditions>
+  <FailedEndConditions></FailedEndConditions>
+  <PrimaryActors></PrimaryActors>
+  <SecondaryActors></SecondaryActors>
+  <Trigger></Trigger>
+  <FrequencyOfUse></FrequencyOfUse>
+  <MainFlowId></MainFlowId>
+  <ExceptionFlowIdentifier></ExceptionFlowIdentifier>
+  <Priority></Priority>
+  <SpecialRequirements></SpecialRequirements>
+  <Assumptions></Assumptions>
+  <Notes></Notes>
+  <OpenIssues></OpenIssues>
+</UseCase>
+
+<!-- Support include, and the other, was that extend? -->
+<UseCaseEntry Id="" Description="">
+  <UseCaseFlowId></UseCaseFlowId>
+  <StoryCardId></StoryCardId>
+  <Order></Order>
+  <SubUseCaseId></SubUseCaseId>
+</UseCaseEntry>
+
+<UseCaseExceptionEntry Id="" Description="">
+  <ExceptionFlowId></ExceptionFlowId>
+  <UseCaseId></UseCaseId>
+  <StoryCardId></StoryCardId>
+  <Order></Order>
+  <SubUseCaseId></SubUseCaseId>
+</UseCaseExceptionEntry>
+
+<Documentation Id="" Name="">
+  <StakeholderId></StakeholderId>
+  <DocumentGroupId></DocumentGroupId>
+  <Order></Order>
+  <Content></Content>
+</Documentation>
+
+<Work Id="" Name="">
+  <LinkTypeId></LinkTypeId>
+  <LinkId></LinkId>
+  <Order></Order>
+  <Estimate></Estimate>
+  <TimeUnit></TimeUnit>
+  <UnLoaded></UnLoaded>
+</Work>
+
+<ProcessChart Id="" Name="">
+  <ProcessChartType></ProcessChartType>
+  <Description></Description>
+</ProcessChart>
+
+<Object Id="" Name="">
+  <Attributes></Attributes>
+  <Operations></Operations>
+  <ObjectToObject></ObjectToObject>
+</Object>
+
+<ObjectLink Id="">
+  <LeftLinkType></LeftLinkType>
+  <LeftLinkId></LeftLinkId>
+  <RightLinkType></RightLinkType>
+  <RightLinkId></RightLinkId>
+  <StreamDirective></StreamDirective>
+</ObjectLink>
+
+<ObjectToObjectLUT Id="">
+  <fromobjectId></fromobjectId>
+  <toobjectId></toobjectId>
+</ObjectToObjectLUT>
+
+<ObjectClass Id="" Name="">
+  <Description></Description>
+</ObjectClass>
+
+<LinkType Id="" Name="">
+  <Description></Description>
+</LinkType>
+
+<DocumentStructure Id="" Name="">
+  <Description></Description>
+  <DocumentSubGroupId></DocumentSubGroupId>
+</DocumentStructure>
+
+<DocumentPart Id="" Name="">
+  <Order></Order>
+  <Description></Description>
+  <DocumentGroupId></DocumentGroupId>
+  <DocumentSubGroupId></DocumentSubGroupId>
+</DocumentPart>
+
+<DocumentGroupName Id="" GroupName="">
+  <Description></Description>
+</DocumentGroupName>
+
+
+<LeftOver>
+  <TechEstimate></TechEstimate>
+  <Triage></Triage>
+</LeftOver>
+
+</ideatoproduct>
