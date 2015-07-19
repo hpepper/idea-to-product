@@ -64,6 +64,10 @@ Idea to Product documented
 \end_layout
 
 \begin_layout Standard
+v 0.1.0
+\end_layout
+
+\begin_layout Standard
 \begin_inset CommandInset toc
 LatexCommand tableofcontents
 
@@ -76,12 +80,207 @@ LatexCommand tableofcontents
 The big picture
 \end_layout
 
-\begin_layout Enumerate
-Idea
+\begin_layout Section
+Introduction
+\end_layout
+
+\begin_layout Subsection
+Purpose
+\end_layout
+
+\begin_layout Subsection
+Scope
+\end_layout
+
+\begin_layout Subsection
+References
+\end_layout
+
+\begin_layout Itemize
+Making ideas happen.
+\end_layout
+
+\begin_layout Subsection
+Acronyms
+\end_layout
+
+\begin_layout Section
+Overview
 \end_layout
 
 \begin_layout Enumerate
+Idea - start by explaining the idae and the information needed to understand
+ that part.
+\end_layout
 
+\begin_layout Enumerate
+Business section - the charter information.
+\end_layout
+
+\begin_layout Enumerate
+Tech section - the business use cases etc.
+\end_layout
+
+\begin_layout Enumerate
+FIP - F Implementation proposal.
+ Go through the technical challenges and possible solutions for it.
+ Get an overall idea of the solutions.
+\end_layout
+
+\begin_layout Enumerate
+ArcDoc - The whole shebang.
+\end_layout
+
+\begin_layout Enumerate
+Req - Actual requests.
+ Possibly writteb as stories(at least on the headline.
+\end_layout
+
+\begin_layout Enumerate
+Agile stories - the agile stories in order of importance, possible sectioned
+ into milestones.
+\end_layout
+
+\begin_layout Standard
+In parallel to FIP and on do the Finance aspect in the Appendix.
+\end_layout
+
+\begin_layout Subsection
+Idea phase
+\end_layout
+
+\begin_layout Standard
+(From: Making ideas happen.)
+\end_layout
+
+\begin_layout Standard
+The purpose of the idea phase is to:
+\end_layout
+
+\begin_layout Itemize
+capture the idea.
+\end_layout
+
+\begin_layout Itemize
+get an idea of wether it is worth pursuing or not.
+\end_layout
+
+\begin_layout Itemize
+make it understandable to others.
+\end_layout
+
+\begin_layout Subsubsection
+Content out the Idea template
+\end_layout
+
+\begin_layout Description
+Name: Just the internal name to make it recognizable to you.
+\end_layout
+
+\begin_layout Description
+TriageLevel: C=Critical, V=Value-adding, N=Nice-to-have.
+\end_layout
+
+\begin_layout Description
+SortOrder: For the order in which the idea library is to be listed.
+\end_layout
+
+\begin_layout Description
+IdeaStatus: 
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+Captured
+\end_layout
+
+\begin_layout Itemize
+Dropped
+\end_layout
+
+\begin_layout Itemize
+Chartered: an initial or full charter has been created.
+\end_layout
+
+\begin_layout Itemize
+Stewing: (There is a better work for the breweing/cultivation of the idea)Nurtur
+e?
+\end_layout
+
+\end_deeper
+\begin_layout Description
+Headline: The public onliner/eye-catcher.
+\end_layout
+
+\begin_layout Description
+Description: 
+\end_layout
+
+\begin_layout Description
+Purpose: What do you want to achieve with the idea.
+\end_layout
+
+\begin_layout Description
+ProblemThatIsSolved: What problem will be solved by implementing this idea?
+ How is the world made better?
+\end_layout
+
+\begin_layout Description
+WhosProblemIsIt: Who has the problem, that is solved?
+\end_layout
+
+\begin_layout Description
+IsItImportantToThem: How important is this problem, to the people that has
+ the problem?
+\end_layout
+
+\begin_layout Description
+WhatIndicatesTheyWillPayForTheSolution:
+\end_layout
+
+\begin_layout Description
+ToughChallenges: List of tough challenges, allong with proposals for solutions.
+ There can be multiple solutions for each challenge.
+\end_layout
+
+\begin_layout Description
+ProofOfConcept: Do you have a prototype, sample or demonstration.
+ Seing is beleiving.
+\end_layout
+
+\begin_layout Description
+HardestRemainingWork: Of the work needed to be done to make this a product/proto
+type, which is the hardest?
+\end_layout
+
+\begin_layout Description
+WhyHasNoOneDoneThisBefore: This is here to help you reflect on whether or
+ not this is actually a realistic idea, can you actually get it done?
+\end_layout
+
+\begin_layout Description
+WhyAreYouTheRightPersonToSolveIt: What do you have that the others, trying
+ to solve the same issue, did not have?
+\end_layout
+
+\begin_layout Description
+WhyShouldOurOrgFundYourWork: What is in it for the investors.
+\end_layout
+
+\begin_layout Subsubsection
+The process of documenting your idea
+\end_layout
+
+\begin_layout Subsection
+Business section
+\end_layout
+
+\begin_layout Subsection
+Tech section
+\end_layout
+
+\begin_layout Standard
+The old book on project thingy.
 \end_layout
 
 \end_body
