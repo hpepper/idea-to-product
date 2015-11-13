@@ -1,3 +1,6 @@
 docs/#*#
 #*#
 *~
+.metadata/.lock
+.metadata/.log
+.metadata/.plugins/
