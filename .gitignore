@@ -4,3 +4,7 @@ docs/#*#
 .metadata/.lock
 .metadata/.log
 .metadata/.plugins/
+*.o
+*.d
+wtitp/Debug/wtitp
+
