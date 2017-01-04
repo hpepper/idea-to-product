@@ -1,20 +1,45 @@
 % http://en.wikibooks.org/wiki/LaTeX/Importing_Graphics
-\begin\{figure\}[!htbp]
-  \caption\{{$GraphicsCaption}\}
-  \includegraphics[width=0.8\textwidth]\{{$IncludeGraphicsName}\}
-\end\{figure\}
 
+{ if ( $szViewPacketStyleName ne "Implementation" ) {
+    $OUT .= "\\begin{figure}[!htbp]\n";
+    $OUT .= "  \\caption{$GraphicsCaption}\n";
+    # See: http://tex.stackexchange.com/questions/47245/set-a-maximum-width-and-height-for-an-image
+    $OUT .= "  \\includegraphics[width=0.8\\textwidth,height=27cm,keepaspectratio]{$IncludeGraphicsName}\n";
+    $OUT .= "\\end{figure}\n";
+  }
+}
+
+% https://en.wikibooks.org/wiki/LaTeX/Tables
+% http://tex.stackexchange.com/questions/108300/latex-split-long-table-in-multiple-pages-and-resize-the-width
 \begin\{table\}[!htbp]
   \begin\{tabular\}\{|l|l|l|\} \hline
   Name & Description & Reference \\ \hline
   \multicolumn\{3\}\{|l|\}\{Entities\} \\ \hline
     { foreach my $refhEntity (@arEntityList) {
         $OUT .= "$refhEntity->{Name} & $refhEntity->{Summary} & \\\\ \\hline\n";
+        # if this is an allocation - implement; then...
+        if ( $szViewPacketStyleName eq "Implementation" ) {
+           $OUT .= " & $refhEntity->{SourceRepository} & (source repo)\\\\ \\hline\n";
+           $OUT .= " & $refhEntity->{ArtifactRepository} & (artifact repo)\\\\ \\hline\n";
+           $OUT .= " & $refhEntity->{BuildCycle} & (bld cycle)\\\\ \\hline\n";
+           $OUT .= " & $refhEntity->{Contact} & (contact)\\\\ \\hline\n";
+           $OUT .= " & $refhEntity->{License} & (license)\\\\ \\hline\n";
         }
+      }
     }
   \multicolumn\{3\}\{|l|\}\{Relations\} \\ \hline
-    is-part-of &  & \\ \hline
+{ foreach my $refhRelation (@arRelationList) {
+     die("EEE Relations 'Name' not define for \n") unless(defined($refhRelation->{'Name'}));
+     die("EEE Relations 'Summary' not define for \n") unless(defined($refhRelation->{'Summary'}));
+     $OUT .= "$refhRelation->{'Name'} & $refhRelation->{'Summary'} & \\\\ \\hline\n";
+  }
+}
   \end\{tabular\}
   \caption\{{$TableCaption}\}
 \end\{table\}
+
+% This prevents the above floats, to float into the next section.
+% So the table and figure above wont float out of this section.
+% See: #  http://ctan.org/pkg/placeins
+\FloatBarrier
 

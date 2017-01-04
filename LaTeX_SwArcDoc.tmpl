@@ -1,12 +1,29 @@
-%% LyX 2.0.6 created this file.  For more info, see http://www.lyx.org/.
-%% Do not edit unless you really know what you are doing.
-%% Software Architechture Documentation.
-\documentclass[english]\{book\}
+%% itp2doc.pl created this file.
+
+% https://en.wikibooks.org/wiki/LaTeX/Page_Layout
+\documentclass[a4paper,english]\{book\}
+
+% TODO V Consider using TWO-coloumn, to improve use of paper, and keep readabiliy: 
+%           https://en.wikibooks.org/wiki/LaTeX/Page_Layout#Margins
+\usepackage[cm]\{fullpage\}
+
+
+% http://tex.stackexchange.com/questions/108300/latex-split-long-table-in-multiple-pages-and-resize-the-width
+% https://en.wikibooks.org/wiki/LaTeX/Tables
+\usepackage\{longtable\}
+
 \usepackage[T1]\{fontenc\}
 \usepackage[latin9]\{inputenc\}
 \usepackage\{babel\}
 \usepackage\{graphicx\}
 
+% Provide a tool the should prevent float?: Place this after the table/figure you dont want to float past this point. \FloatBarrier
+%  http://tex.stackexchange.com/questions/2275/keeping-tables-figures-close-to-where-they-are-mentioned
+%  http://ctan.org/pkg/placeins
+\usepackage\{placeins\}
+
+% https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&cad=rja&uact=8&ved=0ahUKEwj6qbq2wPrPAhWKNo8KHZYcD5oQFggcMAA&url=https%3A%2F%2Fen.wikibooks.org%2Fwiki%2FLaTeX%2FHyperlinks&usg=AFQjCNGh4ogmvoX0hclM3iuFWM3Pd9hPpA&sig2=H4gSpTFl1ewflIs8xCIJpw
+\usepackage\{hyperref\}
 
 \begin\{document\}
 
@@ -332,7 +349,7 @@ The directory is an index of all the elements, relations, and properties that ap
 This index is intended to help a reader find all places where a particular kind of element, relation,
 or property is used.
 
-\begin\{table\}[here]
+\begin\{table\}[!htbp]
   \begin\{tabular\}\{|l|l|l|\} \hline
 Item & Type & Reference \\ \hline
   \end\{tabular\}
@@ -383,6 +400,11 @@ The decomposition view consists of (TODO C Provide Packet count) view packets.
 }
 
 \chapter\{Module uses view\}
+{ foreach my $szModuleFileName (@arModuleUsesViewPackets) {
+    $OUT .= "\\input{$szModuleFileName}\n";
+  }
+}
+
 
 % TODO C possibly include this chapter instead
 %    And then autogenerate the chapter, where each section is added, as an include, when it is being generated.
@@ -401,12 +423,25 @@ The decomposition view consists of (TODO C Provide Packet count) view packets.
   }
 }
 
+% TODO V If the list is not empty then print the chapter header.
+\chapter\{C\&C shared-data view\}
+
+{ foreach my $szViewPacketName (@arCnCSharedDataViewPackets) {
+    $OUT .= "\\input{$szViewPacketName}\n";
+  }
+}
+
 
 
 
 \chapter\{Allocation deployment view\}
 
 \chapter\{Allocation implementation view\}
+{ foreach my $szModuleFileName (@arAllocationImplementationViewPackets) {
+    $OUT .= "\\input{$szModuleFileName}\n";
+  }
+}
+
 
 \chapter\{Allocation work assignment view\}
 

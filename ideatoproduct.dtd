@@ -1,3 +1,6 @@
+<!-- Version: 0.5.1 -->
+<!-- validate xml: clear; xmllint -valid  itp.xml  > t 2>u; head u -->
+<!-- the '-valid' actually has a double '-' in front but dtd can't have that. -->
 <!ELEMENT Product (
   Description,
   InitialVision,
@@ -95,8 +98,15 @@
 <!ELEMENT Component (
   Summary,
   Responsibilities,
+  Overview?,
   VisibilityOfInterfaces,
-  MappingToCodeUnits,
+  Interface?,
+  License*,
+  SourceRepository*,
+  ArtifactRepository*,
+  File*,
+  BuildCycle?,
+  Contact*,
   TestInformation,
   ImplementationConstraints,
   Performance,
@@ -112,7 +122,13 @@
 
 <!ELEMENT Responsibilities  (#PCDATA)>
 <!ELEMENT VisibilityOfInterfaces  (#PCDATA)>
-<!ELEMENT MappingToCodeUnits  (#PCDATA)>
+<!ELEMENT Overview  (#PCDATA)>
+<!ELEMENT BuildCycle  (#PCDATA)>
+<!ELEMENT Contact  (#PCDATA)>
+<!ELEMENT License  (#PCDATA)>
+<!ELEMENT SourceRepository  (#PCDATA)>
+<!ELEMENT ArtifactRepository  (#PCDATA)>
+<!ELEMENT File  (#PCDATA)>
 <!ELEMENT TestInformation  (#PCDATA)>
 <!ELEMENT ImplementationConstraints  (#PCDATA)>
 <!ELEMENT  Performance (#PCDATA)>
@@ -124,22 +140,44 @@
 <!ELEMENT  SchedulerPriority (#PCDATA)>
 
 
-<!ELEMENT ModuleRelations (
-  ModuleAId,
-  ModuleBId,
-  RelationType,
-  IsPartOfVisibilityProperty,
-  DependsOnConstraints,
-  IsAProperties
+<!ELEMENT ComponentRelation (
+  ComponentAId,
+  ComponentBId,
+  Style,
+  RelationType?,
+  ComponentId?, 
+  PropertiesOfRelation?,
+  DependsOnConstraints?,
+  IsAProperties?
 )>
-<!ATTLIST ModuleRelations Id CDATA #REQUIRED>
+<!ATTLIST ComponentRelation Id CDATA #REQUIRED>
 
-<!ELEMENT ModuleAId   (#PCDATA)>
-<!ELEMENT ModuleBId   (#PCDATA)>
-<!ELEMENT IsPartOfVisibilityProperty   (#PCDATA)>
+<!ELEMENT ComponentAId   (#PCDATA)>
+<!ELEMENT ComponentBId   (#PCDATA)>
+<!ELEMENT Style   (#PCDATA)>
+<!ELEMENT RelationType   (#PCDATA)>
+<!ELEMENT ComponentId   (#PCDATA)> <!-- TODO V what is this used for? -->
+<!ELEMENT PropertiesOfRelation   (#PCDATA)>
 <!ELEMENT DependsOnConstraints    (#PCDATA)>
 <!ELEMENT IsAProperties   (#PCDATA)>
 
+<!ELEMENT Diagram (
+  ComponentId,
+  Headline,
+  Description,
+  Verbatim?,
+)>
+<!ATTLIST Diagram Id CDATA #REQUIRED>
+<!-- This is the type of diagram, like: Activity, Sequence, etc. -->
+<!ATTLIST Diagram Type CDATA #REQUIRED>
+<!-- ComponentId is the the Id of the component that this diagram is related to.
+   This is used to show the diagram with the correct Component. 
+  -->
+<!-- The headline used with picture shown in the codumentation. -->
+<!ELEMENT Headline    (#PCDATA)>
+<!ELEMENT Description (#PCDATA)>
+<!-- This is the text that will be fed verbatim to the converter (plantuml). -->
+<!ELEMENT Verbatim    (#PCDATA)>
 
 <!ELEMENT Connector (
   Type,
@@ -157,7 +195,8 @@
 <!ELEMENT Protocol   (#PCDATA)>
 
 
-<!ELEMENT ComponentRelation (
+<!-- TODO V Is this required? -->
+<!ELEMENT CnCComponentRelation (
   Style,
   RelationType,
   ComponentId,
@@ -165,9 +204,8 @@
   ComponentPort,
   ConnectorId
 )>
-<!ATTLIST ComponentRelation Id CDATA #REQUIRED>
+<!ATTLIST CnCComponentRelation Id CDATA #REQUIRED>
 
-<!ELEMENT Style (#PCDATA)>
 <!ELEMENT ComponentType (#PCDATA)>
 <!ELEMENT ComponentPort (#PCDATA)>
 <!ATTLIST ComponentPort Type CDATA #REQUIRED>
@@ -855,28 +893,6 @@
 <!ATTLIST ProjectHopper Name CDATA #REQUIRED>
 
 
-
-
-
-
-<!-- CONTEXT MODEL -->
-<!ELEMENT ContextModel (
-  TheWorkEntityId,
-  Entity+,
-  Relation+
-)>
-<!ATTLIST ContextModel Id CDATA #REQUIRED>
-<!ATTLIST ContextModel Title CDATA #REQUIRED>
-
-
-<!ELEMENT TheWorkEntityId (#PCDATA)>
-<!ELEMENT Entity (
-  Summary,
-  Description
-)>
-<!ATTLIST Entity Id CDATA #REQUIRED>
-<!ATTLIST Entity Name CDATA #REQUIRED>
-
 <!-- TODO V also support links to other places, for the Entity? -->
 <!ELEMENT Summary (#PCDATA)>
 
@@ -918,9 +934,6 @@
 <!-- 'relation' has no directional they are equal. 'directionalrelation' has a direction. -->
 <!ATTLIST DirectionalRelation SourceId CDATA #REQUIRED>
 <!ATTLIST DirectionalRelation DestinationId CDATA #REQUIRED>
-
-<!ELEMENT RelationType (#PCDATA)>
-
 
 
 
@@ -1031,22 +1044,24 @@
   PhysicalEntities,
   FaqId,
   SipocId+,
-  ModuleDecompositionViewPacketId,
-  ModuleUsesViewPacketId,
-  ModuleGeneralizationViewPacketId,
-  ModuleLayeredViewPacketId,
-  CnCPipeAndFilterViewPacketId,
-  CnCSharedDataViewPacketId,
-  CnCPublishSubscribeProcessesViewPacketId,
-  CnCClientServerProcessesViewPacketId,
-  CnCPeerToPeerProcessesViewPacketId,
-  CnCCommunicatingProcessesViewPacketId,
-  AllocationDeploymentViewPacketId,
-  AllocationImplementationViewPacketId,
-  AllocationWorkAssignmentViewPacketId
+  ModuleDecompositionViewPacketId*,
+  ModuleUsesViewPacketId*,
+  ModuleGeneralizationViewPacketId*,
+  ModuleLayeredViewPacketId*,
+  CnCClientServerProcessesViewPacketId*,
+  CnCCommunicatingProcessesViewPacketId*,
+  CnCPeerToPeerProcessesViewPacketId*,
+  CnCPipeAndFilterViewPacketId*,
+  CnCPublishSubscribeProcessesViewPacketId*,
+  CnCSharedDataViewPacketId*,
+  AllocationDeploymentViewPacketId*,
+  AllocationImplementationViewPacketId*,
+  AllocationWorkAssignmentViewPacketId*
 )>
 <!ATTLIST SoftwareArchitectureDocumentation Id CDATA #REQUIRED>
 <!ATTLIST SoftwareArchitectureDocumentation Title CDATA #REQUIRED>
+
+
 
 <!ELEMENT IssuingOrganization  (#PCDATA)>
 
@@ -1054,14 +1069,24 @@
 <!ELEMENT ViewPacket (
   ViewPacketType,
   ViewPacketStyle,
-  ComponentId+
+  ComponentRecurseLevel?,
+  Introduction,
+  ComponentId+,
+  ContextModelId?,
+  ParentViewPacketId*,
+  ChildViewPacketId*,
+  SiblingViewPacketId*
 )>
 <!ATTLIST ViewPacket Id CDATA #REQUIRED>
 <!ATTLIST ViewPacket Title  CDATA #REQUIRED>
 
 <!ELEMENT  ViewPacketType (#PCDATA)>
 <!ELEMENT  ViewPacketStyle (#PCDATA)>
-<!ELEMENT  ComponentId (#PCDATA)>
+<!ELEMENT  ComponentRecurseLevel (#PCDATA)>
+<!ELEMENT  Introduction (#PCDATA)>
+<!ELEMENT  ParentViewPacketId (#PCDATA)>
+<!ELEMENT  ChildViewPacketId (#PCDATA)>
+<!ELEMENT  SiblingViewPacketId (#PCDATA)>
 
 
 <!ELEMENT Idea (
@@ -1115,7 +1140,6 @@
   InitialCharter+,
   Charter+,
   ProjectHopper+,
-  ContextModel+,
   Product+,
   ObjectiveType+,
   ObjectiveTypeLUT+,
@@ -1128,40 +1152,39 @@
   FeatureImplementationPlan*,
   ViewPacket*,
   Component*,
-  ModuleRelations*,
-  Connector*,
   ComponentRelation*,
+  Activity*,
+  Connector*,
   Implementation*,
   ImplementationRelation*,
   StoryCard*,
   Stakeholder*,
-  Dictionary+,
-  Design+,
-  History+,
-  Requirement+,
-  TestCase+,
-  AcceptanceTest+,
-  Activity+,
-  CustomerPriority+,
-  DependencyLookUpTable+,
-  DependencyType+,
-  ReqStatus+,
-  Risk+,
-  UseCase+,
-  UseCaseEntry+,
-  UseCaseExceptionEntry+,
-  Documentation+,
-  Work+,
-  ProcessChart+,
-  Object+,
-  ObjectLink+,
-  ObjectToObjectLUT+,
-  ObjectClass+,
-  LinkType+,
-  DocumentStructure+,
-  DocumentPart+,
-  DocumentGroupName+,
-  LeftOver+
+  Dictionary*,
+  Design*,
+  History*,
+  Requirement*,
+  TestCase*,
+  AcceptanceTest*,
+  Activity*,
+  CustomerPriority*,
+  DependencyLookUpTable*,
+  DependencyType*,
+  ReqStatus*,
+  Risk*,
+  UseCase*,
+  UseCaseEntry*,
+  UseCaseExceptionEntry*,
+  Documentation*,
+  Work*,
+  ProcessChart*,
+  Object*,
+  ObjectLink*,
+  ObjectToObjectLUT*,
+  ObjectClass*,
+  LinkType*,
+  DocumentStructure*,
+  DocumentPart*,
+  DocumentGroupName*
 )>
 <!ATTLIST ideatoproduct Version CDATA #REQUIRED>
 

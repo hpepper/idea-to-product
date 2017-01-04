@@ -1,8 +1,4 @@
-
-
-# $Id: Xml.pm,v 1.8 2006/04/27 12:47:17 henriksorensen Exp $
-
-#****h* SQLConstructor/Xml.pm
+#****h* My/Xml.pm
 #NAME
 #  Xml.pm
 #
@@ -45,7 +41,6 @@
 #
 # AUTHOR
 #
-#  Henrik Sorense
 #
 # HISTORY
 #

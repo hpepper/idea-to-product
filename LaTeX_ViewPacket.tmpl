@@ -1,0 +1,113 @@
+\section\{{$ViewPacketType} {$ViewPacketStyle} view packet {$PacketNumber}: {$PacketTitle}\}
+\label\{{$ReferenceLabel}\}
+
+{$Introduction}
+
+\subsection*\{Primary Presentation\}
+
+% This includes a picture, see AppendixA, p29
+\input\{{$PrimaryPresentationNameFile}\}
+
+% TODO V For now just slab the Allocation - Implementation information in here, later it should be moved to the PrimaryPresentation
+
+\begin\{itemize\}
+\item {$TopModule{'Name'}}
+  \begin\{itemize\}
+{ if ( $#ComponentList == -1 ) {
+  $OUT .= "\\item NONE.\n";
+  } else {
+    foreach my $hComponent (@ComponentList) {
+      $OUT .= "\\item $hComponent->{Name}\n";
+    }
+  }
+}
+  \end\{itemize\}
+\end\{itemize\}
+
+
+\subsection*\{Element Catalog\}
+
+\subsubsection*\{{$TopModule{Name}}\}
+
+{$TopModule{Summary}}
+
+{$TopModule{Responsibilities}}
+ 
+% TODO V Should I provide an in-depth description here?
+
+% TODO V Add: Visibility: TODO C calculate this.
+% TODO V Add: Implementation information: TODO C calculate this. 
+
+% TODO N Sort the list alphabetically.
+% TODO C provide a table here or a description list, I think I like the later better.
+\subsubsection*\{{$ViewPacketType} {$ViewPacketStyle} for {$TopModule{Name}}\}
+{foreach my $hComponent (@ComponentList) {
+  $OUT .= "\\subparagraph\{$hComponent->{Name}\} $hComponent->{Summary}.\n$hComponent->{Responsibilities}\n";
+  }
+}
+
+
+\subsubsection*\{Relations and their properties\}
+% TODO V Make the relation, a variable, so that it can be changed or perhaps make this whole subsection a var.
+The relation type in view is {$ViewPacketStyle}. There are no exceptions or additions to the relations shown in the primary presentation.
+% TODO C Provide links to the relevant CnC views.
+
+\subsubsection*\{Element interfaces\}
+{ if ( defined($TopModule{Interfaces}) ) {
+    $OUT .= $TopModule{Interfaces};
+  } else {
+    $OUT .= "Empty.";
+  }
+}
+
+\subsubsection*\{Element Behavior\}
+<!-- TODO V Some elements have complex interactions with their environment.
+ For purposes of understanding or analysis it is oftern incumbent on the architect
+  to specify element behavior.
+  -->
+<!--  -->
+
+\subsection*\{Context diagram\}
+\input\{{$ContextModelFileName}\}
+
+\subsection*\{Variability Guide\}
+TODO V put something here, first figure out what it is that should go here.
+
+\subsection*\{Architecture background\}
+\subsubsection\{Design rationale\}
+\subsubsection\{Results of analysis\}
+TODO V is this like pugh matrixes etc?
+
+\subsubsection*\{Assumptions\}
+TODO V define (What are assumptions?)
+
+\subsection*\{Other Information\}
+\subsection*\{Related view packets\}
+\begin\{itemize\}
+{   if ( $#ParentViewPacketHashList == -1 ) {
+    $OUT .= "\\item Parent: None\n";
+  } else {
+    my $szReference = $ParentViewPacketHashList[0];
+     $OUT .= "\\item Parent: $szReference->{Title} (Section \\ref\{$szReference->{Label}\}, page \\pageref\{$szReference->{Label}\})\n";
+  }
+}{   if ( $#ChildViewPacketList == -1 ) {
+    $OUT .= "\\item Children: None\n";
+  } else {
+    $OUT .= "\\item Children:\n";
+     $OUT .= "\\begin\{itemize\}\n";
+    foreach my $szReference (@ChildViewPacketList) {
+       $OUT .= "\\item $szReference->{Title} (Section \\ref\{$szReference->{Label}\}, page \\pageref\{$szReference->{Label}\})\n";
+    }
+     $OUT .= "\\end\{itemize\}\n";
+  }
+}{   if ( $#SiblingViewPacketList == -1 ) {
+    $OUT .= "\\item Siblings: None\n";
+  } else {
+    $OUT .= "\\item Siblings:\n";
+     $OUT .= "\\begin\{itemize\}\n";
+    foreach my $szReference (@SiblingViewPacketList) {
+       $OUT .= "\\item $szReference->{Title} (Section \\ref\{$szReference->{Label}\}, page \\pageref\{$szReference->{Label}\})\n";
+    }
+     $OUT .= "\\end\{itemize\}\n";
+  }
+}\end\{itemize\}

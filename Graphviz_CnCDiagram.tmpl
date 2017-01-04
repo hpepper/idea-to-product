@@ -4,7 +4,7 @@ digraph componentDiagram \{
   ratio=auto;
   \{ node [shape=rectangle]
     { foreach my $refhEntity (@arEntityList) {
-        $OUT .= "Entity_$refhEntity->{Id} [ label=\"$refhEntity->{Name}\" ];\n";
+        $OUT .= "Entity_$refhEntity->{Id} [ label=\"$refhEntity->{Name}($refhEntity->{Id})\" ];\n";
         }
     }
   \}
@@ -12,7 +12,17 @@ digraph componentDiagram \{
       { foreach my $refhRelation (@arRelationList) {
          # TODO V Make the arrowhead programmable, (per relation or per run?)
          # TODO V Make the relation arrow '->' programmable.
-         $OUT .= "Entity_$refhRelation->{EntityAId} -> Entity_$refhRelation->{EntityBId} [ label=\"$refhRelation->{Name}\"  ];\n";
+         $OUT .= "Entity_$refhRelation->{EntityAId} -> Entity_$refhRelation->{EntityBId} [ label=\"$refhRelation->{Name}\", ";
+         if ( $refhRelation->{Direction} eq "out" ) {
+           $OUT .=  " arrowhead=normal, dir=back";
+         } elsif ( $refhRelation->{Direction} eq "in" ) {
+           $OUT .=  " arrowhead=normal";
+         } elsif ( $refhRelation->{Direction} eq "both" ) {
+           $OUT .=  " arrowhead=normal, dir=both ";
+         } else {
+           $OUT .=  " arrowhead=none";
+         }
+         $OUT .=  " ];\n";
         }
      }
   \}

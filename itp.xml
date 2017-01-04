@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE ideatoproduct SYSTEM "ideatoproduct.dtd">
 
-<ideatoproduct Version="0.2.0">
+<!--  Documentation -->
+
+<ideatoproduct Version="0.5.1">
 
 <!-- Should I have an idea-bank page that holds the differen ideas, who came up with the, who works on them etc. -->
 <!-- Mainly based on The Myths of Innovation (Scott Berkun) -->
@@ -33,6 +35,7 @@
 </Idea>
 
 
+
 <!--
   <IdeaChallenge Id="" Description="">
   <IdeaChallengeSolution Id="" Description="">
@@ -48,6 +51,7 @@
   <Output></Output>
   <Customer></Customer>
 </Sipoc>
+
 
 
 <InitialCharter Id="" ProposalName="">
@@ -84,6 +88,57 @@
 </InitialCharter>
 
 
+<Charter Id="" Name="">
+  <InitialCharterId></InitialCharterId>
+  <BusinessUnit></BusinessUnit>
+  <ProjectOwner></ProjectOwner>
+  <ProjectTypeId></ProjectTypeId>
+  <ProductHeadline></ProductHeadline>
+  <Process></Process>
+  <CurrentState></CurrentState>
+  <ObjectiveBeingAffected></ObjectiveBeingAffected>
+  <MeasurableEffect></MeasurableEffect>
+  <DesiredState></DesiredState>
+  <GainAtDesiredState></GainAtDesiredState>
+  <PitchFiveSeconds></PitchFiveSeconds>
+  <!-- Is the 30s pitch the same as the OpporttunityStatment from the InitialCharter? -->
+  <PitchThirtySeconds></PitchThirtySeconds>
+  <PitchFiveMinutes></PitchFiveMinutes>
+  <KeyFeature></KeyFeature>
+  <ProjectScope>
+    <ContextModelId></ContextModelId>
+    <InScope></InScope>
+    <OutOfScope></OutOfScope>
+  </ProjectScope>
+  <ProjectObjectives>
+    <Action></Action>
+    <CardinalObjective></CardinalObjective>
+    <ProjectSubject></ProjectSubject>
+    <MarketSegment></MarketSegment>
+    <Direction></Direction>
+    <Measure></Measure>
+    <Target></Target>
+    <Deadline></Deadline>
+  </ProjectObjectives>
+  <RolledThroughputYieldGoal></RolledThroughputYieldGoal>
+  <RolledThroughputYieldMaximum></RolledThroughputYieldMaximum>
+  <RtyProcess Name="">
+    <QuantityIn></QuantityIn>
+    <QuantityScrapped></QuantityScrapped>
+    <QuantityReworked></QuantityReworked>
+    <CostOfScrappedPerUnit></CostOfScrappedPerUnit>
+    <CostOfReworkedPerUnit></CostOfReworkedPerUnit>
+    <CycleTimeMinutes></CycleTimeMinutes>
+    <!-- Could C-P be the ammount of time it has run; wich would produce QuantityOut/(RunTime/CycleTime) -->
+    <!-- Since this is a KanBan kind of thing then the C-P would be ? Runtime might be 1/23 higher? -->
+  </RtyProcess>
+  <ImpactOnOtherBusinessUnits></ImpactOnOtherBusinessUnits>
+  <SupportRequired></SupportRequired>
+  <!-- the following data is entered by the quants. -->
+  <NetPresentValue></NetPresentValue>
+  <!-- IRR ? -->
+  <Status></Status>
+</Charter>
 
 <!-- Project hopper. Information extracted from the charter:
   NPV, Project type, Project owner, Project champion, Start date, completion date, mission statement. -->
@@ -92,13 +147,6 @@
   <!-- ther can be multiple charterid references. -->
   <CharterId></CharterId>
 </ProjectHopper>
-
-<ContextModel Id="" Title="">
-  <TheWorkEntityId></TheWorkEntityId>
-  <Entity Id="" Name=""><Summary></Summary><Description></Description></Entity>
-  <Relation EntityAId="" EntityBId="" Name=""><Summary></Summary><Description></Description></Relation>
-</ContextModel>
-
 
 <Product Id="" Name="">
   <Description></Description>
@@ -152,17 +200,19 @@
 <SoftwareArchitectureDocumentation Id="" Title="">
   <Issue></Issue>
   <Revision></Revision>
-  <Draft></Draft>
+  <Draft>1</Draft>
+  <Status></Status>
   <ReleaseDate></ReleaseDate>
   <Author></Author> 
   <SourceReference></SourceReference>
   <DistributionFolder></DistributionFolder>
   <DistributionDirectName></DistributionDirectName>
+  <IssuingOrganization></IssuingOrganization>
+  <Summary></Summary>
   <!-- This is the BusinessOpportunity of the charter. -->
   <Background></Background>
   <ContextModelId></ContextModelId>
-  <RequirementId></RequirementId>
-  <WhatWillNotBeDone></WhatWillNotBeDone>
+  <WhatWillNotBeDone>TBD</WhatWillNotBeDone>
   <!-- Deploying the product. -->
   <PrototypeDeployment></PrototypeDeployment>
   <ProductionDeployment></ProductionDeployment>
@@ -175,19 +225,19 @@
   <SipocId></SipocId>
 
 <!-- this goes into ? -->
-  <ModuleDecompositionViewPacketId Order=""></ModuleDecompositionViewPacketId>
-  <ModuleUsesViewPacketId Order=""></ModuleUsesViewPacketId>
-  <ModuleGeneralizationViewPacketId Order=""></ModuleGeneralizationViewPacketId>
-  <ModuleLayeredViewPacketId Order=""></ModuleLayeredViewPacketId>
-  <CnCPipeAndFilterViewPacketId Order=""></CnCPipeAndFilterViewPacketId>
-  <CnCSharedDataViewPacketId Order=""></CnCSharedDataViewPacketId>
-  <CnCPublishSubscribeProcessesViewPacketId Order=""></CnCPublishSubscribeProcessesViewPacketId>
-  <CnCClientServerProcessesViewPacketId Order=""></CnCClientServerProcessesViewPacketId>
-  <CnCPeerToPeerProcessesViewPacketId Order=""></CnCPeerToPeerProcessesViewPacketId>
-  <CnCCommunicatingProcessesViewPacketId Order=""></CnCCommunicatingProcessesViewPacketId>
-  <AllocationDeploymentViewPacketId Order=""></AllocationDeploymentViewPacketId>
-  <AllocationImplementationViewPacketId Order=""></AllocationImplementationViewPacketId>
-  <AllocationWorkAssignmentViewPacketId Order=""></AllocationWorkAssignmentViewPacketId>
+  <ModuleDecompositionViewPacketId Order="1"></ModuleDecompositionViewPacketId>
+  <ModuleUsesViewPacketId Order="1"></ModuleUsesViewPacketId>
+  <ModuleGeneralizationViewPacketId Order="1"></ModuleGeneralizationViewPacketId>
+  <ModuleLayeredViewPacketId Order="1"></ModuleLayeredViewPacketId>
+  <CnCClientServerProcessesViewPacketId Order="1"></CnCClientServerProcessesViewPacketId>
+  <CnCCommunicatingProcessesViewPacketId Order="1"></CnCCommunicatingProcessesViewPacketId>
+  <CnCPeerToPeerProcessesViewPacketId Order="1"></CnCPeerToPeerProcessesViewPacketId>
+  <CnCPipeAndFilterViewPacketId Order="1"></CnCPipeAndFilterViewPacketId>
+  <CnCPublishSubscribeProcessesViewPacketId Order="1"></CnCPublishSubscribeProcessesViewPacketId>
+  <CnCSharedDataViewPacketId Order="1"></CnCSharedDataViewPacketId>
+  <AllocationDeploymentViewPacketId Order="1"></AllocationDeploymentViewPacketId>
+  <AllocationImplementationViewPacketId Order="1"></AllocationImplementationViewPacketId>
+  <AllocationWorkAssignmentViewPacketId Order="1"></AllocationWorkAssignmentViewPacketId>
 </SoftwareArchitectureDocumentation>
 
 <ViewPacket Id="" Title="">
@@ -196,44 +246,157 @@
      C&C(Component-and-Connector) - the system as units of runtime execution
      Allocation - the mapping from software elements to environmental structures.
     -->
-  <ViewPacketType>Module</ViewPacketType>
-  <ViewPacketStyle>Decomposition</ViewPacketStyle>
-  <!-- used by the: PrimaryPresentation. -->
-  <ComponentDiagramId></ComponentDiagramId>
+  <ViewPacketType></ViewPacketType>
+  <ViewPacketStyle></ViewPacketStyle>
+  <Introduction></Introduction>
+  <ComponentId></ComponentId>
   <!--  have a related view list. -->
   <!--  TODO V calculate parent view packets. -->
   <!--  TODO V Calculate siblings? -->
   <!--  TODO V calculate children. -->
 </ViewPacket>
 
-<ArchElement Id="" Title="">
-  <!-- 
-      Module
-      Layer
+<!--
+   Types: 
+     Module - the system as units of implementation
+     CnC(Component-and-Connector) - the system as units of runtime execution
+     Allocation - the mapping from software elements to environmental structures.
+     Sub - sub packets, which are included in on of the other view packet.
+   Styles:
+     Sub:ContextModel:
+     
+   ComponentRecurseLevel: Sets a limit to how deep the displayed figure will go, in e.g. decomposition views.
+      SharedData usually has a level a 1.
+   ComponentId: The ID of the primary component.
+   ContextModelId: The ViewPacketId the holds the Context model information.
+   ParentViewPacketId: 
+   ChildViewPacketId*: Can be zero or more entries, that are tightly related to this view.
     -->
-  <ElementType></ElementType>
-  <Summary></Summary>
-  <Description></Description>
-</ArchElement>
+<!-- ViewpacketTemplate
+<ViewPacket Id="" Title="">
+  <ViewPacketType></ViewPacketType>
+  <ViewPacketStyle></ViewPacketStyle>
+  <ComponentRecurseLevel></ComponentRecurseLevel>
+  <Introduction></Introduction>
+  <ComponentId></ComponentId>
+  <ContextModelId></ContextModelId>
+  <ParentViewPacketId></ParentViewPacketId>
+  <ChildViewPacketId></ChildViewPacketId>
+  <SiblingViewPacketId></SiblingViewPacketId>
+</ViewPacket>
+-->
 
-<ArchElement Id="" Title="">
-  <ElementType></ElementType>
+<Component Id="" Name="">
   <Summary></Summary>
-  <Description></Description>
-  <!-- capture relations to other view packets. -->
-</ArchElement>
+  <Responsibilities></Responsibilities>
+  <VisibilityOfInterfaces></VisibilityOfInterfaces>
+  <Interface></Interface>
+  <License></License>
+  <SourceRepository></SourceRepository>
+  <ArtifactRepository></ArtifactRepository>
+  <File></File>
+  <BuildCycle></BuildCycle>
+  <Contact></Contact>
+  <TestInformation></TestInformation>
+  <ImplementationConstraints></ImplementationConstraints>
+  <Performance></Performance>
+  <Capacity></Capacity>
+  <Reliability></Reliability>
+  <ResourceRequirement></ResourceRequirement>
+  <Functionality></Functionality>
+  <Security></Security>
+  <SchedulerPriority></SchedulerPriority>
+</Component>
 
-<ComponentDiagram Id="" Title="">
-  <!-- the ArchElementSystemId is the element/segment that is the what is the root. -->
-  <ArchElementSystemId></ArchElementSystemId>
-  <ArchElementId></ArchElementId>
-  <!-- 'is-part-of' Right now I'll list the source and destination in the graphviz will need to draw it. 
-         But if I put the Source/Destination-id in relation that is correct to the 'is-part-of'
-          Then I would always have to look at the relation type to do it right.
+
+<!-- Cle02,p29 - Module view type. -->
+<!-- The component information is read by: GetComponentInformation() in itp2doc.pl -->
+<!--
+    Summary: Used in legend list, and in the detailed description of the Viewpacket.
+    Responsibilities: Used in the detailed description of the Viewpacket.
+    VisibilityOfInterfaces:
+    Interface: Describe what interfaces the component has, like paramters and return values.
+
+  Allocation/Implementation style:
+    SourceRepository: Where is the source stored.
+    ArtifactRepository: Where will the produced/artifact files be stored.
+    Files: the files that it consists of. (TODO N should this be 'File*' ?)
+    BuildCycle: nightly, weekly, and so on, that it subscribes to
+    Contact: contact information for the team member responsible for providing this.
+   *Team: Can be internal team, contractor or vendor, possibly use pre-tags like: i-/c-/v-
+TODO V License information should also be part of the information. Licens per component, then the Contact would probably be an indication of whom to contact?
+
+    TestInformation: 
+    ImplementationConstraints:
+    Performance:
+    Capacity:
+    Reliability:
+    ResourceRequirement:
+    Security:
+    SchedulerPriority:
+TODO C Provide an in depth description that will be provided in the viewpacket for this component.
+  -->
+<!-- ComponentTemplate
+<Component Id="" Name="">
+  <Summary></Summary>
+  <Responsibilities></Responsibilities>
+  <VisibilityOfInterfaces></VisibilityOfInterfaces>
+  <Interface></Interface>
+  <License></License>
+  <SourceRepository></SourceRepository>
+  <ArtifactRepository></ArtifactRepository>
+  <File></File>
+  <BuildCycle></BuildCycle>
+  <Contact></Contact>
+  <TestInformation></TestInformation>
+  <ImplementationConstraints></ImplementationConstraints>
+  <Performance></Performance>
+  <Capacity></Capacity>
+  <Reliability></Reliability>
+  <ResourceRequirement></ResourceRequirement>
+  <Functionality></Functionality>
+  <Security></Security>
+  <SchedulerPriority></SchedulerPriority>
+</Component>
+-->
+
+ <!-- The Module relation type can be: 
+        is-part-of: (decomposition) relation defines a part/whole relationship between the submodule A - the part, or child and the aggregate module B - the whole, or parent.
+	depends-on: (uses) relation defines a dependency relationship between A and B. Specific module styles elaborate what dependency is meant.
+	is-a: (generalization) relation defines a generalization relationship between a more specific module - the child A - and a more general module - the parent B.
+            : layers 
     -->
-  <DirectionalRelation SourceId="" DestinationId=""><RelationType>is-part-of</RelationType><Summary></Summary><Description></Description></DirectionalRelation>
-</ComponentDiagram>
 
+
+<ComponentRelation Id="">
+  <ComponentAId></ComponentAId>
+  <ComponentBId></ComponentBId>
+  <Style></Style>
+</ComponentRelation>
+
+
+<!-- ComponentRelationTemplate
+  ComponentAId: Component ID of the central module, the store (the work)
+               It is done this way to be able to support the same logic as module-uses, where it is possible to 
+               search for all ComponentAId to see which connections that module id has.
+  ComponentBId: The satelite of entity connecting to the store.
+  Style: the Style: shared-data, communicating-proccesses, etc.
+  PropertiesOfRelation: RO(Read only), WO(Write Only), RW(Read-Write).
+  ConnectorId: Id to the Connector structure, which in turn describes the connector itselv
+                  Multiple Component can share the same Connector description, e.g. TCP.
+
+<ComponentRelation Id="">
+  <ComponentAId></ComponentAId>
+  <ComponentBId></ComponentBId>
+  <Style></Style>
+  <PropertiesOfRelation></PropertiesOfRelation>
+  <RelationType></RelationType>
+  <ComponentId></ComponentId>
+  <ComponentType></ComponentType>
+  <ComponentPort Type=""></ComponentPort>
+  <ConnectorId></ConnectorId>
+</ComponentRelation>
+-->
 
 
 
@@ -433,10 +596,5 @@
   <Description></Description>
 </DocumentGroupName>
 
-
-<LeftOver>
-  <TechEstimate></TechEstimate>
-  <Triage></Triage>
-</LeftOver>
 
 </ideatoproduct>

@@ -4,22 +4,25 @@ digraph xsnth \{
   ratio=auto;
   \{ node [shape=rectangle]
 { 
-  foreach my $nId (keys %hEntityNames) {
-    if ( $nId != $TheWorkId ) {
-       $OUT .= "Entity_$nId [ label=\"$hEntityNames{$nId}{'Name'}\" ];\n";
+    { foreach my $refhEntity (@arEntityList) {
+        if ( $refhEntity->{Id} != $TheWorkId ) {
+          $OUT .= "Entity_$refhEntity->{Id} [ label=\"$refhEntity->{Name}($refhEntity->{Id})\" ];\n";
+        } else {
+          $OUT .= "Entity_$refhEntity->{Id} [ shape=ellipse label=\"$refhEntity->{Name}($refhEntity->{Id})\" ];\n";
+        }
+        
+      }
     }
-  }
 }
-  \}
-  \{ node [shap=circle]
-    Entity_{$TheWorkId} [ label="{$hEntityNames{$TheWorkId}{'Name'}}" ];
   \}
   \{ edge [style=solid]
 {
-  foreach my $nId (keys %hRelationNames) {
-     $OUT .= "Entity_$hRelationNames{$nId}{'EntityAId'} -> Entity_$hRelationNames{$nId}{'EntityBId'} [ label=\"$hRelationNames{$nId}{'Name'}\" arrowhead=\"none\" ];\n";
-  }
-
+      { foreach my $refhRelation (@arRelationList) {
+         $OUT .= "Entity_$refhRelation->{EntityAId} -> Entity_$refhRelation->{EntityBId} [ label=\"$refhRelation->{Name}\", ";
+         $OUT .=  " arrowhead=none";
+         $OUT .=  " ];\n";
+        }
+     }
 }
   \}
 \}
