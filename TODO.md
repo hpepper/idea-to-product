@@ -30,14 +30,14 @@
 
 Generate the generic SIPOC
  (List of lists)
-´´´
+~~~
 <start with the decsription>
  - Supplier
    - entry
    - entry2
  - Input
  ...
-´´´
+~~~
 
 * Include the SIPOC in the FIP (use subsubsection for each sipoc (headline)
 * Put SIPOC generation in the Makefile
@@ -53,7 +53,7 @@ Is this giving us active maps: http://www.graphviz.org/Gallery/undirected/networ
 * TODO V At first the UML generation will be simply the text included in the section of the packet view. Later it should be XML defined so that the Component IDs can be re-used.
 * TODO V Do Use Case in XML and be able to generate a graph and text representation of it.
 
-´´´
+~~~
 <!-- Sequence diagrams - should just be done in text
 @startuml
 Alice -> Bob: Authentication Request
@@ -63,4 +63,4 @@ Alice -> Bob: Another authentication Request
 Alice <-- Bob: another authentication Response
 @enduml
 -->
-´´´
+~~~
