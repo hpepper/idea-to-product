@@ -409,11 +409,17 @@ The decomposition view consists of (TODO C Provide Packet count) view packets.
 % TODO C possibly include this chapter instead
 %    And then autogenerate the chapter, where each section is added, as an include, when it is being generated.
 \chapter\{Module generalization view\}
-
-% Include the Module generalization view packets here.
+{ foreach my $szModuleFileName (@arModuleGeneralizationViewPackets) {
+    $OUT .= "\\input{$szModuleFileName}\n";
+  }
+}
 
 
 \chapter\{Module layered view\}
+{ foreach my $szModuleFileName (@arModuleLayeredViewPackets) {
+    $OUT .= "\\input{$szModuleFileName}\n";
+  }
+}
 
 % TODO V If the list is not empty then print the chapter header.
 \chapter\{C\&C comunicating-processes view\}
@@ -435,6 +441,10 @@ The decomposition view consists of (TODO C Provide Packet count) view packets.
 
 
 \chapter\{Allocation deployment view\}
+{ foreach my $szModuleFileName (@arAllocationDeploymentViewPackets) {
+    $OUT .= "\\input{$szModuleFileName}\n";
+  }
+}
 
 \chapter\{Allocation implementation view\}
 { foreach my $szModuleFileName (@arAllocationImplementationViewPackets) {
@@ -444,6 +454,10 @@ The decomposition view consists of (TODO C Provide Packet count) view packets.
 
 
 \chapter\{Allocation work assignment view\}
+{ foreach my $szModuleFileName (@arAllocationWorkAssignmentViewPackets) {
+    $OUT .= "\\input{$szModuleFileName}\n";
+  }
+}
 
 \part\{Appendix?\}
 

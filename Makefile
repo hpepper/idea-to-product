@@ -18,6 +18,7 @@ clean:
 	-rm *.png
 	-rm *.aux
 	-rm *.toc
+	-rm *.out
 	-rm *~
 
 

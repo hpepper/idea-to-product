@@ -764,6 +764,7 @@ sub GenerateSoftwareArchitectureDocumentation {
   # Modules
   GenerateViewPacketByTypeAndStyle($xmlNode, \%hSwArcHashList, $f_szModuleTypeName, $f_szDecompositionStyleName);
   GenerateViewPacketByTypeAndStyle($xmlNode, \%hSwArcHashList, $f_szModuleTypeName, $f_szUsesStyleName);
+  GenerateViewPacketByTypeAndStyle($xmlNode, \%hSwArcHashList, $f_szModuleTypeName, $f_szGeneralizationStyleName);
 
   # CnC: Component and Connectors
   GenerateViewPacketByTypeAndStyle($xmlNode, \%hSwArcHashList, $f_szComponentAndConnectorTypeName, $f_szCommunicatingProcessesStyleName);

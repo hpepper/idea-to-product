@@ -165,7 +165,7 @@
   ComponentId,
   Headline,
   Description,
-  Verbatim?,
+  Verbatim?
 )>
 <!ATTLIST Diagram Id CDATA #REQUIRED>
 <!-- This is the type of diagram, like: Activity, Sequence, etc. -->
@@ -175,7 +175,6 @@
   -->
 <!-- The headline used with picture shown in the codumentation. -->
 <!ELEMENT Headline    (#PCDATA)>
-<!ELEMENT Description (#PCDATA)>
 <!-- This is the text that will be fed verbatim to the converter (plantuml). -->
 <!ELEMENT Verbatim    (#PCDATA)>
 
@@ -1113,7 +1112,6 @@
 <!ELEMENT  TriageLevel (#PCDATA)>
 <!ELEMENT  SortOrder (#PCDATA)>
 <!ELEMENT  IdeaStatus (#PCDATA)>
-<!ELEMENT  Headline (#PCDATA)>
 <!ELEMENT  ProblemThatIsSolved (#PCDATA)>
 <!ELEMENT  WhosProblemIsIt (#PCDATA)>
 <!ELEMENT  IsItImportantToThem (#PCDATA)>
