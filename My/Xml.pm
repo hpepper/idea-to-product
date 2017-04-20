@@ -60,12 +60,12 @@ $VERSION = 1.1.0;
 @EXPORT = qw(
              &GetChildDataBySingleTagName
              &GetDataArrayByTagName
-	     &GetDataArrayByTagAndAttribute
+	         &GetDataArrayByTagAndAttribute
              &GetDataHashByTagName
              &GetDataHashByTagNameAndAttribute
              &GetFirstSubNodeValues
-	     &GetNodeArrayByTagAndAttribute
-	     &GetNodeArrayByTagName
+	         &GetNodeArrayByTagAndAttribute
+	         &GetNodeArrayByTagName
              &GetSingleChildNodeByTagAndAttribute
              &GetSingleChildNodeByTagName
              &GetSingleChildNodeValueByTagAndAttribute

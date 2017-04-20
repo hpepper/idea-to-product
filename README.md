@@ -35,4 +35,13 @@ When implementing a new view packet style:
 }
 
 
-At
+Adding a ContextModel to a Viewpacket:
+1. Create the required component relations, for each link:
+    * ComponentAId: Component Id of 'TheWork'
+    * ComponentBId: Component Id of the related entity.
+    * Style:  ContextModel
+2. create a view packet for the ContextModel
+    * ViewPacketType: Sub
+    * ViewPacketStyle: ContextModel
+3. Add Id of the Context viewpacket to the ContextModelId of the 'master' viewpacket 
+

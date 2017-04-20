@@ -1,4 +1,4 @@
-<!-- Version: 0.5.1 -->
+<!-- Version: 0.6.0 -->
 <!-- validate xml: clear; xmllint -valid  itp.xml  > t 2>u; head u -->
 <!-- the '-valid' actually has a double '-' in front but dtd can't have that. -->
 <!ELEMENT Product (
@@ -144,6 +144,7 @@
   ComponentAId,
   ComponentBId,
   Style,
+  ConnectionTitle?,
   RelationType?,
   ComponentId?, 
   PropertiesOfRelation?,
@@ -155,28 +156,39 @@
 <!ELEMENT ComponentAId   (#PCDATA)>
 <!ELEMENT ComponentBId   (#PCDATA)>
 <!ELEMENT Style   (#PCDATA)>
+
+<!-- Title used in graphs for the connection. -->
+<!ELEMENT ConnectionTitle   (#PCDATA)>
 <!ELEMENT RelationType   (#PCDATA)>
 <!ELEMENT ComponentId   (#PCDATA)> <!-- TODO V what is this used for? -->
 <!ELEMENT PropertiesOfRelation   (#PCDATA)>
 <!ELEMENT DependsOnConstraints    (#PCDATA)>
 <!ELEMENT IsAProperties   (#PCDATA)>
 
+<!-- TODO V Do I have any use for 'ComponentId' or should it be removed? -->
 <!ELEMENT Diagram (
-  ComponentId,
-  Headline,
+  ComponentId?,
   Description,
+  DiagramAction*,
   Verbatim?
 )>
 <!ATTLIST Diagram Id CDATA #REQUIRED>
+
+<!-- The Title used with picture shown in the documentation. -->
+<!ATTLIST Diagram Title CDATA #REQUIRED>
+
 <!-- This is the type of diagram, like: Activity, Sequence, etc. -->
 <!ATTLIST Diagram Type CDATA #REQUIRED>
-<!-- ComponentId is the the Id of the component that this diagram is related to.
-   This is used to show the diagram with the correct Component. 
-  -->
-<!-- The headline used with picture shown in the codumentation. -->
-<!ELEMENT Headline    (#PCDATA)>
+
 <!-- This is the text that will be fed verbatim to the converter (plantuml). -->
 <!ELEMENT Verbatim    (#PCDATA)>
+
+<!-- Choose DiagramAction so as to not conflict with 'Action'. -->
+<!ELEMENT DiagramAction (#PCDATA)>
+<!-- The order in which the action is to be taken. -->
+<!ATTLIST DiagramAction Order CDATA #REQUIRED>
+<!-- The relation that is enacted at this time. -->
+<!ATTLIST DiagramAction ComponentRelationId CDATA #REQUIRED>
 
 <!ELEMENT Connector (
   Type,
@@ -1072,6 +1084,7 @@
   Introduction,
   ComponentId+,
   ContextModelId?,
+  DiagramId*,
   ParentViewPacketId*,
   ChildViewPacketId*,
   SiblingViewPacketId*

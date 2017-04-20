@@ -3,7 +3,9 @@ all: sad.pdf
 
 
 distclean: clean
-	-rm *.pdf
+	- rm *.apt
+	- rm *.eps
+	- rm *.pdf
 	- rm *.tex
 	- rm *.log
 	- rm *.gv

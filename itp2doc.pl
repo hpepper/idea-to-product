@@ -21,7 +21,7 @@ use My::Xml;
 # ===========================================================================
 #                          V A R I A B L E S
 # ===========================================================================
-my $f_szVersion = "1.1.0";
+my $f_szVersion = "1.2.0";
 
 my $f_szDefaultItpXmlFile = "itp.xml";
 my $f_szAbsolutePathToCurrentScript = $FindBin::RealBin;
@@ -204,6 +204,190 @@ sub GenerateContextModel {
 }
 
 # -----------------------------------------------------------------------
+# Generate UML diagrams, like: Sequence Diagram, etc.
+# Called by IncludeDiagramIfExists
+#
+# @param DiagramId - ID for the diagram to be generated
+#
+#  Get list of actions, order the actions, then start generating the plantumlt code
+#    TODO V How to handle 'return' flow?
+# ---------------------
+sub GenerateUmlDiagram {
+    my $nDiagramId = shift || confess("!!! You must provide a diagram ID as the first parameter"); 
+
+    if ( ! IsNumber($nDiagramId) ){
+    	confess("!!! Please provide a valid DiagramId $nDiagramId");
+    }
+
+    # TODO C Load the  DiagramStructure (So title, description and Action list can be accessed.)
+    # Returns The Action list as an array of hashes.
+    my %hDiagramInformation = GetDiagramInformation($nDiagramId);
+
+    my %hComponentHashList; # = GenerateComponentDiagramAndLegendRecursively($nComponentId, $f_szSubTypeName, $f_szContextModel,  1);
+    
+    $hComponentHashList{'GraphicsCaption'} = $hDiagramInformation{'Title'};
+    $hComponentHashList{'TableCaption'} = "Legend for $hDiagramInformation{'Title'}";
+    $hComponentHashList{'szViewPacketTypeName'} = $hDiagramInformation{'Type'};
+
+
+    # read all relations and sort them alphabetically.
+    my @arActionOrderNumberList;
+    my %hActionList;
+    # TODO N Report if two actions has the same order number.
+    foreach my $refhAction ( @{$hDiagramInformation{'ActionList'}}) {
+    	print "$refhAction->{Order}\n";
+    	push(@arActionOrderNumberList, $refhAction->{Order});
+    	$hActionList{$refhAction->{Order}} = $refhAction->{ComponentRelationId};
+    }
+    
+    my @arSortedActionOrderNumberList = sort(@arActionOrderNumberList);
+
+
+  my $szNameWithoutSuffix = "UmlDiagram${nDiagramId}";
+  my $szFileName = "${szNameWithoutSuffix}.apt";
+  open( RESULT, ">$szFileName") || die("!!! Unable to open $szFileName for write: $!");
+  print RESULT "\@startuml\n";
+  print RESULT "\n";
+  # BTS1 -> ZC1: req(1)
+  # Loop through the sorted list of actions.
+  foreach my $nActionOrder (@arSortedActionOrderNumberList) {
+  	my %hComponentRelation =  mdlGetComponentRelationInformation($hActionList{$nActionOrder});
+  	my $szComponentAName = mdlGetComponentNameFromId($hComponentRelation{'ComponentAId'}); 
+  	my $szComponentBName = mdlGetComponentNameFromId($hComponentRelation{'ComponentBId'}); 
+  	my $szConnectionTitle = $hComponentRelation{'ConnectionTitle'};
+  	
+  	print RESULT "\"$szComponentAName\" -> \"$szComponentBName\": $szConnectionTitle\n"; 
+  }
+  print RESULT "\@enduml\n";
+  close(RESULT);
+
+  $hComponentHashList{'IncludeGraphicsName'} = "${szNameWithoutSuffix}.eps";
+
+
+  my $template = Text::Template->new(TYPE => 'FILE', SOURCE => "$f_szAbsolutePathToCurrentScript/LaTeX_componentDiagram.tmpl")
+     or die "Couldn't construct template: $Text::Template::ERROR";
+
+
+
+  my $szResult = $template->fill_in(HASH => \%hComponentHashList);
+  die("!!! LaTeX_componentDiagram.tmpl did not produce an output.") unless(defined($szResult));
+
+  $szFileName = "${szNameWithoutSuffix}.tex";
+  open( LATEX, ">$szFileName") || die("!!! Unable to open $szFileName for write: $!");
+  print LATEX "$szResult";
+  close(LATEX);
+
+  # $@: Name of the current task
+  # $^:
+  UpdateSubMakefile("${szNameWithoutSuffix}.eps", "${szNameWithoutSuffix}.apt", "\tjava -jar plantuml.8053.jar -teps \$^");
+  UpdateSubMakefile("${szNameWithoutSuffix}.png", "${szNameWithoutSuffix}.apt", "\tjava -jar plantuml.8053.jar -tpng \$^");
+
+  return($szFileName);
+}
+
+
+# -----------------------------------------------------------------------
+# Reads the Diagram information for the given DiagramId
+#
+# @param nDiagramId - Id of diagram to retrieve.
+# @return Hash with the following informatin:
+#          - Id 
+#          - Title
+#          - Description
+#          - Type
+#          - Array of Hashes with all the actions.
+# ---------------------
+sub GetDiagramInformation {
+	my $nDiagramId = shift || confess("!!! You must provide a diagram ID as the first parameter"); 
+	
+	my %hDiagramInformation;
+	
+    my $szTagNameToFind = "Diagram";
+
+    Tee("III                GetDiagramInformation($nDiagramId)\n");
+    
+
+    my $xmlNode = GetSingleChildNodeByTagAndAttribute($f_xmlRoot, $szTagNameToFind,  "Id", "$nDiagramId");
+    confess("EEE Unable to get node for Tag: '$szTagNameToFind' and Id = $nDiagramId") unless(defined($xmlNode));
+
+    $hDiagramInformation{'Id'} = $nDiagramId;
+    $hDiagramInformation{'Title'} = $xmlNode->getAttribute("Title");
+    $hDiagramInformation{'Type'} = $xmlNode->getAttribute("Type");
+    $hDiagramInformation{'Description'} = GetChildDataBySingleTagName($xmlNode, "Description");
+    my @xmlNodes = GetNodeArrayByTagName($xmlNode, "Action");
+    
+    my @arActionList;
+    foreach my $xmlActionNode (@xmlNodes) {
+    	my %hAction;
+    	$hAction{"Order"} = $xmlActionNode->getAttribute("Order");
+    	$hAction{"ComponentRelationId"} = $xmlActionNode->getAttribute("ComponentRelationId");
+    	push(@arActionList, \%hAction);
+    }
+    $hDiagramInformation{'ActionList'} = \@arActionList;
+    
+
+    return(%hDiagramInformation);
+}
+
+
+# -----------------------------------------------------------------------
+# Reads the Diagram information for the given DiagramId
+#
+# @param nDiagramId - Id of diagram to retrieve.
+# @return Hash with the following informatin:
+#          - Id 
+#          - Title
+#          - Description
+#          - Type
+#          - Array of Hashes with all the actions.
+# ---------------------
+sub mdlGetComponentRelationInformation {
+	my $nId = shift || confess("!!! You must provide a Component Relation ID as the first parameter"); 
+	
+	my %hInformation;
+	
+    my $szTagNameToFind = "ComponentRelation";
+
+    Tee("III                mdlGetComponentRelationInformation($nId)\n");
+    
+
+    my $xmlNode = GetSingleChildNodeByTagAndAttribute($f_xmlRoot, $szTagNameToFind,  "Id", "$nId");
+    confess("EEE Unable to get node for Tag: '$szTagNameToFind' and Id = $nId") unless(defined($xmlNode));
+
+    $hInformation{'Id'} = $nId;
+    $hInformation{'ComponentAId'} = GetChildDataBySingleTagName($xmlNode, "ComponentAId");
+    $hInformation{'ComponentBId'} = GetChildDataBySingleTagName($xmlNode, "ComponentBId");
+    $hInformation{'Style'} = EmptyStringIfUndef(GetChildDataBySingleTagName($xmlNode, "Style"));
+    $hInformation{'ConnectionTitle'} = EmptyStringIfUndef(GetChildDataBySingleTagName($xmlNode, "ConnectionTitle"));
+    # TODO N Add the rest of the elements in the ComponentRelation structure.
+    
+    return(%hInformation);
+} # end mdlGetComponentRelationInformation
+
+# -----------------------------------------------------------------------
+# Returns the name of the component for the given Component ID.
+# @param nId: Id of the Component, to look-up.
+# @return Name of the component, if found, otherwise undef.
+#
+# @see GetComponentInformation
+# ---------------------
+sub mdlGetComponentNameFromId {
+	my $nId = shift || confess("!!! You must provide a Component ID as the first parameter"); 
+	
+	my $szReturnString;
+	
+    Tee("III                mdlGetComponentNameFromId($nId)\n");
+    
+	my %hInformation = GetComponentInformation($nId);
+
+    
+    $szReturnString = $hInformation{'Name'};
+    
+    return($szReturnString);	
+}
+
+
+# -----------------------------------------------------------------------
 # ---------------------
 sub GenerateFullCharter {
   my $nId = shift;
@@ -308,7 +492,7 @@ sub  GenerateCncDiagramAndLegend {
 
     # Arbitrary number to make it 'unlimited'.
 
-    Tee("III GenerateCncDiagramAndLegend($nComponentId, $szRelationType)\n");
+    Log("III GenerateCncDiagramAndLegend($nComponentId, $szRelationType)\n");
 
 
     GenerateCncDiagramAndLegendRecursively($nComponentId, $szRelationType,  $f_nComponentRecursingLevelLeft);
@@ -322,7 +506,7 @@ sub GenerateCncDiagramAndLegendRecursively {
     my $nComponentRecursingLevelLeft = shift;
 
 #   $f_nComponentRecursingLevelLeft -= 1;
-    Tee("III    GenerateCncDiagramAndLegendRecursively($nComponentId, $szRelationType), ($nComponentRecursingLevelLeft)\n");
+    Log("III    GenerateCncDiagramAndLegendRecursively($nComponentId, $szRelationType), ($nComponentRecursingLevelLeft)\n");
 
     my %hReturnComplexHashesList;
     $hReturnComplexHashesList{'arEntityList'} = ();
@@ -382,7 +566,7 @@ sub GenerateComponentDiagramAndLegendRecursively {
    my $nComponentRecursingLevelLeft = shift;
 
    # $f_nComponentRecursingLevelLeft -= 1; # TODO V Should this be re-activated?
-   Tee("III             GenerateComponentDiagramAndLegendRecursively($nComponentId, $szViewPacketTypeName, $szViewPacketStyleName), ($nComponentRecursingLevelLeft)\n");
+   Log("III             GenerateComponentDiagramAndLegendRecursively($nComponentId, $szViewPacketTypeName, $szViewPacketStyleName), ($nComponentRecursingLevelLeft)\n");
 
    my %hReturnComplexHashesList;
    $hReturnComplexHashesList{'arEntityList'} = ();
@@ -439,10 +623,10 @@ sub  GenerateComponentDiagramAndLegend {
 
     # Arbitrary number to make it 'unlimited'.
 
-    Tee("III          GenerateComponentDiagramAndLegend($nComponentId, $szViewPacketTypeName, $szViewPacketStyleName, $szLevelLimit)\n");
+    Log("III          GenerateComponentDiagramAndLegend($nComponentId, $szViewPacketTypeName, $szViewPacketStyleName, $szLevelLimit)\n");
 
     my %hComponentHashList = GenerateComponentDiagramAndLegendRecursively($nComponentId, $szViewPacketTypeName, $szViewPacketStyleName,  $f_nComponentRecursingLevelLeft);
-    Tee("DDD          GenerateComponentDiagramAndLegend($nComponentId, $szViewPacketTypeName, $szViewPacketStyleName) after GenerateComponentDiagramAndLegendRecursively() call.\n");
+    #Tee("DDD          GenerateComponentDiagramAndLegend($nComponentId, $szViewPacketTypeName, $szViewPacketStyleName) after GenerateComponentDiagramAndLegendRecursively() call.\n");
 
     return(%hComponentHashList);
 } # GenerateComponentDiagramAndLegend
@@ -457,7 +641,7 @@ sub GenerateModuleDecompositionViewPacket {
   $f_nViewPacketNumber = 0;
   my $szContent = GenerateViewPacketRecusrsively($nId);
 
-  Tee("------------------------------------------\n");
+  Log("------------------------------------------\n");
 
   my $szFileName = "moduleDecompositionViewPackets";
   open(FINISHED_DOC, ">${szFileName}.tex") or die("!!! Unable to open '${szFileName}.tex' for write: $!");
@@ -485,7 +669,7 @@ sub GenerateComponentDiagramTree {
     my $szLevelLimit = shift || 1000;
 
     my $szModuleIncludeName;
-    Tee("III       GenerateComponentDiagramTree($nId, $szViewPacketTypeName, $szViewPacketStyleName, $szLevelLimit)\n");
+    Log("III       GenerateComponentDiagramTree($nId, $szViewPacketTypeName, $szViewPacketStyleName, $szLevelLimit)\n");
 
     # TODO C how can this be fixed to szDecompositionStyleName
     my %hComponentHashList = GenerateComponentDiagramAndLegend($nId, $szViewPacketTypeName, $szViewPacketStyleName);
@@ -545,7 +729,7 @@ confess("XXX Who uses this function?");
     my %hComponentHashList = GenerateModuleComponentDiagramAndLegend($nId, "$f_szDecompositionStyleName", 1);
 #     print Dumper(%hComponentHashList);
     $hComponentHashList{'GraphVizRankSeperation'} = 6; # TODO C Make this programmable.
-    Tee("DDD using template: ${f_szAbsolutePathToCurrentScript}/Graphviz_componentDiagram.tmpl\n");
+    Log("DDD using template: ${f_szAbsolutePathToCurrentScript}/Graphviz_componentDiagram.tmpl\n");
 #    print longmess("DDD GeneratemoduleComponentDiagram($nId) called.");
     confess("DDD GeneratemoduleComponentDiagram($nId) called.");
     my $template = Text::Template->new(TYPE => 'FILE', SOURCE => "${f_szAbsolutePathToCurrentScript}/Graphviz_componentDiagram.tmpl")
@@ -595,7 +779,7 @@ sub GetSipoc {
   my $nId = shift;
   my %hTemporary;
 
-  Tee("DDD GetSipoc(${nId})\n");
+  #Tee("DDD GetSipoc(${nId})\n");
 
   my $xmlElement = GetSingleChildNodeByTagAndAttribute($f_xmlRoot, "Sipoc", "Id", $nId);
   if ( defined($xmlElement) ) {
@@ -660,7 +844,7 @@ sub GenerateViewPacketByTypeAndStyle {
   Tee("III GenerateViewPacketByTypeAndStyle(xmlNode, refhSwArcHashList, $szViewPacketTypeName, $szViewPacketStyleName) arViewPacketList=$#arViewPacketList\n");
   # TODO V Sort the arViewPacketList by the 'Order' attribute.
   foreach my $nViewPacketId (@arViewPacketList) {
-    Tee("DDD nViewPacketId=$nViewPacketId\n");
+    #Tee("DDD nViewPacketId=$nViewPacketId\n");
     if ( IsNumber($nViewPacketId) ) {
       $nViewPacketId += 0;
     } else {
@@ -669,7 +853,7 @@ sub GenerateViewPacketByTypeAndStyle {
     if ( $nViewPacketId > 0 ) {
         my $szText = GenerateViewPacketRecusrsively($nViewPacketId);
         my $szViewPacketFileName = "Viewpacket${szViewPacketTypeName}${szViewPacketStyleName}${nViewPacketId}";
-        Tee("DDD Writing nViewPacketId: $nViewPacketId information to: $szViewPacketFileName\n");
+        #Tee("DDD Writing nViewPacketId: $nViewPacketId information to: $szViewPacketFileName\n");
         push(@arViewPacketFileList, $szViewPacketFileName);
         open(LATEX, ">${szViewPacketFileName}.tex") || die("EEE unable to open file for write '${szViewPacketFileName}.tex': $!");
         print LATEX $szText;
@@ -708,6 +892,36 @@ sub IncludeContextModelIfExists {
 }
 
 # -----------------------------------------------------------------
+# @see GenerateSoftwareArchitectureDocumentation
+# @see GenerateViewPacketRecusrsively
+# @see GenerateUmlDiagram
+# ---------------
+sub IncludeDiagramIfExists {
+  my $xmlNode = shift;
+  my $refhHash = shift;
+
+  confess("EEE Missing parameters") unless (defined($refhHash));
+
+  my $nDiagramId = GetChildDataBySingleTagName($xmlNode, "DiagramId");
+  
+  if ( IsNumber($nDiagramId) ) {
+    $nDiagramId += 0;
+  }  else {
+    $nDiagramId = 0;
+  }
+  if ( $nDiagramId > 0 ) {
+    my $szFileNameWithSuffix =  GenerateUmlDiagram($nDiagramId);
+    my($szFileName, $directories, $szSuffix) = fileparse($szFileNameWithSuffix, qr/\.[^.]*/);
+    # TODO C How do I find out, which section to put this diagram in?
+    # TODO C I think this has to be made into an array that is pushed to, since there can be multiple diagrams.
+    $refhHash->{'DiagramFileName'} = $szFileName;
+  } else {
+    $refhHash->{'DiagramFileName'} = $f_szNotPresent;
+  }
+}
+
+
+# -----------------------------------------------------------------
 # ---------------
 sub GenerateSoftwareArchitectureDocumentation {
   my $nSwArcId = shift;
@@ -737,6 +951,7 @@ sub GenerateSoftwareArchitectureDocumentation {
   $hProject{'IntendedOperationalLife'} = GetChildDataBySingleTagName($xmlNode, "IntendedOperationalLife");
 
   IncludeContextModelIfExists($xmlNode, \%hProject);
+  IncludeDiagramIfExists($xmlNode, \%hProject);
 
 
   # TODO V Implement SIPOC section, when it is needed.
@@ -781,7 +996,7 @@ sub GenerateSoftwareArchitectureDocumentation {
             or die "Couldn't construct template: $Text::Template::ERROR";
    my $szResult = $template->fill_in(HASH => \%hSwArcHashList);
 
-  Tee("DDD Writing content to sad.tex.\n");
+  #Tee("DDD Writing content to sad.tex.\n");
   open(LATEX, ">sad.tex") || die("!!! Unable to open file for writing: $!");
   print LATEX $szResult;
   close(LATEX);
@@ -846,7 +1061,8 @@ sub GenerateViewPacketRecusrsively {
   }
 
   IncludeContextModelIfExists($xmlNode, \%hModuleInformation);
-
+  IncludeDiagramIfExists($xmlNode, \%hModuleInformation);
+  
   # Get list of all 'ModuleRelations'
   # Filter on RelationType=$f_szDecompositionStyleName   and  ModuleBId=$nTopPacketId
   # TODO C The '$f_szDecompositionStyleName' is dependent on the szViewType
@@ -892,12 +1108,12 @@ sub GenerateViewPacketRecusrsively {
   my @arIdList =  GetDataArrayByTagName($xmlNode, "ChildViewPacketId");
 
   foreach my $nChildPacketViewId (@arIdList) {
-      Tee("DDD nChildPacketViewId = $nChildPacketViewId\n");
+      #Tee("DDD nChildPacketViewId = $nChildPacketViewId\n");
       #print Dumper(\@arIdList);
       if (  $nChildPacketViewId  =~ /\d+/ ) {
          $nChildPacketViewId += 0;
         my $nComponentLevelsToShowInPrimaryPresentation = 1;
-        Tee("DDD    nViewPacketId=${nViewPacketId} now calling: GenerateViewPacketRecusrsively($nChildPacketViewId, \"DUMMY\", $nComponentLevelsToShowInPrimaryPresentation)\n");
+        #Tee("DDD    nViewPacketId=${nViewPacketId} now calling: GenerateViewPacketRecusrsively($nChildPacketViewId, \"DUMMY\", $nComponentLevelsToShowInPrimaryPresentation)\n");
         my $szChildText = GenerateViewPacketRecusrsively($nChildPacketViewId, "DUMMY", $nComponentLevelsToShowInPrimaryPresentation);
         confess("EEE No text generated by: GenerateViewPacketRecusrsively($nChildPacketViewId, DUMMY, $nComponentLevelsToShowInPrimaryPresentation)") unless(defined($szChildText));
         $szResult .= $szChildText;
@@ -934,7 +1150,7 @@ sub GetComponentInformation {
     
     my $szTagNameToFind = "Component";
 
-    Tee("III                GetComponentInformation($nComponentId)\n");
+    Log("III                GetComponentInformation($nComponentId)\n");
     
 
     my $xmlNode = GetSingleChildNodeByTagAndAttribute($f_xmlRoot, $szTagNameToFind,  "Id", "$nComponentId");
@@ -997,20 +1213,20 @@ sub GetHashListRelatedComponent {
       confess("EEE nTopPacketId was not a number: '$nCurrentComponentId' for TopPacketId: $nCurrentComponentId RelationType: $szRequiredStyleType");
     }
 
-    Tee("DDD                GetComponentRelationsList($nCurrentComponentId, $szRequiredStyleType)\n");
+    #Tee("DDD                GetComponentRelationsList($nCurrentComponentId, $szRequiredStyleType)\n");
 
     my @arResponse;
 
     my $szRelationTagName = "ComponentRelation";
 
     my @arNodeList = GetNodeArrayByTagName($f_xmlRoot, $szRelationTagName);
-    Tee("DDD                   #arNodeList=$#arNodeList\n");
+    #Tee("DDD                   #arNodeList=$#arNodeList\n");
 
     foreach my $xmlNode (@arNodeList) {
       my $szEntityAId = GetChildDataBySingleTagName($xmlNode, "ComponentAId");
       my $szEntityBId = GetChildDataBySingleTagName($xmlNode, "ComponentBId");
       my $szStyleName = GetChildDataBySingleTagName($xmlNode, "Style");
-      Tee("DDD                   szEntityAId=$szEntityAId szEntityBId=$szEntityBId szStyleName=$szStyleName\n");
+      #Tee("DDD                   szEntityAId=$szEntityAId szEntityBId=$szEntityBId szStyleName=$szStyleName\n");
       if ( IsNumber($szEntityAId) ) {
         if ( ($szEntityAId == $nCurrentComponentId) && ( $szStyleName eq $szRequiredStyleType) ){
           my $szPropertiesOfRelation = GetChildDataBySingleTagName($xmlNode, "PropertiesOfRelation");
@@ -1040,20 +1256,20 @@ sub GetComponentRelationsList {
       confess("EEE nTopPacketId was not a number: '$nCurrentComponentId' for TopPacketId: $nCurrentComponentId RelationType: $szRequiredStyleType");
     }
 
-    Tee("DDD                GetComponentRelationsList($nCurrentComponentId, $szRequiredStyleType)\n");
+    #Tee("DDD                GetComponentRelationsList($nCurrentComponentId, $szRequiredStyleType)\n");
 
     my @arResponse;
 
     my $szRelationTagName = "ComponentRelation";
 
     my @arNodeList = GetNodeArrayByTagName($f_xmlRoot, $szRelationTagName);
-    Tee("DDD                   #arNodeList=$#arNodeList\n");
+    #Tee("DDD                   #arNodeList=$#arNodeList\n");
 
     foreach my $xmlNode (@arNodeList) {
       my $szEntityAId = GetChildDataBySingleTagName($xmlNode, "ComponentAId");
       my $szEntityBId = GetChildDataBySingleTagName($xmlNode, "ComponentBId");
       my $szStyleName = GetChildDataBySingleTagName($xmlNode, "Style");
-      Tee("DDD                   szEntityAId=$szEntityAId szEntityBId=$szEntityBId szStyleName=$szStyleName\n");
+      #Tee("DDD                   szEntityAId=$szEntityAId szEntityBId=$szEntityBId szStyleName=$szStyleName\n");
       if ( IsNumber($szEntityAId) ) {
         if ( ($szEntityAId == $nCurrentComponentId) && ( $szStyleName eq $szRequiredStyleType) ){
           push(@arResponse, $szEntityBId);
@@ -1112,7 +1328,7 @@ sub GetModuleSubComponentList {
 
     #my $szCallTrace = shortmess("DDD call trace");
     #print "III                GetModuleSubComponentList($nTopPacketId, $szRequiredRelationType) szCallTrace: $szCallTrace\n";
-    Tee("III                GetModuleSubComponentList($nCurrentComponentId, $szRequiredRelationType)\n");
+    #Tee("III                GetModuleSubComponentList($nCurrentComponentId, $szRequiredRelationType)\n");
 
     my @arResponse;
 
@@ -1129,7 +1345,7 @@ sub GetModuleSubComponentList {
           if ( IsNumber($szModuleBId) ) {
             # 
             if ( ($szModuleAId == $nCurrentComponentId) && ( $szRequiredRelationType eq $szCurrentRelationType) ){
-              Tee("DDD                ($szModuleAId == $nCurrentComponentId)  ( $szRequiredRelationType eq $szCurrentRelationType) => szModuleBId=$szModuleBId\n");
+              #Tee("DDD                ($szModuleAId == $nCurrentComponentId)  ( $szRequiredRelationType eq $szCurrentRelationType) => szModuleBId=$szModuleBId\n");
               push(@arResponse, $szModuleBId);
             } # endif
           } else {
