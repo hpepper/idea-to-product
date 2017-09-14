@@ -2,6 +2,9 @@ CXXFLAGS =	-O0 -g -Wall -fmessage-length=0  -std=c++11
 # -O0 due to debugging needs 
 
 OBJS =		itp.o\
+           DatabaseInterface.o\
+           ArchitectureDocument.o\
+           ArchitectureDocumentLatex.o\
             XmlSupport.o
 
 # -lm : Math library.
@@ -12,7 +15,7 @@ TARGET =	itp
 $(TARGET):	$(OBJS)
 	$(CXX) -o $(TARGET) $(OBJS) $(LIBS)
 
-all:	$(TARGET) doxygen/index.html unittesting 
+all:	$(TARGET) doxygen/index.html #unittesting 
 
 unittesting:
 	cd unittests; make all

@@ -24,3 +24,6 @@ wtitp/Debug/wtitp
 sub_makefile.mk
 t
 y
+doxygen
+itp
+test.latex
