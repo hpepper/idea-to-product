@@ -1,7 +1,9 @@
 # 
 
 Testing:
-  make clean itp && ./itp  && gv example.ps
+  make itp && ./itp Documentation/itp_itpp.xml && pdflatex test.latex && evince test.pdf
+
+  enable core dumps: ulimit -c unlimited
   
 
 

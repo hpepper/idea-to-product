@@ -115,19 +115,27 @@ int ArchitectureDocumentLatex::GenerateDocumentLeadIn(std::ofstream *pFile) {
 int ArchitectureDocumentLatex::GenerateTitlePage(std::ofstream *pFile) {
 	int nStatus = 0;
 
+	std::string sTitle = m_pDatabaseInterface->GetSoftwareArchitectureDocumentationElementText(1, "Title");
+	std::string sRevision = m_pDatabaseInterface->GetSoftwareArchitectureDocumentationElementText(1, "Revision");
+	std::string sIssue = m_pDatabaseInterface->GetSoftwareArchitectureDocumentationElementText(1, "Issue");
+	std::string sReleaseDate = m_pDatabaseInterface->GetSoftwareArchitectureDocumentationElementText(1, "ReleaseDate");
+
+	// TODO V this can have multiple entries.
+	std::string sAuthor = m_pDatabaseInterface->GetSoftwareArchitectureDocumentationElementText(1, "Author");
+
 	*pFile << "%% ====== TITLE PAGE" << std::endl;
 	*pFile
 			<< "% TODO V Change this to a \\maketitle environment so that I can include graphics etc."
 			<< std::endl;
-	*pFile << "\\title{{ Project{'Title'}}}" << std::endl;
+	*pFile << "\\title{" << sTitle << "}" << std::endl;
 	*pFile << "" << std::endl;
 	*pFile << "" << std::endl;
 	*pFile << "% TODO V Support multiple authors." << std::endl;
-	*pFile << "\\author{{ Project{'Author'}}}" << std::endl;
+	*pFile << "\\author{ " << sAuthor << "}" << std::endl;
 	*pFile << "" << std::endl;
 	*pFile << "" << std::endl;
-	*pFile << "\\date{{ Project{'ReleaseDate'}}\\\\" << std::endl;
-	*pFile << "Issue: { Project{'Issue'}}" << std::endl;
+	*pFile << "\\date{{ " << sReleaseDate << "}\\\\" << std::endl;
+	*pFile << "Issue: { " << sIssue << "}" << std::endl;
 	*pFile << "}" << std::endl;
 	*pFile << "" << std::endl;
 	*pFile << "% TODO V Add Summary." << std::endl;

@@ -1,0 +1,5 @@
+<UnitTestingXmlSupport Version="0.1.0">
+  <Alpha Id="1" Title="Title-Id-1"></Alpha>
+  <Alpha Id="2" Title="Title-Id-2"></Alpha>
+  <TextData>text_data_content</TextData>
+</UnitTestingXmlSupport>

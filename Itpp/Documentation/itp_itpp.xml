@@ -197,13 +197,14 @@
   <Description></Description>
 </ProjectType>
 
-<SoftwareArchitectureDocumentation Id="" Title="">
-  <Issue></Issue>
-  <Revision></Revision>
+<SoftwareArchitectureDocumentation Id="1">
+  <Title>SW Arcitechture Documentation for ITP</Title>
+  <Issue>0.1.0</Issue>
+  <Revision>0.1.0</Revision>
   <Draft>1</Draft>
   <Status></Status>
-  <ReleaseDate></ReleaseDate>
-  <Author></Author> 
+  <ReleaseDate>2017-09-14</ReleaseDate>
+  <Author>Authors</Author> 
   <SourceReference></SourceReference>
   <DistributionFolder></DistributionFolder>
   <DistributionDirectName></DistributionDirectName>

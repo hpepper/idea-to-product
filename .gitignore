@@ -1,6 +1,8 @@
 docs/#*#
 #*#
 *~
+core
+test.out
 .metadata/.lock
 .metadata/.log
 .metadata/.plugins/
@@ -27,3 +29,9 @@ y
 doxygen
 itp
 test.latex
+
+*.gcda
+*.gcno
+corbertura.xml
+runner*
+TEST-cxxtest.xml

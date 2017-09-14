@@ -7,6 +7,8 @@
 
 #include "XmlSupport.h"
 
+#include <assert.h>
+
 XmlSupport::XmlSupport() {
 	// TODO Auto-generated constructor stub
 
@@ -33,6 +35,46 @@ std::string XmlSupport::GetAttributeData(tinyxml2::XMLElement* xmlElement, std::
 	}
 	return (sResult);
 }
+
+
+/**
+ * Return the XMLElement pointer to the first XML element where the sAttributeName has the value: sAttributeContent.
+ *
+ * Example:
+ *   tinyxml2::XMLElement* xmlElement = m_pXmlSupport->GetSingleChildNodeByTagAndAttribute(m_xmlRoot, "Alpha", "Id", "2");
+ *   	if ( xmlElement !=  NULL ) {
+ *   		  sTitle = xmlElement->Attribute("Title");
+ *   		  	}
+ *
+ */
+tinyxml2::XMLElement* XmlSupport::GetSingleChildNodeByTagAndAttribute(
+		tinyxml2::XMLElement *xmlParentElement, std::string sTagName,
+		std::string sAttributeName, std::string sAttributeContent) {
+
+	tinyxml2::XMLElement* xmlReturnXmlElement = NULL;
+
+	assert(xmlParentElement != NULL);
+
+	tinyxml2::XMLElement* xmlCurrentElement =
+			xmlParentElement->FirstChildElement(sTagName.c_str());
+
+	// Itterate until the right attribute is found, or there are no more elements.
+	while ((xmlCurrentElement != NULL) && (xmlReturnXmlElement == NULL)) {
+		int nDummy;
+
+		if ( xmlCurrentElement->QueryAttribute(sAttributeName.c_str(), &nDummy) != tinyxml2::XML_NO_ATTRIBUTE) {
+			const char* szCurrentAttributeValue = xmlCurrentElement->Attribute( sAttributeName.c_str() );
+			if ( sAttributeContent.compare(szCurrentAttributeValue) == 0 ) {
+				xmlReturnXmlElement = xmlCurrentElement;
+			}
+		}
+		xmlCurrentElement = xmlCurrentElement->NextSiblingElement(sTagName.c_str());
+	}
+
+	// Find the one with the Attribute with the sAttributeContent
+	return (xmlReturnXmlElement);
+}
+
 
 /**
  * Return The text content the sTagName sub-element of xmlElement.

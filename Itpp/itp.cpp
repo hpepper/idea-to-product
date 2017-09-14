@@ -70,7 +70,7 @@ int main(int argc, char* argv[]) {
 	// TODO Find a more fancy way of testing this, lists or something else?
 
 	// Load XML
-	DatabaseInterface * pDatabaseInterface = new DatabaseInterface("../itp.xml");
+	DatabaseInterface * pDatabaseInterface = new DatabaseInterface(sXmlFileName);
 
 	// Generate the ArchDocLatex
 	ArchitectureDocumentLatex * pArchitectureDocumentLatex = new ArchitectureDocumentLatex(pDatabaseInterface);
