@@ -34,12 +34,14 @@ private:
 
 	int GenerateTitlePage(std::ofstream *);
 
-	int GenerateIntroductionChapter();
+	int GenerateContentListPages(std::ofstream *);
 
-	int GenerateSystemOverview();
-	int GenerateMappingBetweenViews();
-	int GenerateDirectory();
-	int GenerateRationaleBackgroundDesignConstraints();
+	int GenerateIntroductionChapter(std::ofstream *);
+
+	int GenerateSystemOverview(std::ofstream *);
+	int GenerateMappingBetweenViews(std::ofstream *);
+	int GenerateDirectory(std::ofstream *);
+	int GenerateRationaleBackgroundDesignConstraints(std::ofstream *);
 	int GenerateModulePart();
 	int GenerateCAndConnectorsPart();
 	int GenerateAllocationPart();

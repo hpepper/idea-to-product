@@ -1,2 +1,12 @@
-Load the itm.xml file
-Return the title etc for the title page.
+GenerateModulePart();
+GenerateCAndConnectorsPart();
+GenerateAllocationPart();
+GenerateAppendix();
+ContextModel
+Sipoc thing
+Generate UML stuff using plantuml
+Usecases
+Requirements
+
+HTML page
+Wiki pages
