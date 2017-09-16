@@ -15,7 +15,7 @@ TARGET =	itp
 $(TARGET):	$(OBJS)
 	$(CXX) -o $(TARGET) $(OBJS) $(LIBS)
 
-all:	$(TARGET) doxygen/index.html #unittesting 
+all:	$(TARGET) doxygen/index.html unittesting 
 
 unittesting:
 	cd unittests; make all

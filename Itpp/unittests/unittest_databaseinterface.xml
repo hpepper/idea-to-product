@@ -1,0 +1,52 @@
+
+<ideatoproduct Version="0.5.1">
+
+<SoftwareArchitectureDocumentation Id="1">
+  <Title>First Title</Title>
+  <Issue>0.1.0</Issue>
+  <Revision>0.1.0</Revision>
+  <Draft>1</Draft>
+  <Status></Status>
+  <ReleaseDate>2017-09-14</ReleaseDate>
+  <Author>Authors</Author> 
+  <SourceReference></SourceReference>
+  <DistributionFolder></DistributionFolder>
+  <DistributionDirectName></DistributionDirectName>
+  <IssuingOrganization></IssuingOrganization>
+  <Summary></Summary>
+  <!-- This is the BusinessOpportunity of the charter. -->
+  <Background></Background>
+  <ContextModelId></ContextModelId>
+  <WhatWillNotBeDone>TBD</WhatWillNotBeDone>
+  <!-- Deploying the product. -->
+  <PrototypeDeployment></PrototypeDeployment>
+  <ProductionDeployment></ProductionDeployment>
+  <PlannedUpgrades></PlannedUpgrades>
+  <IntendedOperationalLife></IntendedOperationalLife>
+  <PhysicalEntities></PhysicalEntities>
+  <FaqId></FaqId>
+
+<!-- this goes into the: Rationale, Background, and Design Constraints -->
+  <SipocId></SipocId>
+
+<!-- this goes into ? -->
+  <ModuleDecompositionViewPacketId Order="1"></ModuleDecompositionViewPacketId>
+  <ModuleUsesViewPacketId Order="1"></ModuleUsesViewPacketId>
+  <ModuleGeneralizationViewPacketId Order="1"></ModuleGeneralizationViewPacketId>
+  <ModuleLayeredViewPacketId Order="1"></ModuleLayeredViewPacketId>
+  <CnCClientServerProcessesViewPacketId Order="1"></CnCClientServerProcessesViewPacketId>
+  <CnCCommunicatingProcessesViewPacketId Order="1"></CnCCommunicatingProcessesViewPacketId>
+  <CnCPeerToPeerProcessesViewPacketId Order="1"></CnCPeerToPeerProcessesViewPacketId>
+  <CnCPipeAndFilterViewPacketId Order="1"></CnCPipeAndFilterViewPacketId>
+  <CnCPublishSubscribeProcessesViewPacketId Order="1"></CnCPublishSubscribeProcessesViewPacketId>
+  <CnCSharedDataViewPacketId Order="1"></CnCSharedDataViewPacketId>
+  <AllocationDeploymentViewPacketId Order="1"></AllocationDeploymentViewPacketId>
+  <AllocationImplementationViewPacketId Order="1"></AllocationImplementationViewPacketId>
+  <AllocationWorkAssignmentViewPacketId Order="1"></AllocationWorkAssignmentViewPacketId>
+</SoftwareArchitectureDocumentation>
+
+<SoftwareArchitectureDocumentation Id="2">
+  <Title>Second title</Title>
+</SoftwareArchitectureDocumentation>
+
+</ideatoproduct>
