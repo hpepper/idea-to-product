@@ -6,7 +6,7 @@ package {'libxml2': ensure => present }
 
 package {'texlive-scheme-basic': ensure => present }
 # for fullpage.sty
-package {'texlive-preprint-svn30447.2011-36': ensure => present }
+# TODO V Fix this: package {'texlive-preprint-svn30447.2011-36': ensure => present }
 
 package {'perl-Text-Template': ensure => present }
 package {'perl-XML-LibXML': ensure => present }
