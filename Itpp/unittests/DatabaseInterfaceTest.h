@@ -35,5 +35,12 @@ public:
 		TS_ASSERT_EQUALS(sTitle, "");
 	}
 
+	void testGetSoftwareArchitectureDocumentationViewPacketIdList() {
+		std::list<std::string> lViewPacketIdList = m_pDatabaseInterface->GetSoftwareArchitectureDocumentationViewPacketIdList(1, "Module", "Decomposition");
+		TS_ASSERT_EQUALS(lViewPacketIdList.size(), 2);
+	}
+
+
+
 	// TODO V Test with XML file not exist.
 };

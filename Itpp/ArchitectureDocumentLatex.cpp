@@ -6,7 +6,9 @@
  */
 
 #include "ArchitectureDocumentLatex.h"
+#include "ViewPacket.h"
 
+#include <iostream>
 
 /**
  * Constructor: Saves the pointer to the Database interface class and initializes internal data.
@@ -52,8 +54,8 @@ int ArchitectureDocumentLatex::GenerateDocument(std::string sFilename) {
 	cFile << "% TODO V make the view chapters dynamic, so that their selection is based on what is actually in the xml." << std::endl;
 	cFile << "" << std::endl;
 
-	GenerateModulePart();
-	GenerateCAndConnectorsPart();
+	GenerateModulePart(&cFile);
+	GenerateComponentAndConnectorsPart();
 	GenerateAllocationPart();
 	GenerateAppendix();
 
@@ -176,6 +178,7 @@ int ArchitectureDocumentLatex::GenerateContentListPages(std::ofstream *pFile) {
 int ArchitectureDocumentLatex::GenerateIntroductionChapter(std::ofstream *pFile) {
 	int nStatus = 0;
 
+	// TODO N Make the '1' a variable instead.
 	std::string sTitle = m_pDatabaseInterface->GetSoftwareArchitectureDocumentationElementText(1, "Title");
 
 	*pFile
@@ -518,11 +521,53 @@ int ArchitectureDocumentLatex::GenerateRationaleBackgroundDesignConstraints(std:
 	return (nStatus);
 }
 
-int ArchitectureDocumentLatex::GenerateModulePart() {
+/**
+ * Generate the
+ */
+int ArchitectureDocumentLatex::GenerateModulePart(std::ofstream *pFile) {
+	int nStatus = 0;
+
+
+	// Get list of ModuleDecompositionViewPacketId
+	nStatus = GenerateModuleDecomposition(pFile);
+
+	// TODO C Get list of ModuleUsesViewPacketId
+	// TODO C Get list of ModuleGeneralizationViewPacketId
+	// TODO C Get list of ModuleLayeredViewPacketId
+
+	return (nStatus);
+}
+
+int ArchitectureDocumentLatex::GenerateModuleDecomposition(std::ofstream *pFile) {
+	int nStatus = 0;
+	std::list<std::string> lViewPacketIdList = m_pDatabaseInterface->GetSoftwareArchitectureDocumentationViewPacketIdList(1, "Module", "Decomposition");
+	 for (std::list<std::string>::iterator itPacketId=lViewPacketIdList.begin(); itPacketId != lViewPacketIdList.end(); ++itPacketId) {
+		 std::cout << "DDD GenerateModuleDecomposition idx: " << (*itPacketId) << std::endl;
+		 ViewPacket *pViewPacket = new ViewPacket(m_pDatabaseInterface, *itPacketId);
+		 pViewPacket->SaveSection(pFile);
+		 delete pViewPacket;
+	 }
+
+
+	return (nStatus);
+}
+
+int ArchitectureDocumentLatex::GenerateModuleUses(std::ofstream *pFile) {
 	int nStatus = 0;
 	return (nStatus);
 }
-int ArchitectureDocumentLatex::GenerateCAndConnectorsPart() {
+
+int ArchitectureDocumentLatex::GenerateModuleGeneralization(std::ofstream *pFile) {
+	int nStatus = 0;
+	return (nStatus);
+}
+
+int ArchitectureDocumentLatex::GenerateModuleLayered(std::ofstream *pFile) {
+	int nStatus = 0;
+	return (nStatus);
+}
+
+int ArchitectureDocumentLatex::GenerateComponentAndConnectorsPart() {
 	int nStatus = 0;
 	return (nStatus);
 }

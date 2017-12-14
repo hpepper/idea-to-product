@@ -2,4 +2,8 @@
   <Alpha Id="1" Title="Title-Id-1"></Alpha>
   <Alpha Id="2" Title="Title-Id-2"></Alpha>
   <TextData>text_data_content</TextData>
+  <ListItem Order="2">Bravo</ListItem>
+  <ListItem Order="1">Alpha</ListItem>
+  <ListItem Order="4">Delta</ListItem>
+  <ListItem Order="3"></ListItem>
 </UnitTestingXmlSupport>

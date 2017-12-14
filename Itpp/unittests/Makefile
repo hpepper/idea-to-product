@@ -3,6 +3,7 @@
 CFLAGS = -Wall -g -I.. -std=c++11 -fprofile-arcs -ftest-coverage 
 GCVOR_FLAGS = -r .. --exclude unittests/runner.cpp\
                     --exclude unittests/DatabaseInterfaceTest.h\
+                    --exclude unittests/ComponentRelationListsTest.h\
                     --exclude unittests/XmlLookupTest.h
 
 all: cover
@@ -16,14 +17,17 @@ cover: runner.gcda
 runner.gcda: runner
 	./runner
 	
-runner: runner.cpp	DatabaseInterface.o XmlSupport.o
+runner: runner.cpp	DatabaseInterface.o XmlSupport.o ComponentRelationLists.o
 	g++ ${CFLAGS} -o $@ $^ -ltinyxml2 -lm
 
-runner.cpp:  DatabaseInterfaceTest.h XmlLookupTest.h
+runner.cpp:  DatabaseInterfaceTest.h XmlLookupTest.h ComponentRelationListsTest.h
 	cxxtestgen  --xunit-printer -o $@ $^
 
 
 DatabaseInterface.o: ../DatabaseInterface.cpp
+	g++ -c ${CFLAGS} -o $@ $^
+
+ComponentRelationLists.o: ../ComponentRelationLists.cpp
 	g++ -c ${CFLAGS} -o $@ $^
 
 XmlSupport.o: ../XmlSupport.cpp

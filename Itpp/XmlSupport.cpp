@@ -97,3 +97,44 @@ std::string XmlSupport::GetChildDataBySingleTagName(tinyxml2::XMLElement* xmlEle
 	}
 	return (sResult);
 }
+
+/**
+ * Get list of the content from all the sub elements with the given sTagName
+ *
+ * @param xmlElement
+ * @param sTagName
+ * @return List of content of list of sub elements witht the given sTagName. Empty list if no sub elements where found.
+ */
+std::list<std::string> XmlSupport::GetListOfChildData(
+		tinyxml2::XMLElement* xmlElement, std::string sTagName) {
+	std::list<std::string> lDataList;
+
+	tinyxml2::XMLElement *xmlChildElement = NULL;
+
+	if (xmlElement != NULL) {
+		xmlChildElement = xmlElement->FirstChildElement(sTagName.c_str());
+	}
+	// From https://stackoverflow.com/questions/7942191/how-to-handle-tinyxml-null-pointer-returned-on-gettext
+	while (xmlChildElement != NULL) {
+
+		// This is here to make sure there is valid data in the child element
+		if (xmlChildElement->GetText() != NULL) {
+			lDataList.push_back(xmlChildElement->GetText());
+		} else {
+			lDataList.push_back("");
+		}
+		xmlChildElement = xmlChildElement->NextSiblingElement(sTagName.c_str());
+	}
+
+	return (lDataList);
+}
+
+/**
+ * If the sorting attribute is missing, then give it a value of 0.
+ */
+std::list<std::string> XmlSupport::GetListOfChildDataSortedByAttribute(tinyxml2::XMLElement* xmlElement,
+		std::string sTagName, std::string sAttributeName) {
+	std::list<std::string> lDataList;
+	return(lDataList);
+}
+

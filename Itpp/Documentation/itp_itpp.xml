@@ -198,7 +198,7 @@
 </ProjectType>
 
 <SoftwareArchitectureDocumentation Id="1">
-  <Title>SW Arcitechture Documentation for ITP</Title>
+  <Title>SW Architechture Documentation for ITP</Title>
   <Issue>0.1.0</Issue>
   <Revision>0.1.0</Revision>
   <Draft>1</Draft>
@@ -241,7 +241,8 @@
   <AllocationWorkAssignmentViewPacketId Order="1"></AllocationWorkAssignmentViewPacketId>
 </SoftwareArchitectureDocumentation>
 
-<ViewPacket Id="" Title="">
+<ViewPacket Id="">
+  <Title></Title>
   <!-- Types: 
      Module - the system as units of implementation
      C&C(Component-and-Connector) - the system as units of runtime execution
@@ -274,7 +275,8 @@
    ChildViewPacketId*: Can be zero or more entries, that are tightly related to this view.
     -->
 <!-- ViewpacketTemplate
-<ViewPacket Id="" Title="">
+<ViewPacket Id="">
+  <Title></Title>
   <ViewPacketType></ViewPacketType>
   <ViewPacketStyle></ViewPacketStyle>
   <ComponentRecurseLevel></ComponentRecurseLevel>

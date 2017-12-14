@@ -1,11 +1,12 @@
 CXXFLAGS =	-O0 -g -Wall -fmessage-length=0  -std=c++11
 # -O0 due to debugging needs 
 
-OBJS =		itp.o\
+OBJS =	itp.o\
            DatabaseInterface.o\
            ArchitectureDocument.o\
            ArchitectureDocumentLatex.o\
-            XmlSupport.o
+           ViewPacket.o\
+           XmlSupport.o
 
 # -lm : Math library.
 LIBS = -ltinyxml2 -lm
