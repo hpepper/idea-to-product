@@ -9,11 +9,10 @@ Using it in your own project.
 1. cp ../idea-to-product/itp.xml .
 2. ln -s ../idea-to-product/Makefile
 3. ln -s ../idea-to-product/itp2doc.pl
-4. ln -s ../idea-to-product/My
 
 
 To validate the XML structure:
-*  clear; rxp -V itp.xml > t
+*  clear; xmllint --valid  --noout --dtdvalid Itpp/ideatoproduct.dtd Itpp/Documentation/itp_itpp.xml
 
 
 When adding a new component:
@@ -43,5 +42,4 @@ Adding a ContextModel to a Viewpacket:
 2. create a view packet for the ContextModel
     * ViewPacketType: Sub
     * ViewPacketStyle: ContextModel
-3. Add Id of the Context viewpacket to the ContextModelId of the 'master' viewpacket 
-
+3. Add Id of the Context viewpacket to the ContextModelId of the 'master' viewpacket

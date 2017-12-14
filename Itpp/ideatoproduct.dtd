@@ -115,13 +115,15 @@
   ResourceRequirement,
   Functionality,
   Security,
-  SchedulerPriority
+  SchedulerPriority,
+  DiagramId*
 )>
 <!ATTLIST Component Id CDATA #REQUIRED>
 <!ATTLIST Component Name CDATA #REQUIRED>
 
 <!ELEMENT Responsibilities  (#PCDATA)>
 <!ELEMENT VisibilityOfInterfaces  (#PCDATA)>
+<!ELEMENT Interface  (#PCDATA)>
 <!ELEMENT Overview  (#PCDATA)>
 <!ELEMENT BuildCycle  (#PCDATA)>
 <!ELEMENT Contact  (#PCDATA)>
@@ -138,6 +140,8 @@
 <!ELEMENT  Functionality (#PCDATA)>
 <!ELEMENT  Security (#PCDATA)>
 <!ELEMENT  SchedulerPriority (#PCDATA)>
+<!ELEMENT  DiagramId (#PCDATA)>
+<!ATTLIST DiagramId StyleType  CDATA #IMPLIED>
 
 
 <!ELEMENT ComponentRelation (
@@ -146,7 +150,7 @@
   Style,
   ConnectionTitle?,
   RelationType?,
-  ComponentId?, 
+  ComponentId?,
   PropertiesOfRelation?,
   DependsOnConstraints?,
   IsAProperties?
@@ -1122,6 +1126,7 @@
 <!ATTLIST Idea Id CDATA #REQUIRED>
 <!ATTLIST Idea Name CDATA #REQUIRED>
 
+<!ELEMENT  Headline (#PCDATA)>
 <!ELEMENT  TriageLevel (#PCDATA)>
 <!ELEMENT  SortOrder (#PCDATA)>
 <!ELEMENT  IdeaStatus (#PCDATA)>
@@ -1198,4 +1203,3 @@
   DocumentGroupName*
 )>
 <!ATTLIST ideatoproduct Version CDATA #REQUIRED>
-
