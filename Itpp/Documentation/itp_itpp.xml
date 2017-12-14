@@ -283,6 +283,7 @@
   <Introduction></Introduction>
   <ComponentId></ComponentId>
   <ContextModelId></ContextModelId>
+  <DiagramId></DiagramId>
   <ParentViewPacketId></ParentViewPacketId>
   <ChildViewPacketId></ChildViewPacketId>
   <SiblingViewPacketId></SiblingViewPacketId>

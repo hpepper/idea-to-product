@@ -913,6 +913,7 @@ sub IncludeDiagramIfExists {
   }  else {
     $nDiagramId = 0;
   }
+  # TODO V Support having n+1 Diagrams in the same View packet.
   if ( $nDiagramId > 0 ) {
     my $szFileNameWithSuffix =  GenerateUmlDiagram($nDiagramId);
     my($szFileName, $directories, $szSuffix) = fileparse($szFileNameWithSuffix, qr/\.[^.]*/);

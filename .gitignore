@@ -6,6 +6,8 @@ test.out
 .metadata/.lock
 .metadata/.log
 .metadata/.plugins/
+.metadata/.mylyn/
+Itpp/.settings/
 *.o
 *.d
 wtitp/Debug/wtitp
