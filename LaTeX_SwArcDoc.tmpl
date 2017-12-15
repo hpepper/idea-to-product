@@ -1,9 +1,11 @@
 %% itp2doc.pl created this file.
+\providecommand\{\tightlist\}\{%
+  \setlength\{\itemsep\}\{0pt\}\setlength\{\parskip\}\{0pt\}\}
 
 % https://en.wikibooks.org/wiki/LaTeX/Page_Layout
 \documentclass[a4paper,english]\{book\}
 
-% TODO V Consider using TWO-coloumn, to improve use of paper, and keep readabiliy: 
+% TODO V Consider using TWO-coloumn, to improve use of paper, and keep readabiliy:
 %           https://en.wikibooks.org/wiki/LaTeX/Page_Layout#Margins
 \usepackage[cm]\{fullpage\}
 
@@ -100,15 +102,15 @@ the individual parts. This is the first document that a new stakeholder should r
 \paragraph*\{Someone new to the project\}
 
 Read the documentation roadmap for an understanding of the documentation
-package and the view template to understand how views are documented. 
+package and the view template to understand how views are documented.
 \begin\{itemize\}
-\item system overview and system-level design rationale. 
-\item top-level view packets of the 
+\item system overview and system-level design rationale.
+\item top-level view packets of the
 
 \begin\{itemize\}
-\item module decomposition view. 
-\item pipe-and-filter view. 
-\item deployment view. 
+\item module decomposition view.
+\item pipe-and-filter view.
+\item deployment view.
 \item work assignment view.
 \end\{itemize\}
 \end\{itemize\}
@@ -116,40 +118,40 @@ package and the view template to understand how views are documented.
 \paragraph*\{Security analyst\}
 
 Read the deployment view to understand the physical environment in
-which the system operates. 
+which the system operates.
 
 
 \paragraph*\{Maintainer\}
 
 Read the system-level rationale in Volume I. decomposition view to
 understand the units of implementation that exist and the area of
-responsibility of each. 
+responsibility of each.
 \begin\{itemize\}
 \item generalization view to see how the units relate to one another in
-terms of generalization and specialization. 
-\item Especially read the rationale in each view and in each interface specification. 
+terms of generalization and specialization.
+\item Especially read the rationale in each view and in each interface specification.
 \item top-level view packet of the deployment view to understand where each
-software unit is allocated. 
+software unit is allocated.
 \item implementation view to understand how the code units are allocated
-to the development environment. 
+to the development environment.
 \end\{itemize\}
 
 \paragraph*\{Developer\}
 
-Read the 
+Read the
 \begin\{itemize\}
 \item decomposition view to understand the basic units of software in the
-system, 
-\item uses view to see how the current subset being developed is structured, 
+system,
+\item uses view to see how the current subset being developed is structured,
 \item implementation view to see where the software resides in the development
-environment, 
-\item layered view to see which software developers are allowed to use 
+environment,
+\item layered view to see which software developers are allowed to use
 \item work assignment view to understand the other organizational units
-with which developers must coordinate. 
-\item interface specifications of other units to find out how to use them. 
+with which developers must coordinate.
+\item interface specifications of other units to find out how to use them.
 \item Then, using the mapping between views, read the relevant parts of
 the other views that reveal how their units are deployed onto hardware
-or manifested as runtime components. 
+or manifested as runtime components.
 \end\{itemize\}
 
 \paragraph*\{Project manager\}
@@ -190,7 +192,7 @@ primary presentation may show the elements and relations that come into play dur
 operation, relegating error handling or exception processing to the supporting documentation.
 
 The primary presentation is usually graphical. If so, the presentation will include a key that
-explains the meaning of every symbol used. 
+explains the meaning of every symbol used.
 
 The first part of the key identifies the notation: If
 a defined notation is being used, the key will name it and cite the document that defines it or
@@ -340,7 +342,7 @@ contains a mapping between the corresponding views on the cell's row and column 
 
 \section\{Mapping Between Module Decomposition View, Module Uses View, Allocation Implementation View, and Allocation Work Assignment View\}
 
-TODO is this always valid: 
+TODO is this always valid:
 \{\em The segments and subsystems named in the two allocation views and the module uses view are
 exactly the same elements as those named in the module decomposition view.\}
 
@@ -385,7 +387,7 @@ TODO SUPPORT SIPOC
 
 \chapter\{Module decomposition view\}
 The decomposition view consists of (TODO C Provide Packet count) view packets.
- View packet 1 shows the decomposition of the top level module (XXX TODO systemName) system into 
+ View packet 1 shows the decomposition of the top level module (XXX TODO systemName) system into
 (TODO C Make this correct foreach project:) a group of three segments, each of which is further decomposed into a number of subsystems.
 
  Subsequent view packets (2-XXX) show the further decomposition of each of the subsystems.

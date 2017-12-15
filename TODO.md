@@ -1,10 +1,12 @@
+* TODO V Include requirement references, but how and where. A component might
+  have a req for how data on an interface must look. which the other end of the
+  connection must honor.
 * TODO X next step: Update Graphviz_componentDiagram.tmpl to handle the lists.
 * TODO C Add the rest of the sections to 'Other Information' like Use case etc.
 * TODO C Support 'Behavior' entries. Initially use plantuml text syntax, generate a picture and include the picture in the tex file. Possibly include caption and maybe description?
 * TODO C Support 'UseCase(s)' Both text and graphics.
-* TODO C Generate the LaTeX output of Charter.
 * TODO C Have the component id, present, at least, in the overview sections(like the chapter start of the module decomposition chapter) to make it easier to quickly lookup the component in the xml file. Preferably also have the ID in the the graphical presentation.
-* TODO C if a referenced component does not have it's own view packet, then fully describe it under this view packet(What if the component is referenced in multiple view packets? should it be fully described in all, should one instance have the full description and the rest just reference it?)
+* TODO C if a referenced component does not have it's own view packet, then fully describe it under this view packet(What if the component is referenced in multiple view packets? should it be fully described in all, should one instance have the full description and the rest just reference it?) Update LaTeX_ViewPacket.tmpl
 * TODO C Create the the Viewpacket related views automatically. Probably just run through all the view packets and create a hash(key:component id) with a list of the View ID that is referring to that component.
 * TODO C Finish the Viewpacket operations.
 * TODO V Change the include-file names to Wiki format, like 'ViewPacketModuleSomething1' instead of 'viewpacket_module_something_1'
@@ -20,7 +22,7 @@
 * TODO V Log errors to a log file, to make it simpler to troubleshoot and recognize that there is a problem.
 * TODO V Add the HW env/overview thing, but where?
 * TODO V Make it fill out to an A4 page.
-* TODO V Have an appendix where every component is fully described, meaning all aspects of the component is desribed, included all references to everywhere, the component has been mentioned/described.
+* TODO V Have an appendix where every component is fully described, meaning all aspects of the component is described, included all references to everywhere, the component has been mentioned/described.
 * TODO V Should the Component have a Description tag with 'Aspect' attribute, so it is displayd in the description section for that ViewStyle?
 * TODO V check that a child, parent or sibling viewpacket id isn't the same as the current id: Deep recursion on subroutine "main::GenerateViewPacketRecusrsively" at ../idea-to-product/itp2doc.pl line 900.
 * TODO N  The above would also allow me to calculate the amount of view packet, I can simply use the Global viewpacket counter.

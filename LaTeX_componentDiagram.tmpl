@@ -1,6 +1,6 @@
 % http://en.wikibooks.org/wiki/LaTeX/Importing_Graphics
 
-{ if ( $szViewPacketStyleName ne "Implementation" ) {
+{ if ( defined($szViewPacketStyleName) && ( $szViewPacketStyleName ne "Implementation" ) ) {
     $OUT .= "\\begin{figure}[!htbp]\n";
     $OUT .= "  \\caption{$GraphicsCaption}\n";
     # See: http://tex.stackexchange.com/questions/47245/set-a-maximum-width-and-height-for-an-image
@@ -42,4 +42,3 @@
 % So the table and figure above wont float out of this section.
 % See: #  http://ctan.org/pkg/placeins
 \FloatBarrier
-

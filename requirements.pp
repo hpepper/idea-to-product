@@ -11,6 +11,9 @@ package {'texlive-scheme-basic': ensure => present }
 package {'perl-Text-Template': ensure => present }
 package {'perl-XML-LibXML': ensure => present }
 
+# For converting between markdown and LaTeX.
+package {'pandoc': ensure => present }
+
 # For plantuml.
 package {'java-1.8.0-openjdk-headless': ensure => present }
 # Get plantuml at: https://sourceforge.net/projects/plantuml/files/plantuml.jar/download

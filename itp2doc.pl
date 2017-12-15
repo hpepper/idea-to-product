@@ -24,6 +24,9 @@ use My::Xml;
 my $f_szVersion = "1.2.2";
 
 my $f_szDefaultItpXmlFile = "itp.xml";
+
+my $f_szTargetFormat = "latex";
+
 my $f_szAbsolutePathToCurrentScript = $FindBin::RealBin;
 #"../idea-to-product";
 my $f_xmlRoot;
@@ -78,28 +81,6 @@ my $f_szContextModel = "ContextModel";
 # TODO C Change this to a handle.
 open(LOG,">itp2doc.log") || die("!!! Unable to open file for write: itp2doc.log - $!");
 
-# -----------------------------------------------------------------
-#  Take the input hash and generate a return hash where
-#  the text, including keys have been converted to safe LaTeX text
-#    e.g. '_' becomes '\_'
-# See also: http://perldoc.perl.org/perlreftut.html
-# ---------------
-sub ConvertToLatexText {
-# for getting key-value pairs of above hash
-# foreach(keys%$hash) {
-#   # by default key stored in $_ as per above foreach statement
-#   # checks whether value of hash is another hash
-#   if(ref($hash{$_}) eq 'HASH') {
-#     # iterate the keys set of inner hash
-#     foreach my $inner_key (keys%{$hash{$_}})    {
-#       # printing key and value of inner hash
-#       print "Key:$inner_key and value:$hash{$_}{$inner_key}\n";
-#     }
-#   } else {
-#     print "Key: $_ and Value: $hash{$_}\n"
-#   }
-# }
-}
 
 # -----------------------------------------------------------------------
 # ---------------------
@@ -138,6 +119,7 @@ sub GenerateContextModel {
 
     $hComponentHashList{'TheWorkId'} = $nComponentId;
 
+    # TODO V Add Md2TargetFormat() here as well.
     $hComponentHashList{'GraphicsCaption'} = $hViewPacketInformation{'Title'};
     $hComponentHashList{'TableCaption'} = "Legend for $hViewPacketInformation{'Title'}";
     $hComponentHashList{'szViewPacketTypeName'} = $hViewPacketInformation{'ViewPacketType'};
@@ -1146,6 +1128,21 @@ sub EmptyStringIfUndef {
   return($szAnswer);
 } # end EmptyStringIfUndef.
 
+
+# -----------------------------------------------------------------
+#  Converts the text(parm2) from Markdown to the given szTargetFormat.
+# ---------------
+sub Md2TargetFormat {
+  my $szTargetFormat = shift || confess("!!! Missing TargetFormat");
+  my $szText = shift || "";
+
+  my @arOutput = `echo "$szText" | pandoc -t $szTargetFormat`;
+  # TODO V Handle errors with pandoc.
+  my $szTargetText = join("", @arOutput);
+
+  return($szTargetText);
+}
+
 # -----------------------------------------------------------------
 # ---------------
 sub GetComponentInformation {
@@ -1162,13 +1159,13 @@ sub GetComponentInformation {
     confess("EEE Unable to get node for Tag: '$szTagNameToFind' and Id = $nComponentId") unless(defined($xmlNode));
 
     $hComponentInformation{'Id'} = $nComponentId;
-    $hComponentInformation{'Name'} = $xmlNode->getAttribute("Name");
-    $hComponentInformation{'Summary'} = GetChildDataBySingleTagName($xmlNode, "Summary");
-    $hComponentInformation{'Responsibilities'} = GetChildDataBySingleTagName($xmlNode, "Responsibilities");
-    $hComponentInformation{'BehaviorDescription'} = GetChildDataBySingleTagName($xmlNode, "BehaviorDescription");
+    $hComponentInformation{'Name'} = Md2TargetFormat($f_szTargetFormat,$xmlNode->getAttribute("Name"));
+    $hComponentInformation{'Summary'} = Md2TargetFormat($f_szTargetFormat,GetChildDataBySingleTagName($xmlNode, "Summary"));
+    $hComponentInformation{'Responsibilities'} = Md2TargetFormat($f_szTargetFormat,GetChildDataBySingleTagName($xmlNode, "Responsibilities"));
+    $hComponentInformation{'BehaviorDescription'} = Md2TargetFormat($f_szTargetFormat,EmptyStringIfUndef(GetChildDataBySingleTagName($xmlNode, "BehaviorDescription")));
     $hComponentInformation{'Interfaces'} = GetChildDataBySingleTagName($xmlNode, "Interfaces");
-    $hComponentInformation{'SourceRepository'} = GetChildDataBySingleTagName($xmlNode, "SourceRepository");
-    $hComponentInformation{'ArtifactRepository'} = GetChildDataBySingleTagName($xmlNode, "ArtifactRepository");
+    $hComponentInformation{'SourceRepository'} = Md2TargetFormat($f_szTargetFormat,GetChildDataBySingleTagName($xmlNode, "SourceRepository"));
+    $hComponentInformation{'ArtifactRepository'} = Md2TargetFormat($f_szTargetFormat,GetChildDataBySingleTagName($xmlNode, "ArtifactRepository"));
     $hComponentInformation{'BuildCycle'} = GetChildDataBySingleTagName($xmlNode, "BuildCycle");
     $hComponentInformation{'Contact'} = EmptyStringIfUndef(GetChildDataBySingleTagName($xmlNode, "Contact"));
     $hComponentInformation{'License'} = EmptyStringIfUndef(GetChildDataBySingleTagName($xmlNode, "License"));
