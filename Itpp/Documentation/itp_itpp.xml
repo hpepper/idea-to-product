@@ -3,7 +3,7 @@
 
 <!--  Documentation -->
 
-<ideatoproduct Version="0.5.1">
+<ideatoproduct Version="0.6.1">
 
 <!-- Should I have an idea-bank page that holds the differen ideas, who came up with the, who works on them etc. -->
 <!-- Mainly based on The Myths of Innovation (Scott Berkun) -->
@@ -313,7 +313,10 @@
 <!-- The component information is read by: GetComponentInformation() in itp2doc.pl -->
 <!--
     Summary: Used in legend list, and in the detailed description of the Viewpacket.
+         TODO V could summary benefit from being formulated partly as a 'StoryCard'?
     Responsibilities: Used in the detailed description of the Viewpacket.
+    BehaviorDescription: Used in the view template 'Element Behavior' verbatim.
+         - Describe an overview of what this component does.
     VisibilityOfInterfaces:
     Interface: Describe what interfaces the component has, like paramters and return values.
 
@@ -340,6 +343,7 @@ TODO C Provide an in depth description that will be provided in the viewpacket f
 <Component Id="" Name="">
   <Summary></Summary>
   <Responsibilities></Responsibilities>
+  <BehaviorDescription></BehaviorDescription>
   <VisibilityOfInterfaces></VisibilityOfInterfaces>
   <Interface></Interface>
   <License></License>

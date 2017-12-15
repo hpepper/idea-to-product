@@ -1,4 +1,4 @@
-<!-- Version: 0.6.0 -->
+<!-- Version: 0.6.1 -->
 <!-- validate xml: clear; xmllint -valid  itp.xml  > t 2>u; head u -->
 <!-- the '-valid' actually has a double '-' in front but dtd can't have that. -->
 <!ELEMENT Product (
@@ -98,7 +98,7 @@
 <!ELEMENT Component (
   Summary,
   Responsibilities,
-  Overview?,
+  BehaviorDescription?,
   VisibilityOfInterfaces,
   Interface?,
   License*,

@@ -21,7 +21,7 @@ use My::Xml;
 # ===========================================================================
 #                          V A R I A B L E S
 # ===========================================================================
-my $f_szVersion = "1.2.1";
+my $f_szVersion = "1.2.2";
 
 my $f_szDefaultItpXmlFile = "itp.xml";
 my $f_szAbsolutePathToCurrentScript = $FindBin::RealBin;
@@ -1164,6 +1164,7 @@ sub GetComponentInformation {
     $hComponentInformation{'Name'} = $xmlNode->getAttribute("Name");
     $hComponentInformation{'Summary'} = GetChildDataBySingleTagName($xmlNode, "Summary");
     $hComponentInformation{'Responsibilities'} = GetChildDataBySingleTagName($xmlNode, "Responsibilities");
+    $hComponentInformation{'BehaviorDescription'} = GetChildDataBySingleTagName($xmlNode, "BehaviorDescription");
     $hComponentInformation{'Interfaces'} = GetChildDataBySingleTagName($xmlNode, "Interfaces");
     $hComponentInformation{'SourceRepository'} = GetChildDataBySingleTagName($xmlNode, "SourceRepository");
     $hComponentInformation{'ArtifactRepository'} = GetChildDataBySingleTagName($xmlNode, "ArtifactRepository");

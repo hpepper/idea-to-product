@@ -32,17 +32,19 @@
 {$TopModule{Summary}}
 
 {$TopModule{Responsibilities}}
- 
+
 % TODO V Should I provide an in-depth description here?
 
 % TODO V Add: Visibility: TODO C calculate this.
-% TODO V Add: Implementation information: TODO C calculate this. 
+% TODO V Add: Implementation information: TODO C calculate this.
 
 % TODO N Sort the list alphabetically.
 % TODO C provide a table here or a description list, I think I like the later better.
 \subsubsection*\{{$ViewPacketType} {$ViewPacketStyle} for {$TopModule{Name}}\}
 {foreach my $hComponent (@ComponentList) {
-  $OUT .= "\\subparagraph\{$hComponent->{Name}\} $hComponent->{Summary}.\n$hComponent->{Responsibilities}\n";
+    $OUT .= "\\subparagraph\{$hComponent->{Name}\} $hComponent->{Summary}\n";
+    $OUT .= "$hComponent->{Responsibilities}\n";
+    $OUT .= "$hComponent->{BehaviorDescription}\n";
   }
 }
 
@@ -61,13 +63,9 @@ The relation type in view is {$ViewPacketStyle}. There are no exceptions or addi
 }
 
 \subsubsection*\{Element Behavior\}
-<!-- TODO V Some elements have complex interactions with their environment.
- For purposes of understanding or analysis it is oftern incumbent on the architect
-  to specify element behavior.
-  -->
-<!--  -->
+{$TopModule{BehaviorDescription}}
 
-<!-- TODO V Support include an array of diagrams. -->
+% TODO V Support include an array of diagrams.
 \input\{{$DiagramFileName}\}
 
 
