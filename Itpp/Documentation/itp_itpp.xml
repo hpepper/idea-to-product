@@ -241,7 +241,8 @@
   <AllocationWorkAssignmentViewPacketId Order="1"></AllocationWorkAssignmentViewPacketId>
 </SoftwareArchitectureDocumentation>
 
-<ViewPacket Id="" Title="">
+<ViewPacket Id="">
+  <Title></Title>
   <!-- Types:
      Module - the system as units of implementation
      C&C(Component-and-Connector) - the system as units of runtime execution
@@ -274,13 +275,15 @@
    ChildViewPacketId*: Can be zero or more entries, that are tightly related to this view.
     -->
 <!-- ViewpacketTemplate
-<ViewPacket Id="" Title="">
+<ViewPacket Id="">
+  <Title></Title>
   <ViewPacketType></ViewPacketType>
   <ViewPacketStyle></ViewPacketStyle>
   <ComponentRecurseLevel></ComponentRecurseLevel>
   <Introduction></Introduction>
   <ComponentId></ComponentId>
   <ContextModelId></ContextModelId>
+  <DiagramId></DiagramId>
   <ParentViewPacketId></ParentViewPacketId>
   <ChildViewPacketId></ChildViewPacketId>
   <SiblingViewPacketId></SiblingViewPacketId>

@@ -1,3 +1,8 @@
+Add 'Variability Guide' to LaTeX_ViewPacket.tmpl
+Add 'Design rationale' to LaTeX_ViewPacket.tmpl
+Add 'Results of analysis' to LaTeX_ViewPacket.tmpl
+Add 'Assumptions' to LaTeX_ViewPacket.tmpl
+Add 'Other Information' to LaTeX_ViewPacket.tmpl
 GenerateModulePart();
 GenerateCAndConnectorsPart();
 GenerateAllocationPart();
@@ -6,7 +11,7 @@ ContextModel
 Sipoc thing
 Generate UML stuff using plantuml
 Usecases
-Requirements
+Add Requirements to the Component. (As references to requirements)
 
 HTML page
 Wiki pages

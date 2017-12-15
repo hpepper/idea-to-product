@@ -30,7 +30,8 @@
   <SipocId></SipocId>
 
 <!-- this goes into ? -->
-  <ModuleDecompositionViewPacketId Order="1"></ModuleDecompositionViewPacketId>
+  <ModuleDecompositionViewPacketId Order="1">1</ModuleDecompositionViewPacketId>
+  <ModuleDecompositionViewPacketId Order="2">2</ModuleDecompositionViewPacketId>
   <ModuleUsesViewPacketId Order="1"></ModuleUsesViewPacketId>
   <ModuleGeneralizationViewPacketId Order="1"></ModuleGeneralizationViewPacketId>
   <ModuleLayeredViewPacketId Order="1"></ModuleLayeredViewPacketId>

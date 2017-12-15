@@ -42,8 +42,12 @@ private:
 	int GenerateMappingBetweenViews(std::ofstream *);
 	int GenerateDirectory(std::ofstream *);
 	int GenerateRationaleBackgroundDesignConstraints(std::ofstream *);
-	int GenerateModulePart();
-	int GenerateCAndConnectorsPart();
+	int GenerateModulePart(std::ofstream *);
+	int GenerateModuleDecomposition(std::ofstream *);
+	int GenerateModuleUses(std::ofstream *);
+	int GenerateModuleGeneralization(std::ofstream *);
+	int GenerateModuleLayered(std::ofstream *);
+	int GenerateComponentAndConnectorsPart();
 	int GenerateAllocationPart();
 	int GenerateAppendix();
 
