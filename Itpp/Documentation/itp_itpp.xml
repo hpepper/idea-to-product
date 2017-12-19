@@ -3,7 +3,7 @@
 
 <!--  Documentation -->
 
-<ideatoproduct Version="0.6.1">
+<ideatoproduct Version="0.7.0">
 
 <!-- Should I have an idea-bank page that holds the differen ideas, who came up with the, who works on them etc. -->
 <!-- Mainly based on The Myths of Innovation (Scott Berkun) -->
@@ -241,8 +241,7 @@
   <AllocationWorkAssignmentViewPacketId Order="1"></AllocationWorkAssignmentViewPacketId>
 </SoftwareArchitectureDocumentation>
 
-<ViewPacket Id="">
-  <Title></Title>
+<ViewPacket Id="" Title="">
   <!-- Types:
      Module - the system as units of implementation
      C&C(Component-and-Connector) - the system as units of runtime execution
@@ -388,14 +387,19 @@ TODO C Provide an in depth description that will be provided in the viewpacket f
                search for all ComponentAId to see which connections that module id has.
   ComponentBId: The satelite of entity connecting to the store.
   Style: the Style: shared-data, communicating-proccesses, etc.
+  ConnectionTitle: The title that goes on the relation link.
+  RelationType: ?
+  ComponentId: ?
   PropertiesOfRelation: RO(Read only), WO(Write Only), RW(Read-Write).
   ConnectorId: Id to the Connector structure, which in turn describes the connector itselv
                   Multiple Component can share the same Connector description, e.g. TCP.
+  InterfaceDocumentationId: Ref to InterfaceDocumentation.
 
 <ComponentRelation Id="">
   <ComponentAId></ComponentAId>
   <ComponentBId></ComponentBId>
   <Style></Style>
+  <ConnectionTitle></ConnectionTitle>
   <PropertiesOfRelation></PropertiesOfRelation>
   <RelationType></RelationType>
   <ComponentId></ComponentId>
@@ -405,7 +409,60 @@ TODO C Provide an in depth description that will be provided in the viewpacket f
 </ComponentRelation>
 -->
 
+<InterfaceDocumentation Id="">
+  <Identity></Identity>
+  <ResourceId></ResourceId>
+  <DataType Name=""></DataType>
+  <Constant Name=""></Constant>
+  <Variability></Variability>
+  <QualityAttributeCharacteristics></QualityAttributeCharacteristics>
+  <RationaleAndDesignIssues></RationaleAndDesignIssues>
+  <UsageGuide></UsageGuide>
+</InterfaceDocumentation>
 
+<!-- InterfaceDocumentationTemplate
+  Identity: Seems to be adescription.
+  ResourceId: Reference to resource descriptions.
+  DataType: Name i s in the attribute, description is in the PCDATA.
+  Constant: As DataType.
+  Variability:
+  QualityAttributeCharacteristics:
+  RationaleAndDesignIssues:
+  UsageGuide:
+
+<InterfaceDocumentation Id="">
+  <Identity></Identity>
+  <ResourceId></ResourceId>
+  <DataType Name=""></DataType>
+  <Constant Name=""></Constant>
+  <Variability></Variability>
+  <QualityAttributeCharacteristics></QualityAttributeCharacteristics>
+  <RationaleAndDesignIssues></RationaleAndDesignIssues>
+  <UsageGuide></UsageGuide>
+</InterfaceDocumentation>
+-->
+
+<Resource Id="">
+  <Description></Description>
+  <Parameter Name=""></Parameter>
+  <PreCondition></PreCondition>
+  <PostCondition></PostCondition>
+  <Errorcode Code=""></Errorcode>
+</Resource>
+<!-- ResourceTemplate
+  Description:
+  Parameter: Name of parm in 'Name' description of parm in PCDATA.
+  PreCondition:
+  PostCondition:
+  Errorcode: the code value is in 'Code' attr, description in PCDATA.
+<Resource Id="">
+  <Description></Description>
+  <Parameter Name=""></Parameter>
+  <PreCondition></PreCondition>
+  <PostCondition></PostCondition>
+  <Errorcode Code=""></Errorcode>
+</Resource>
+-->
 
 <StoryCard Id="" HeadLine="">
   <ProjectId></ProjectId>
@@ -423,6 +480,91 @@ TODO C Provide an in depth description that will be provided in the viewpacket f
     <Description></Description>
   </DictionaryDescription>
 </Dictionary>
+
+<ArchitectureDecision Id="">
+  <Issue></Issue>
+  <FinalDecision></FinalDecision>
+  <Status></Status>
+  <Group></Group>
+  <Assumption></Assumption>
+  <Option></Option>
+  <Argument></Argument>
+  <Implication></Implication>
+  <RelatedDecisionId></RelatedDecisionId>
+  <RelatedRequirementId></RelatedRequirementId>
+  <AffectedArtifact></AffectedArtifact>
+  <Notes></Notes>
+</ArchitectureDecision>
+<!-- ArchitectureDecisionTemplate:
+  (From Documenting Software Architectures 2nd ed, p240)
+  - Issue: State the architectural design issue being addressed.
+           This should leave no questions about the reason why this
+           issue is to be addressed now.
+  - FinalDecision: Clearly state the solution chosen. It is the
+           selection of one of the positions that the architect could
+           have taken.
+  - Status: State the status of the decision, such as pending,
+           decided, or approved. (This is not the status of implementing
+           the decision.)
+  - Group: Name a containing group. Grouping allows for filtering
+          based on the technical stakeholder interests. A simple
+          group label, such as “integration,” “presentation,”
+          “data,” and so on can be used to help organize the set of
+          decisions. For example, the data architects reviewing the
+          decisions can focus only on the decisions classified as data.
+  - Assumptions: Clearly describe the underlying assumptions
+          in the environment in which a decision is being made.
+          These could be cost, schedule, technology, and so on.
+          Note that constraints in the environment (such as a list of
+          accepted technology standards, an enterprise architecture,
+          or commonly employed patterns) may limit the set of
+          other options considered.
+  - Options: List options (that is, options or positions)
+          considered. Explain options with sufficient
+          detail to judge their suitability; refer to external documentation
+          to do so if necessary. Only viable positions should be
+          described here.
+  - Argument: Outline why a position was selected. This is probably as important
+          as the decision itself. The argument for a decision can include items
+          such as implementation cost, total cost of ownership, time to market,
+          and availability of required development resources.
+  - Implications: Describe the decision’s implications.
+  - Related Decisions: List decisions related to this one. A traceability matrix
+          or decision tree is useful, as is showing complex relations
+          diagrammatically such as with object models. Useful relations among
+          decisions include causality (which decisions caused other ones),
+          structure (showing decisions’ parents or children, corresponding to
+          architecture elements at higher or lower levels), or temporality
+          (which decisions came before or after others).
+  - Related Requirements: Map decisions to objectives or requirements, to show
+          accountability. Each architecture decision is assessed as to its
+          contribution to each major objective. We can then assess how well the
+          objective is met across all decisions, as part of an overall
+          architecture evaluation.
+  - Affected Artifacts: List the architecture elements and/or relations
+          affected by this decision. You might also list the effects on other
+          design or scope decisions, pointing to the documents where those
+          decisions are described. You might also include external artifacts
+          upstream and downstream of the architecture, as well as management
+          artifacts such as budgets and schedules.
+  - Notes: Capture notes and issues that are discussed during the decision
+          process.
+
+<ArchitectureDecision Id="">
+  <Issue></Issue>
+  <FinalDecision></FinalDecision>
+  <Status></Status>
+  <Group></Group>
+  <Assumption></Assumption>
+  <Option></Option>
+  <Argument></Argument>
+  <Implication></Implication>
+  <RelatedDecisionId></RelatedDecisionId>
+  <RelatedRequirementId></RelatedRequirementId>
+  <AffectedArtifact></AffectedArtifact>
+  <Notes></Notes>
+</ArchitectureDecision>
+-->
 
 <Design Id="" Headline="">
   <Description></Description>

@@ -1,4 +1,4 @@
-<!-- Version: 0.6.1 -->
+<!-- Version: 0.7.0 -->
 <!-- validate xml: clear; xmllint -valid  itp.xml  > t 2>u; head u -->
 <!-- the '-valid' actually has a double '-' in front but dtd can't have that. -->
 <!ELEMENT Product (
@@ -116,7 +116,8 @@
   Functionality,
   Security,
   SchedulerPriority,
-  DiagramId*
+  DiagramId*,
+  ArchitectureDecisionId*
 )>
 <!ATTLIST Component Id CDATA #REQUIRED>
 <!ATTLIST Component Name CDATA #REQUIRED>
@@ -142,7 +143,31 @@
 <!ELEMENT  SchedulerPriority (#PCDATA)>
 <!ELEMENT  DiagramId (#PCDATA)>
 <!ATTLIST DiagramId StyleType  CDATA #IMPLIED>
+<!ELEMENT  ArchitectureDecisionId (#PCDATA)>
 
+<!ELEMENT ArchitectureDecision (
+  Issue,
+  FinalDecision,
+  Status,
+  Group+,
+  Assumption+,
+  Option+,
+  Argument*,
+  Implication*,
+  RelatedDecisionId*,
+  RelatedRequirementId*,
+  AffectedArtifact*,
+  Notes
+)>
+
+<!ATTLIST ArchitectureDecision Id CDATA #REQUIRED>
+<!ELEMENT FinalDecision (#PCDATA)>
+<!ELEMENT Assumption (#PCDATA)>
+<!ELEMENT Option (#PCDATA)>
+<!ELEMENT Argument  (#PCDATA)>
+<!ELEMENT Implication  (#PCDATA)>
+<!ELEMENT RelatedDecisionId  (#PCDATA)>
+<!ELEMENT AffectedArtifact  (#PCDATA)>
 
 <!ELEMENT ComponentRelation (
   ComponentAId,
@@ -153,6 +178,7 @@
   ComponentId?,
   PropertiesOfRelation?,
   DependsOnConstraints?,
+  InterfaceDocumentationId*,
   IsAProperties?
 )>
 <!ATTLIST ComponentRelation Id CDATA #REQUIRED>
@@ -168,6 +194,52 @@
 <!ELEMENT PropertiesOfRelation   (#PCDATA)>
 <!ELEMENT DependsOnConstraints    (#PCDATA)>
 <!ELEMENT IsAProperties   (#PCDATA)>
+<!ELEMENT InterfaceDocumentationId   (#PCDATA)>
+
+<!-- -->
+<!ELEMENT InterfaceDocumentation (
+  Identity,
+  ResourceId+,
+  DataType*,
+  Constant*,
+  Variability*,
+  QualityAttributeCharacteristics?,
+  RationaleAndDesignIssues?,
+  UsageGuide?
+)>
+<!ATTLIST InterfaceDocumentation Id CDATA #REQUIRED>
+
+<!ATTLIST DataType Name CDATA #REQUIRED>
+<!ATTLIST Constant Name CDATA #REQUIRED>
+
+<!ELEMENT Identity (#PCDATA)>
+<!ELEMENT ResourceId  (#PCDATA)>
+<!ELEMENT DataType  (#PCDATA)>
+<!ELEMENT Constant  (#PCDATA)>
+<!ELEMENT Variability  (#PCDATA)>
+<!ELEMENT QualityAttributeCharacteristics  (#PCDATA)>
+<!ELEMENT RationaleAndDesignIssues (#PCDATA)>
+<!ELEMENT UsageGuide  (#PCDATA)>
+
+
+<!ELEMENT Resource (
+  Description,
+  Parameter*,
+  PreCondition*,
+  PostCondition*,
+  Errorcode*
+)>
+<!ATTLIST Resource Id CDATA #REQUIRED>
+
+<!ELEMENT Parameter (#PCDATA)>
+<!ATTLIST Parameter Name CDATA #REQUIRED>
+<!ELEMENT PreCondition  (#PCDATA)>
+<!ELEMENT PostCondition  (#PCDATA)>
+
+<!ATTLIST Errorcode Code CDATA #REQUIRED>
+<!ELEMENT Errorcode   (#PCDATA)> <!-- content is a textual rep/descr of the error. -->
+
+
 
 <!-- TODO V Do I have any use for 'ComponentId' or should it be removed? -->
 <!ELEMENT Diagram (
@@ -1169,6 +1241,8 @@
   ViewPacket*,
   Component*,
   ComponentRelation*,
+  InterfaceDocumentation*,
+  Resource*,
   Activity*,
   Connector*,
   Implementation*,
@@ -1176,6 +1250,7 @@
   StoryCard*,
   Stakeholder*,
   Dictionary*,
+  ArchitectureDecision*,
   Design*,
   History*,
   Requirement*,
