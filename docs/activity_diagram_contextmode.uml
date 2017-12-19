@@ -1,0 +1,16 @@
+@startuml
+
+:GenerateComponentDiagramAndLegend;
+:GenerateComponentDiagramAndLegendRecursively;
+:GetComponentInformation;
+:GetSubComponentList;
+if (Module/CnC/SubType)
+  :GetComponentRelationsList;
+  :GetNodeArrayByTagName;
+elseif(Allocation)
+  :GetModuleSubComponentList;
+endif
+while(arSubComponentIdList)
+  :GenerateComponentDiagramAndLegendRecursively;
+endwhile
+@enduml

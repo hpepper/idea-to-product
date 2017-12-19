@@ -423,21 +423,76 @@ The decomposition view consists of (TODO C Provide Packet count) view packets.
   }
 }
 
-% TODO V If the list is not empty then print the chapter header.
-\chapter\{C\&C comunicating-processes view\}
-
-{ foreach my $szViewPacketName (@arCnCCommunicatingProcessesViewPackets) {
-    $OUT .= "\\input{$szViewPacketName}\n";
-  }
+{
+  if ($#arCnCPipeAndFilterViewPackets > -1) {
+    $OUT .= "\\chapter{C\\&C Pipe-and-Filter view}\n";
+    foreach my $szViewPacketName (@arCnCPipeAndFilterViewPackets) {
+      $OUT .= "\\input{$szViewPacketName}\n";
+    } # end foreach
+  } # endif entries available.
 }
 
-% TODO V If the list is not empty then print the chapter header.
-\chapter\{C\&C shared-data view\}
 
-{ foreach my $szViewPacketName (@arCnCSharedDataViewPackets) {
-    $OUT .= "\\input{$szViewPacketName}\n";
-  }
+{
+  if ($#arCnCClientServerViewPackets > -1) {
+    $OUT .= "\\chapter{C\\&C Client-Server view}\n";
+    foreach my $szViewPacketName (@arCnCClientServerViewPackets) {
+      $OUT .= "\\input{$szViewPacketName}\n";
+    } # end foreach
+  } # endif entries available.
 }
+{
+  if ($#arCnCCommunicatingProcessesViewPackets > -1) {
+    $OUT .= "\\chapter{C\\&C Communicating-Processes view}\n";
+    foreach my $szViewPacketName (@arCnCCommunicatingProcessesViewPackets) {
+      $OUT .= "\\input{$szViewPacketName}\n";
+    } # end foreach
+  } # endif entries available.
+}
+
+{
+  if ($#arCnCPeerToPeerViewPackets > -1) {
+    $OUT .= "\\chapter{C\\&C Peer-to-Peer view}\n";
+    foreach my $szViewPacketName (@arCnCPeerToPeerViewPackets) {
+      $OUT .= "\\input{$szViewPacketName}\n";
+    } # end foreach
+  } # endif entries available.
+}
+{
+  if ($#arCnCPublishSubscribeViewPackets > -1) {
+    $OUT .= "\\chapter{C\\&C Publish-Subscribe view}\n";
+    foreach my $szViewPacketName (@arCnCPublishSubscribeViewPackets) {
+      $OUT .= "\\input{$szViewPacketName}\n";
+    } # end foreach
+  } # endif entries available.
+}
+{
+  if ($#arCnCProduceConsumeViewPackets > -1) {
+    $OUT .= "\\chapter{C\\&C Produce-Consume view}\n";
+    foreach my $szViewPacketName (@arCnCProduceConsumeViewPackets) {
+      $OUT .= "\\input{$szViewPacketName}\n";
+    } # end foreach
+  } # endif entries available.
+}
+{
+  if ($#arCnCSharedDataViewPackets > -1) {
+    $OUT .= "\\chapter{C\\&C Shared-Data view}\n";
+    foreach my $szViewPacketName (@arCnCSharedDataViewPackets) {
+      $OUT .= "\\input{$szViewPacketName}\n";
+    } # end foreach
+  } # endif entries available.
+}
+
+{
+  if ($#arCnCMasterSlaveViewPackets > -1) {
+    $OUT .= "\\chapter{C\\&C Master-Slave view}\n";
+    foreach my $szViewPacketName (@arCnCMasterSlaveViewPackets) {
+      $OUT .= "\\input{$szViewPacketName}\n";
+    } # end foreach
+  } # endif entries available.
+}
+
+
 
 
 

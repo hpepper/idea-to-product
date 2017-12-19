@@ -31,7 +31,14 @@
 { foreach my $refhRelation (@arRelationList) {
      die("EEE Relations 'Name' not define for \n") unless(defined($refhRelation->{'Name'}));
      die("EEE Relations 'Summary' not define for \n") unless(defined($refhRelation->{'Summary'}));
-     $OUT .= "$refhRelation->{'Name'} & $refhRelation->{'Summary'} & \\\\ \\hline\n";
+     if (defined($refhRelation->{'Name'})) {
+       $OUT .= "$refhRelation->{'Name'}";
+     }
+     $OUT .= " & ";
+     if (defined($refhRelation->{'Summary'})) {
+       $OUT .= "$refhRelation->{'Summary'}";
+     }
+     $OUT .= " & \\\\ \\hline\n";
   }
 }
   \end\{tabular\}
