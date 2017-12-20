@@ -122,7 +122,7 @@ sub ListAtrributeforTag {
       push(@arValues, $szAttributeValue);
     } #endif right attr.
   } # end for each.
-  
+
   return(@arValues);
 } # listattributefortag.
 #****
@@ -134,15 +134,15 @@ sub ListAtrributeforTag {
 # NAME
 #   LoadXmlStructure
 # FUNCTION
-#  
-#   Create the Parser, load the xml file, and return the root of the document. 
+#
+#   Create the Parser, load the xml file, and return the root of the document.
 #
 # INPUTS
 #   * szFileName -- name of XML file.
 #
 # OUTPUT
 #
-# XML tree loaded.  
+# XML tree loaded.
 #
 # RETURN VALUE
 #  ($root, $tree)
@@ -154,7 +154,7 @@ sub ListAtrributeforTag {
 #  It does not verify if the file exist, before attempting to read it.
 #
 #  It does no look for a version of the XML file. This should be implemented.
-# 
+#
 #
 # SOURCE
 sub LoadXmlStructure {
@@ -189,18 +189,18 @@ sub LoadXmlStructure {
 # NAME
 #   LoadXmlTree
 # FUNCTION
-#  
-#   Create the Parser, load the xml file, and return the root of the document. 
+#
+#   Create the Parser, load the xml file, and return the root of the document.
 #
 # INPUTS
 #   * szFileName -- name of XML file.
 #
 # OUTPUT
 #
-# XML tree loaded.  
+# XML tree loaded.
 #
 # RETURN VALUE
-#  
+#
 #  pointer to root of document tree, if successfull.
 #  return 'undef' if fail.
 #
@@ -209,7 +209,7 @@ sub LoadXmlStructure {
 #  It does not verify if the file exist, before attempting to read it.
 #
 #  It does no look for a version of the XML file. This should be implemented.
-# 
+#
 #
 # SOURCE
 sub LoadXmlTree {
@@ -250,7 +250,7 @@ sub LoadXmlTree {
 
   Mostly used on rel_components.xml.
   Call LoadXmlTree($szFileName), find the entry with the correct parm2 name. Return the pointer to that element.
-   If parm3 is non-empty, then the component name must match that as well as the version number. 
+   If parm3 is non-empty, then the component name must match that as well as the version number.
   (Return pointer to element with both correct version and component name).
 
 =item Input
@@ -325,22 +325,22 @@ sub SetActiveRoot {
 # NAME
 #   GetFirstSubNodeValues
 # FUNCTION
-#  
-#  
+#
+#
 #
 # INPUTS
 #   *  -- .
 #
 # OUTPUT
 #
-#  
+#
 #
 # RETURN VALUE
-#  
+#
 #
 # NOTES
 #
-# 
+#
 #
 # SOURCE
 sub GetFirstSubNodeValues {
@@ -362,7 +362,7 @@ sub GetFirstSubNodeValues {
   }
   foreach my $xmlTmpNode (@arNodes) {
     my $szAnswer=$xmlTmpNode->textContent();
-    #  print "Content of $#arNodes $xmlTmpNode  <$szTagName>: $szAnswer\n"; 
+    #  print "Content of $#arNodes $xmlTmpNode  <$szTagName>: $szAnswer\n";
     push(@arAnswer, $szAnswer);
   } # end foreach.
 
@@ -374,10 +374,10 @@ sub GetFirstSubNodeValues {
 # ----------------------------------------------------------------------------
 #****f* Xml.pm/GetSingleChildNodeByTagAndAttribute
 # NAME
-# 
+#
 # FUNCTION
-#  
-#  
+#
+#
 #
 # INPUTS
 #   * xmlNode -- XML Node from whence the search will start.
@@ -393,7 +393,7 @@ sub GetFirstSubNodeValues {
 #
 # NOTES
 #  This should be refactored to be a subset of GetListOfChildNodesByTagAndAttribute
-# 
+#
 #
 # SOURCE
 sub GetSingleChildNodeByTagAndAttribute {
@@ -421,10 +421,10 @@ sub GetSingleChildNodeByTagAndAttribute {
 # ----------------------------------------------------------------------------
 #****f* Xml.pm/GetSingleChildNodeByTagName
 # NAME
-# 
+#
 # FUNCTION
-#  
-#  
+#
+#
 #
 # INPUTS
 #   * xmlNode -- XML Node from whence the search will start.
@@ -438,7 +438,7 @@ sub GetSingleChildNodeByTagAndAttribute {
 #  First node that fullfills the criteria of the search.
 #
 # NOTES
-# 
+#
 #
 # SOURCE
 sub GetSingleChildNodeByTagName {
@@ -481,8 +481,8 @@ sub GetSingleChildNodeValueByTagAndAttribute {
 # NAME
 #   GetDataArrayByTagAndAttribute
 # FUNCTION
-#  
-#  
+#
+#
 #
 # INPUTS
 #   * xmlNode -- XML Node from whence the search will start.
@@ -492,15 +492,15 @@ sub GetSingleChildNodeValueByTagAndAttribute {
 #
 # OUTPUT
 #
-#  
+#
 #
 # RETURN VALUE
-#  
+#
 #
 # NOTES
 #
 # SEE ALSO
-#   utGetDataArrayByTagAndAttribute.001 
+#   utGetDataArrayByTagAndAttribute.001
 #
 # SOURCE
 sub GetDataArrayByTagAndAttribute {
@@ -535,8 +535,8 @@ sub GetDataArrayByTagAndAttribute {
 # FUNCTION
 #  Get a list of nodes, with the given tag name.
 #    If the szAttributeName is three spaces then only the szTagName is used.
-#    
-#  
+#
+#
 #
 # INPUTS
 #   * xmlNode -- XML Node from whence the search will start.
@@ -546,14 +546,14 @@ sub GetDataArrayByTagAndAttribute {
 #
 # OUTPUT
 #
-#  
+#
 #
 # RETURN VALUE
-#  
+#
 #
 # NOTES
 #
-# 
+#
 #
 # SOURCE
 sub GetNodeArrayByTagAndAttribute {
@@ -619,7 +619,7 @@ sub GetNodeArrayByTagName {
 #   GetDataArrayByTagName
 # FUNCTION
 #  Return an array with the data from all nodes identified by tagname.
-#  
+#
 #
 # INPUTS
 #   * xmlNode -- XML Node from where to start search.
@@ -646,12 +646,12 @@ sub GetDataArrayByTagName {
   my $xmlTagName=$_[1];
 
   if ( ( ! defined($xmlNode) ) || ( $xmlNode == 0 ) ) {
-    confess "GetChildDataBySingleTagName(): zero pointer or undefined pointer for ($xmlTagName) ", __FILE__, " line ", __LINE__, "\n";
+    confess "GetDataArrayByTagName(): zero pointer or undefined pointer for ($xmlTagName) ", __FILE__, " line ", __LINE__, "\n";
   }
 
 
   my @arReturnList;
-  
+
   # Read the Files list
   my @arElementList = $xmlNode->getElementsByTagName($xmlTagName);
   foreach my $szElement (@arElementList) {
@@ -687,14 +687,14 @@ sub GetArrayOfContentForEachElementByTagSortedByAttribute {
 # NAME
 #   GetDataHashByTagName
 # FUNCTION
-#  
+#
 #  Use the root, get the list sub tags
 #   Read the value of each tag.
 #
 # INPUTS
 #   * xmlNode -- xml node.
 #   * xmlTagName -- tagname.
-# 
+#
 #
 # OUTPUT
 #  Nothing.
@@ -706,7 +706,7 @@ sub GetArrayOfContentForEachElementByTagSortedByAttribute {
 #    Since space can't be used as Attribute names.
 #
 # NOTES
-#  
+#
 # EXAMPLE
 #   See utGetDataHashByTagName.001
 #
@@ -729,12 +729,12 @@ sub GetDataHashByTagName {
 
   # Barf if the node isn't defined.
   if ( ( ! defined($xmlNode) ) || ( $xmlNode == 0 ) ) {
-    die "GetChildDataBySingleTagName(): zero pointer or undefined pointer for ($xmlTagName) ", __FILE__, " line ", __LINE__, "\n";
+    die "GetDataHashByTagName(): zero pointer or undefined pointer for ($xmlTagName) ", __FILE__, " line ", __LINE__, "\n";
   }
 
   my @arReturnList;
 
-  
+
   # Get the list of subnodes identified by tagname.
   my @arNodeList = $xmlNode->getElementsByTagName($xmlTagName);
 
@@ -775,7 +775,7 @@ sub GetDataHashByTagName {
 # NAME
 #   GetDataHashByTagNameAndAttribute
 # FUNCTION
-#  
+#
 #  Use the root, get the list sub tags
 #   Read the value of each tag.
 #
@@ -784,7 +784,7 @@ sub GetDataHashByTagName {
 #   * xmlTagName -- tagname.
 #   * szAttributeName -- Attribute name to look for.
 #   * szAttributeContent -- Value in attribute to look for.
-# 
+#
 #
 # OUTPUT
 #  Nothing.
@@ -796,7 +796,7 @@ sub GetDataHashByTagName {
 #    Since space can't be used as Attribute names.
 #
 # NOTES
-#  
+#
 # EXAMPLE
 #   See utGetDataHashByTagNameAndAttribute.001
 #
@@ -826,7 +826,7 @@ sub GetDataHashByTagNameAndAttribute {
 
   my @arReturnList;
 
-  
+
   # Get the list of subnodes identified by tagname.
   my @arNodeList = $xmlNode->getElementsByTagName($xmlTagName);
 
@@ -869,12 +869,12 @@ sub GetDataHashByTagNameAndAttribute {
 # ----------------------------------------------------------------------------
 #****f* Xml.pm/GetChildDataBySingleTagName
 # NAME
-# 
+#
 # FUNCTION
-#  
+#
 # only return the first value in a posible list of values.
 # doesn't handle if the tagname does not exist.
-#  
+#
 #
 # INPUTS
 #   * xmlNode -- XML Node.
@@ -884,12 +884,12 @@ sub GetDataHashByTagNameAndAttribute {
 #
 #
 # RETURN VALUE
-#  
+#
 #  Text context of node with tag name.
 #
 # NOTES
 #
-# 
+#
 #
 # SOURCE
 sub GetChildDataBySingleTagName {

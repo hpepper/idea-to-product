@@ -122,6 +122,7 @@
 <!ATTLIST Component Id CDATA #REQUIRED>
 <!ATTLIST Component Name CDATA #REQUIRED>
 
+<!ELEMENT BehaviorDescription  (#PCDATA)>
 <!ELEMENT Responsibilities  (#PCDATA)>
 <!ELEMENT VisibilityOfInterfaces  (#PCDATA)>
 <!ELEMENT Interface  (#PCDATA)>

@@ -352,6 +352,7 @@ sub mdlGetComponentRelationInformation {
     $hInformation{'ComponentBId'} = GetChildDataBySingleTagName($xmlNode, "ComponentBId");
     $hInformation{'Style'} = EmptyStringIfUndef(GetChildDataBySingleTagName($xmlNode, "Style"));
     $hInformation{'ConnectionTitle'} = EmptyStringIfUndef(GetChildDataBySingleTagName($xmlNode, "ConnectionTitle"));
+    $hInformation{'PropertiesOfRelation'} = EmptyStringIfUndef(GetChildDataBySingleTagName($xmlNode, "PropertiesOfRelation"));
     # TODO N Add the rest of the elements in the ComponentRelation structure.
 
     return(%hInformation);
@@ -574,30 +575,39 @@ sub GenerateComponentDiagramAndLegendRecursively {
     push(@{$hReturnComplexHashesList{'arEntityList'}}, \%hComponentInformation);
     if ( $nComponentRecursingLevelLeft  > 0 ) {
       # TODO V Should this maybe be get list of ComponentRelation Id's?
-      my @arSubComponentIdList = GetSubComponentList($nComponentId,
-                                                     $szViewPacketTypeName,
-                                                     $szViewPacketStyleName);
-      Log("III             GenerateComponentDiagramAndLegendRecursively() arSubComponentIdList length: $#arSubComponentIdList\n");
-      foreach my $nSubComponentId (@arSubComponentIdList) {
-        # Create the relation here, how do I make it (uses) generically?
+      my @arComponentRelationIdList = GetSubComponentRelationIdList(
+                                         $nComponentId,
+                                         $szViewPacketTypeName,
+                                         $szViewPacketStyleName
+                                      );
+      Log("III             GenerateComponentDiagramAndLegendRecursively() arComponentRelationIdList length: $#arComponentRelationIdList\n");
+      foreach my $nComponentRelationId (@arComponentRelationIdList) {
+        Log("III             GenerateComponentDiagramAndLegendRecursively() EntityAId=$nComponentId, EntityBId=$nComponentRelationId, RelationType==$szViewPacketStyleName\n");
+
+        my %hComponentRelation =  mdlGetComponentRelationInformation(
+                                     $nComponentRelationId
+                                  );
         my %hRelation;
-        $hRelation{ 'EntityAId'} = $nComponentId;
-        $hRelation{ 'EntityBId'} = $nSubComponentId;
-        $hRelation{ 'RelationType'}    = $szViewPacketStyleName;
+        $hRelation{ 'EntityAId'} = $hComponentRelation{'ComponentAId'};
+        $hRelation{ 'EntityBId'} = $hComponentRelation{'ComponentBId'};
+        $hRelation{ 'RelationType'}    = $hComponentRelation{'Style'};
+        $hRelation{ 'Name'}    = $hComponentRelation{'ConnectionTitle'};
+        $hRelation{ 'Summary'}    = $hComponentRelation{'PropertiesOfRelation'};
 
-        Log("III             GenerateComponentDiagramAndLegendRecursively() EntityAId=$nComponentId, EntityBId=$nSubComponentId, RelationType==$szViewPacketStyleName\n");
+        $hRelation{'Direction'} = "";
 
- #TODO V Get the realtion information from the 'ComponentRelation' element.
         # TODO V Support ConnectorId
         # This is should be replaced with a ConenctorTypeList that should be stored in a hash,
         #   Multiple ComponentRelations could use the same connector type, like TCP etc.
-        $hRelation{ 'Name'}    = ""; # TODO V make this dependent on the relation type, or maybe make it empty.
-        $hRelation{ 'Summary'}    = ""; # TODO V make this dependent on the relation type, or maybe make it empty.
-
-        $hRelation{'Direction'} = "";
         push(@{$hReturnComplexHashesList{'arRelationList'}}, \%hRelation);
 
-        my %hTmpHash = GenerateComponentDiagramAndLegendRecursively($nSubComponentId, $szViewPacketTypeName, $szViewPacketStyleName, $nComponentRecursingLevelLeft-1);
+        # Now go and grab the Component diagram for the sub component...
+        my %hTmpHash = GenerateComponentDiagramAndLegendRecursively(
+                         $hComponentRelation{'ComponentBId'},
+                         $szViewPacketTypeName,
+                         $szViewPacketStyleName,
+                         $nComponentRecursingLevelLeft-1
+                        );
         push(@{$hReturnComplexHashesList{'arEntityList'}}, @{$hTmpHash{'arEntityList'}});
         if ( exists($hTmpHash{'arRelationList'})  && defined($hTmpHash{'arRelationList'}) ) {
           push(@{$hReturnComplexHashesList{'arRelationList'}}, @{$hTmpHash{'arRelationList'}});
@@ -1083,11 +1093,20 @@ sub GenerateViewPacketRecusrsively {
   # Get list of all 'ModuleRelations'
   # Filter on RelationType=$f_szDecompositionStyleName   and  ModuleBId=$nTopPacketId
   # TODO C The '$f_szDecompositionStyleName' is dependent on the szViewType
-  my @arSubComponentIdList = GetSubComponentList($nPrimaryPresentationComponentId, $szViewPacketTypeName, $szViewPacketStyleName);
+  my @arComponentRelationIdList = GetSubComponentRelationIdList (
+                                     $nPrimaryPresentationComponentId,
+                                     $szViewPacketTypeName,
+                                     $szViewPacketStyleName
+                                  );
 
   my @arSubComponentHashList;
-  foreach my $nComponentId (@arSubComponentIdList) {
-      my %hComponentInformation = GetComponentInformation($nComponentId);
+  foreach my $nComponentRelationId (@arComponentRelationIdList) {
+    my %hComponentRelation =  mdlGetComponentRelationInformation(
+                                 $nComponentRelationId
+                              );
+      my %hComponentInformation = GetComponentInformation(
+                                     $hComponentRelation{'ComponentAId'}
+                                  );
       push(@arSubComponentHashList, \%hComponentInformation);
   }
   $hModuleInformation{ComponentList} = \@arSubComponentHashList;
@@ -1278,15 +1297,18 @@ sub GetHashListRelatedComponent {
 
 
 # -----------------------------------------------------------------
+# Return a list of the CompoentRelation Ids for the given:
+# @param $nCurrentComponentId
+# @param $szRequiredStyleType
 # ---------------
-sub GetComponentRelationsList {
+sub GetComponentRelationIdList {
     my $nCurrentComponentId = shift;
     my $szRequiredStyleType = shift;
 
     if ( ! IsNumber($nCurrentComponentId) ) {
       confess("EEE nTopPacketId was not a number: '$nCurrentComponentId' for TopPacketId: $nCurrentComponentId RelationType: $szRequiredStyleType");
     }
-    Log("DDD                   GetComponentRelationsList($nCurrentComponentId,'$szRequiredStyleType')\n");
+    Log("DDD                   GetComponentRelationIdList($nCurrentComponentId,'$szRequiredStyleType')\n");
 
     my @arResponse;
 
@@ -1295,102 +1317,46 @@ sub GetComponentRelationsList {
     my @arNodeList = GetNodeArrayByTagName($f_xmlRoot, $szRelationTagName);
 
     foreach my $xmlNode (@arNodeList) {
+      my $szComponentRaltionId = $xmlNode->getAttribute("Id");
       my $szEntityAId = GetChildDataBySingleTagName($xmlNode, "ComponentAId");
-      my $szEntityBId = GetChildDataBySingleTagName($xmlNode, "ComponentBId");
       my $szStyleName = GetChildDataBySingleTagName($xmlNode, "Style");
       #Tee("DDD                   szEntityAId=$szEntityAId szEntityBId=$szEntityBId szStyleName=$szStyleName\n");
-      if ( IsNumber($szEntityAId) ) {
+      if ( IsNumber($szComponentRaltionId) && IsNumber($szEntityAId) ) {
         if ( ($szEntityAId == $nCurrentComponentId)
              && ( $szStyleName eq $szRequiredStyleType) ){
-          Log("DDD                   GetComponentRelationsList()   $nCurrentComponentId ?= $szEntityAId   $szRequiredStyleType ?= $szStyleName  $szEntityBId\n");
-          push(@arResponse, $szEntityBId);
+          Log("DDD                   GetComponentRelationIdList()   $nCurrentComponentId ?= $szEntityAId   $szRequiredStyleType ?= $szStyleName  $szComponentRaltionId\n");
+          push(@arResponse, $szComponentRaltionId);
         } # endif
       } else {
-        my $nModuleRelationsId = $xmlNode->getAttribute("Id");
-        warn("WWW ComponentAId was not a number: '$szEntityAId' for nCurrentComponentId=$nCurrentComponentId at <$szRelationTagName Id=\"$nModuleRelationsId\"> szRelationType: $szRequiredStyleType");
+        warn("WWW ComponentAId was not a number: '$szEntityAId' or '$szComponentRaltionId' istnt a number at <$szRelationTagName Id=\"$szComponentRaltionId\"> szRelationType: $szRequiredStyleType");
       }
     } # end foreach
 
     return(@arResponse);
-} # end GetComponentRelationsList
+} # end GetComponentRelationIdList
 
 # -----------------------------------------------------------------
-# @see GetComponentRelationsList
+# @see GetComponentRelationIdList
 # ---------------
-sub GetSubComponentList {
+# TODO V Rename GetSubComponentList to GetSubComponentRelationIdList
+sub GetSubComponentRelationIdList {
     my $nComponentId = shift || confess("!!! You must provide a ComponentId");
     my $szViewPacketTypeName = shift || confess("!!! You must provide Type a name");
     my $szViewPacketStyleName = shift || confess("!!! You must provide Style a name");
 
     my @arResponse;
 
-    if ( ( $szViewPacketTypeName eq $f_szComponentAndConnectorTypeName )
-            || ( $szViewPacketTypeName eq $f_szModuleTypeName )
-            || ( $szViewPacketTypeName eq $f_szSubTypeName )
-            ) {
-       @arResponse = GetComponentRelationsList($nComponentId, $szViewPacketStyleName);
+       @arResponse = GetComponentRelationIdList($nComponentId, $szViewPacketStyleName);
        Log("DDD                GetSubComponentList($nComponentId, $szViewPacketTypeName, $szViewPacketStyleName) arResponse length: $#arResponse\n");
-    } elsif( $szViewPacketTypeName eq $f_szAllocationTypeName ) {
-      # TODO C How should allocation relations look? ( Or should the Implement relation specify which substruture and depth to use?
+      # TODO C How should allocation relations look? ( Or should the Implement
+      #  relation specify which substruture and depth to use?
       #    So it could also be a combination of e.g. Module-Decomposition and Module-Uses.
       #  Is there are difference between the allocation styles?
       #  Should it take the full recursive level set or just one level down?
       #  Is it Only Module-Uses that is relevant, or would Module-Decomposition also make sense? I think only Module-Uses
       #  Is Module-Layered also relevant?
-      if ( $szViewPacketStyleName eq $f_szImplementationStyleName ) {
-        @arResponse = GetModuleSubComponentList($nComponentId, $f_szUsesStyleName);
-      } else {
-        confess("Please implement the Get${szViewPacketTypeName}SubComponentList() to support: szViewPacketTypeName: $szViewPacketTypeName and szViewPacketStyleName: $szViewPacketStyleName");
-      }
-    } else {
-      confess("Please implement the Get${szViewPacketTypeName}SubComponentList() to support: szViewPacketTypeName: $szViewPacketTypeName and szViewPacketStyleName: $szViewPacketStyleName");
-    }
     return(@arResponse);
 } # end GetSubComponentList().
-
-
-# -----------------------------------------------------------------
-# Provide a list of Component IDs the the nCurrentComponentId relates to with the given relation: szRequiredRelationType
-#  This is not recursive, it simply returns the next layer.
-# ---------------
-sub GetModuleSubComponentList {
-    my $nCurrentComponentId = shift;
-    my $szRequiredRelationType = shift;
-
-    #my $szCallTrace = shortmess("DDD call trace");
-    #print "III                GetModuleSubComponentList($nTopPacketId, $szRequiredRelationType) szCallTrace: $szCallTrace\n";
-    #Tee("III                GetModuleSubComponentList($nCurrentComponentId, $szRequiredRelationType)\n");
-
-    my @arResponse;
-
-    if ( IsNumber($nCurrentComponentId) ) {
-      my @arNodeList = GetNodeArrayByTagName($f_xmlRoot, "ModuleRelations");
-
-      foreach my $xmlNode (@arNodeList) {
-        my $szModuleAId =  GetChildDataBySingleTagName($xmlNode, "ModuleAId");
-        my $szModuleBId = GetChildDataBySingleTagName($xmlNode, "ModuleBId");
-        my $szCurrentRelationType = GetChildDataBySingleTagName($xmlNode, "RelationType");
-
-        # If the szModuleAId is not a number, then it is probably an empty xml structure.
-        if ( IsNumber($szModuleAId) ) {
-          if ( IsNumber($szModuleBId) ) {
-            #
-            if ( ($szModuleAId == $nCurrentComponentId) && ( $szRequiredRelationType eq $szCurrentRelationType) ){
-              #Tee("DDD                ($szModuleAId == $nCurrentComponentId)  ( $szRequiredRelationType eq $szCurrentRelationType) => szModuleBId=$szModuleBId\n");
-              push(@arResponse, $szModuleBId);
-            } # endif
-          } else {
-	    my $nModuleRelationsId = $xmlNode->getAttribute("Id");
-            warn("WWW szModuleBId was not a number: '$szModuleBId' for nTopPacketId=$nCurrentComponentId, ModuleRations Id: $nModuleRelationsId, szRequiredRelationType=$szRequiredRelationType");
-          }
-        } # endif AId
-      } # end foreach
-    } else {
-	confess("WWW nCurrentComponentId was not a number: '$nCurrentComponentId'");
-    } # endif
-
-    return(@arResponse);
-} # end GetModuleSubComponentList
 
 
 

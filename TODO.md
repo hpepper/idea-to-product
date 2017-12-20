@@ -1,6 +1,6 @@
-* TODO V Get Title/Name and Summary into relations tables. In GenerateComponentDiagramAndLegendRecursively change the GetSubComponentList to GetRelationsIdList and then work with the relationslist.
+* TODO V Get Title/Name and Summary into relations tables. In
 * TODO V automatically generate ViewPacket references to other viewpackets where the focus component also is the focus component.
-* TODO V Support Module Layers.
+* TODO V Support Module Layers. (https://graphviz.gitlab.io/_pages/Gallery/directed/datastruct.gv.txt)
 * TODO V Include requirement references, but how and where. A component might
   have a req for how data on an interface must look. which the other end of the
   connection must honor.
