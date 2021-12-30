@@ -26,5 +26,10 @@ clean:
 	- rm core
 	cd unittests; make clean
 
+totalclean: clean
+	- rm test.*
+	- rm -rf doxygen/html
+	- rm -rf doxygen/latex
+
 doxygen/index.html: 
 	doxygen itp.doxygen
