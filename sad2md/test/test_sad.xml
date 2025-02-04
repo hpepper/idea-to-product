@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE SoftwareArchitectureDocumentation SYSTEM "software_architecture_documentation.dtd">
+
+<SoftwareArchitectureDocumentation Version="0.1.0">
+  <Title>SW Arcitechture Documentation for ITP"</Title>
+  <Issue>0.1.0</Issue>
+  <Revision>0.1.0</Revision>
+  <Draft>1</Draft>
+  <Status></Status>
+  <ReleaseDate></ReleaseDate>
+  <Author></Author>
+  <Summary></Summary>
+
+  <ViewPacket Id="1" ViewType="Module" ViewStyle="Decomposition" SortOrder="1">
+    <Title>Viking conflict game</Title>
+    <Introduction>An online card battle game.</Introduction>
+    <ContextModelKey>ContextDiagram001</ContextModelKey>
+    <ComponentId>1</ComponentId>
+    <DiagramKey>Decomposition001</DiagramKey>
+  </ViewPacket>
+
+  <ViewPacket Id="2" ViewType="Module" ViewStyle="Decomposition" SortOrder="2">
+    <Title>Game server</Title>
+    <Introduction></Introduction>
+    <ContextModelKey>ContextDiagram002</ContextModelKey>
+    <ComponentId>2</ComponentId>
+    <DiagramKey>Decomposition002</DiagramKey>
+  </ViewPacket>
+
+  <Component Id="1" Name="Viking clonflict game">
+    <Summary></Summary>
+    <Responsibilities></Responsibilities>
+  </Component>
+
+  <Component Id="2" Name="server">
+    <Summary></Summary>
+    <Responsibilities></Responsibilities>
+  </Component>
+
+  <Component Id="3" Name="client">
+    <Summary></Summary>
+    <Responsibilities></Responsibilities>
+  </Component>
+
+<ComponentRelation Id="1">
+  <ComponentAId>1</ComponentAId>
+  <ComponentBId>2</ComponentBId>
+  <Key>Decomposition001</Key>
+  <PropertiesOfRelation></PropertiesOfRelation>
+</ComponentRelation>
+
+<ComponentRelation Id="2">
+  <ComponentAId>1</ComponentAId>
+  <ComponentBId>3</ComponentBId>
+  <Key>Decomposition001</Key>
+  <PropertiesOfRelation></PropertiesOfRelation>
+</ComponentRelation>
+
+<ComponentRelation Id="3">
+  <ComponentAId>1</ComponentAId>
+  <ComponentBId>4</ComponentBId>
+  <Key>ContextDiagram001</Key>
+  <PropertiesOfRelation></PropertiesOfRelation>
+</ComponentRelation>
+
+<!-- The ComponentAId is 'The Work' in a context diagram. -->
+<ComponentRelation Id="4">
+  <ComponentAId>1</ComponentAId>
+  <ComponentBId>5</ComponentBId>
+  <Key>ContextDiagram001</Key>
+  <PropertiesOfRelation></PropertiesOfRelation>
+</ComponentRelation>
+
+</SoftwareArchitectureDocumentation>

@@ -1,0 +1,115 @@
+<!-- Version: 0.1.0 -->
+<!-- validate xml: clear; xmllint -valid  itp.xml  > t 2>u; head u -->
+<!-- the '-valid' actually has a double '-' in front but dtd can't have that. -->
+<!ELEMENT SoftwareArchitectureDocumentation (
+  Title,
+  Issue,
+  Revision,
+  Draft,
+  Status,
+  ReleaseDate,
+  Author,
+  Summary,
+  ViewPacket+,
+  Component+,
+  ComponentRelation*
+)>
+<!ATTLIST SoftwareArchitectureDocumentation Version CDATA #REQUIRED>
+
+<!ELEMENT Author (#PCDATA)>
+<!ELEMENT Draft (#PCDATA)>
+<!ELEMENT Issue (#PCDATA)>
+<!ELEMENT ReleaseDate (#PCDATA)>
+<!ELEMENT Revision (#PCDATA)>
+<!ELEMENT Status (#PCDATA)>
+<!ELEMENT Summary (#PCDATA)>
+<!ELEMENT Title (#PCDATA)>
+
+<!ELEMENT ViewPacket (
+  Title?,
+  ComponentRecurseLevel?,
+  Introduction,
+  ContextModelKey?,
+  ComponentId+,
+  ContextModelKey?,
+  DiagramKey*,
+  ParentViewPacketId*,
+  ChildViewPacketId*,
+  SiblingViewPacketId*
+)>
+<!ATTLIST ViewPacket Id CDATA #REQUIRED>
+<!ATTLIST ViewPacket ViewType  CDATA #REQUIRED>
+<!ATTLIST ViewPacket ViewStyle  CDATA #REQUIRED>
+<!ATTLIST ViewPacket SortOrder  CDATA #REQUIRED>
+
+<!ELEMENT  ComponentRecurseLevel (#PCDATA)>
+<!ELEMENT  Introduction (#PCDATA)>
+<!ELEMENT  ComponentId (#PCDATA)>
+<!ELEMENT  ContextModelKey (#PCDATA)>
+<!ELEMENT  ParentViewPacketId (#PCDATA)>
+<!ELEMENT  ChildViewPacketId (#PCDATA)>
+<!ELEMENT  SiblingViewPacketId (#PCDATA)>
+
+<!ELEMENT Component (
+  Summary,
+  Responsibilities?,
+  BehaviorDescription?,
+  VisibilityOfInterfaces?,
+  Interface?,
+  License*,
+  SourceRepository*,
+  ArtifactRepository*,
+  File*,
+  BuildCycle?,
+  Contact*,
+  TestInformation?,
+  ImplementationConstraints?,
+  Performance*,
+  Capacity?,
+  Reliability?,
+  ResourceRequirement?,
+  Functionality?,
+  Security?,
+  SchedulerPriority?,
+  DiagramKey*,
+  ArchitectureDecisionId*
+)>
+<!ATTLIST Component Id CDATA #REQUIRED>
+<!ATTLIST Component Name CDATA #REQUIRED>
+
+<!ELEMENT BehaviorDescription  (#PCDATA)>
+<!ELEMENT Responsibilities  (#PCDATA)>
+<!ELEMENT VisibilityOfInterfaces  (#PCDATA)>
+<!ELEMENT Interface  (#PCDATA)>
+<!ELEMENT Overview  (#PCDATA)>
+<!ELEMENT BuildCycle  (#PCDATA)>
+<!ELEMENT Contact  (#PCDATA)>
+<!ELEMENT License  (#PCDATA)>
+<!ELEMENT SourceRepository  (#PCDATA)>
+<!ELEMENT ArtifactRepository  (#PCDATA)>
+<!ELEMENT File  (#PCDATA)>
+<!ELEMENT TestInformation  (#PCDATA)>
+<!ELEMENT ImplementationConstraints  (#PCDATA)>
+<!ELEMENT  Performance (#PCDATA)>
+<!ELEMENT  Capacity (#PCDATA)>
+<!ELEMENT  Reliability (#PCDATA)>
+<!ELEMENT  ResourceRequirement (#PCDATA)>
+<!ELEMENT  Functionality (#PCDATA)>
+<!ELEMENT  Security (#PCDATA)>
+<!ELEMENT  SchedulerPriority (#PCDATA)>
+<!ELEMENT  DiagramKey (#PCDATA)>
+<!ATTLIST  DiagramKey StyleType  CDATA #IMPLIED>
+<!ELEMENT  ArchitectureDecisionId (#PCDATA)>
+
+<!ELEMENT ComponentRelation (
+  ComponentAId,
+  ComponentBId,
+  Key,
+  PropertiesOfRelation
+)>
+<!ATTLIST ComponentRelation Id CDATA #REQUIRED>
+
+<!ELEMENT ComponentAId  (#PCDATA)>
+<!ELEMENT ComponentBId  (#PCDATA)>
+<!ELEMENT Key  (#PCDATA)>
+<!ELEMENT PropertiesOfRelation  (#PCDATA)>
