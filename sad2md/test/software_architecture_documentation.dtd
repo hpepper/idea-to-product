@@ -34,6 +34,7 @@
   ContextModelKey?,
   DiagramKey*,
   ParentViewPacketId*,
+  PrimaryDisplayKey,
   ChildViewPacketId*,
   SiblingViewPacketId*
 )>
@@ -43,36 +44,38 @@
 <!ATTLIST ViewPacket SortOrder  CDATA #REQUIRED>
 
 <!ELEMENT  ComponentRecurseLevel (#PCDATA)>
+<!ELEMENT  DiagramKey (#PCDATA)>
+<!ATTLIST  DiagramKey StyleType  CDATA #IMPLIED>
 <!ELEMENT  Introduction (#PCDATA)>
 <!ELEMENT  ComponentId (#PCDATA)>
 <!ELEMENT  ContextModelKey (#PCDATA)>
 <!ELEMENT  ParentViewPacketId (#PCDATA)>
 <!ELEMENT  ChildViewPacketId (#PCDATA)>
+<!ELEMENT  PrimaryDisplayKey (#PCDATA)>
 <!ELEMENT  SiblingViewPacketId (#PCDATA)>
 
 <!ELEMENT Component (
-  Summary,
-  Responsibilities?,
+  ArtifactRepository*,
+  ArchitectureDecisionId*,
   BehaviorDescription?,
-  VisibilityOfInterfaces?,
+  BuildCycle?,
+  Capacity?,
+  Contact*,
+  File*,
+  Functionality?,
+  ImplementationConstraints?,
   Interface?,
   License*,
-  SourceRepository*,
-  ArtifactRepository*,
-  File*,
-  BuildCycle?,
-  Contact*,
-  TestInformation?,
-  ImplementationConstraints?,
   Performance*,
-  Capacity?,
   Reliability?,
   ResourceRequirement?,
-  Functionality?,
-  Security?,
+  Responsibilities?,
   SchedulerPriority?,
-  DiagramKey*,
-  ArchitectureDecisionId*
+  Security?,
+  SourceRepository*,
+  Summary,
+  TestInformation?,
+  VisibilityOfInterfaces?
 )>
 <!ATTLIST Component Id CDATA #REQUIRED>
 <!ATTLIST Component Name CDATA #REQUIRED>
@@ -97,19 +100,17 @@
 <!ELEMENT  Functionality (#PCDATA)>
 <!ELEMENT  Security (#PCDATA)>
 <!ELEMENT  SchedulerPriority (#PCDATA)>
-<!ELEMENT  DiagramKey (#PCDATA)>
-<!ATTLIST  DiagramKey StyleType  CDATA #IMPLIED>
 <!ELEMENT  ArchitectureDecisionId (#PCDATA)>
 
 <!ELEMENT ComponentRelation (
   ComponentAId,
   ComponentBId,
   Key,
-  PropertiesOfRelation
+  PropertyOfRelation
 )>
 <!ATTLIST ComponentRelation Id CDATA #REQUIRED>
 
 <!ELEMENT ComponentAId  (#PCDATA)>
 <!ELEMENT ComponentBId  (#PCDATA)>
 <!ELEMENT Key  (#PCDATA)>
-<!ELEMENT PropertiesOfRelation  (#PCDATA)>
+<!ELEMENT PropertyOfRelation  (#PCDATA)>

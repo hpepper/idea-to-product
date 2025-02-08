@@ -16,7 +16,7 @@
     <Introduction>An online card battle game.</Introduction>
     <ContextModelKey>ContextDiagram001</ContextModelKey>
     <ComponentId>1</ComponentId>
-    <DiagramKey>Decomposition001</DiagramKey>
+    <PrimaryDisplayKey>Decomposition001</PrimaryDisplayKey>
   </ViewPacket>
 
   <ViewPacket Id="2" ViewType="Module" ViewStyle="Decomposition" SortOrder="2">
@@ -24,43 +24,124 @@
     <Introduction></Introduction>
     <ContextModelKey>ContextDiagram002</ContextModelKey>
     <ComponentId>2</ComponentId>
-    <DiagramKey>Decomposition002</DiagramKey>
+    <PrimaryDisplayKey>Decomposition002</PrimaryDisplayKey>
   </ViewPacket>
 
   <Component Id="1" Name="Viking clonflict game">
-    <Summary></Summary>
     <Responsibilities></Responsibilities>
+    <Summary></Summary>
   </Component>
 
-  <Component Id="2" Name="server">
-    <Summary></Summary>
+  <Component Id="2" Name="Game client">
     <Responsibilities></Responsibilities>
+    <Summary></Summary>
   </Component>
 
-  <Component Id="3" Name="client">
-    <Summary></Summary>
+  <Component Id="3" Name="Game server">
     <Responsibilities></Responsibilities>
+    <Summary></Summary>
+  </Component>
+
+  <Component Id="4" Name="server telemetry">
+    <Responsibilities></Responsibilities>
+    <Summary></Summary>
+  </Component>
+
+  <Component Id="5" Name="game download server">
+    <Responsibilities></Responsibilities>
+    <Summary></Summary>
+  </Component>
+
+  <Component Id="6" Name="player statistics">
+    <Responsibilities></Responsibilities>
+    <Summary></Summary>
+  </Component>
+
+<!-- 
+  <Component Id="" Name="">
+    <Responsibilities></Responsibilities>
+    <Summary></Summary>
+  </Component>
+  -->
+
+
+  <Component Id="7" Name="Edge connector">
+    <Responsibilities></Responsibilities>
+    <Summary></Summary>
+  </Component>
+
+  <Component Id="8" Name="Message broker">
+    <Responsibilities></Responsibilities>
+    <Summary></Summary>
+  </Component>
+
+  <Component Id="9" Name="Session manager">
+    <Responsibilities></Responsibilities>
+    <Summary></Summary>
   </Component>
 
 <ComponentRelation Id="1">
   <ComponentAId>1</ComponentAId>
   <ComponentBId>2</ComponentBId>
   <Key>Decomposition001</Key>
-  <PropertiesOfRelation></PropertiesOfRelation>
+  <PropertyOfRelation></PropertyOfRelation>
 </ComponentRelation>
 
 <ComponentRelation Id="2">
   <ComponentAId>1</ComponentAId>
   <ComponentBId>3</ComponentBId>
   <Key>Decomposition001</Key>
-  <PropertiesOfRelation></PropertiesOfRelation>
+  <PropertyOfRelation></PropertyOfRelation>
 </ComponentRelation>
 
 <ComponentRelation Id="3">
   <ComponentAId>1</ComponentAId>
   <ComponentBId>4</ComponentBId>
+  <Key>Decomposition001</Key>
+  <PropertyOfRelation></PropertyOfRelation>
+</ComponentRelation>
+
+<ComponentRelation Id="4">
+  <ComponentAId>1</ComponentAId>
+  <ComponentBId>5</ComponentBId>
+  <Key>Decomposition001</Key>
+  <PropertyOfRelation></PropertyOfRelation>
+</ComponentRelation>
+
+<ComponentRelation Id="5">
+  <ComponentAId>1</ComponentAId>
+  <ComponentBId>6</ComponentBId>
+  <Key>Decomposition001</Key>
+  <PropertyOfRelation></PropertyOfRelation>
+</ComponentRelation>
+
+<ComponentRelation Id="6">
+  <ComponentAId>3</ComponentAId>
+  <ComponentBId>7</ComponentBId>
+  <Key>Decomposition001</Key>
+  <PropertyOfRelation></PropertyOfRelation>
+</ComponentRelation>
+
+<ComponentRelation Id="7">
+  <ComponentAId>3</ComponentAId>
+  <ComponentBId>8</ComponentBId>
+  <Key>Decomposition001</Key>
+  <PropertyOfRelation></PropertyOfRelation>
+</ComponentRelation>
+
+<ComponentRelation Id="8">
+  <ComponentAId>3</ComponentAId>
+  <ComponentBId>9</ComponentBId>
+  <Key>Decomposition001</Key>
+  <PropertyOfRelation></PropertyOfRelation>
+</ComponentRelation>
+
+
+<ComponentRelation Id="4">
+  <ComponentAId>1</ComponentAId>
+  <ComponentBId>4</ComponentBId>
   <Key>ContextDiagram001</Key>
-  <PropertiesOfRelation></PropertiesOfRelation>
+  <PropertyOfRelation></PropertyOfRelation>
 </ComponentRelation>
 
 <!-- The ComponentAId is 'The Work' in a context diagram. -->
@@ -68,7 +149,7 @@
   <ComponentAId>1</ComponentAId>
   <ComponentBId>5</ComponentBId>
   <Key>ContextDiagram001</Key>
-  <PropertiesOfRelation></PropertiesOfRelation>
+  <PropertyOfRelation></PropertyOfRelation>
 </ComponentRelation>
 
 </SoftwareArchitectureDocumentation>
