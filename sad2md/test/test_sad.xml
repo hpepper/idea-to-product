@@ -27,7 +27,7 @@
     <PrimaryDisplayKey>Decomposition002</PrimaryDisplayKey>
   </ViewPacket>
 
-  <Component Id="1" Name="Viking clonflict game">
+  <Component Id="1" Name="Viking conflict card game">
     <Responsibilities></Responsibilities>
     <Summary></Summary>
   </Component>
@@ -67,7 +67,7 @@
 
   <Component Id="7" Name="Edge connector">
     <Responsibilities></Responsibilities>
-    <Summary></Summary>
+    <Summary>Receive client connections, validate the message and route the message.</Summary>
   </Component>
 
   <Component Id="8" Name="Message broker">

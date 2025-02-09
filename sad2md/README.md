@@ -57,3 +57,10 @@ these fielads are used for...
       * This works because the new viewpacket just point at a component further down the tree, and the search does not go up the tree only down.
   * Combined with ContextModelKey to lookup component tree in the ComponentRelation
     * for generating the Context diagram.
+
+TODO Primar  representation graphical
+
+Do not print the inital one like in the textual
+ but in the recursive function, print a and b name in the same line
+ create the diagram nodename by removing all spaces from the titel of the a and b component
+then have the mermaid lead-in and lead out in the parrent function( I thing iew packet riender fnction.)
