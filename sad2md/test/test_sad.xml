@@ -57,14 +57,6 @@
     <Summary></Summary>
   </Component>
 
-<!-- 
-  <Component Id="" Name="">
-    <Responsibilities></Responsibilities>
-    <Summary></Summary>
-  </Component>
-  -->
-
-
   <Component Id="7" Name="Edge connector">
     <Responsibilities></Responsibilities>
     <Summary>Receive client connections, validate the message and route the message.</Summary>
@@ -79,6 +71,29 @@
     <Responsibilities></Responsibilities>
     <Summary></Summary>
   </Component>
+
+  <Component Id="10" Name="IaaS">
+    <Responsibilities></Responsibilities>
+    <Summary></Summary>
+  </Component>
+
+  <Component Id="11" Name="oAuth">
+    <Responsibilities></Responsibilities>
+    <Summary></Summary>
+  </Component>
+
+  <Component Id="12" Name="Web browser">
+    <Responsibilities></Responsibilities>
+    <Summary></Summary>
+  </Component>
+
+<!-- 
+  <Component Id="" Name="">
+    <Responsibilities></Responsibilities>
+    <Summary></Summary>
+  </Component>
+  -->
+
 
 <ComponentRelation Id="1">
   <ComponentAId>1</ComponentAId>
@@ -139,7 +154,7 @@
 
 <ComponentRelation Id="4">
   <ComponentAId>1</ComponentAId>
-  <ComponentBId>4</ComponentBId>
+  <ComponentBId>10</ComponentBId>
   <Key>ContextDiagram001</Key>
   <PropertyOfRelation></PropertyOfRelation>
 </ComponentRelation>
@@ -147,7 +162,14 @@
 <!-- The ComponentAId is 'The Work' in a context diagram. -->
 <ComponentRelation Id="4">
   <ComponentAId>1</ComponentAId>
-  <ComponentBId>5</ComponentBId>
+  <ComponentBId>11</ComponentBId>
+  <Key>ContextDiagram001</Key>
+  <PropertyOfRelation></PropertyOfRelation>
+</ComponentRelation>
+
+<ComponentRelation Id="5">
+  <ComponentAId>1</ComponentAId>
+  <ComponentBId>12</ComponentBId>
   <Key>ContextDiagram001</Key>
   <PropertyOfRelation></PropertyOfRelation>
 </ComponentRelation>

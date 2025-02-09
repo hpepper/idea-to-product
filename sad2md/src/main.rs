@@ -413,7 +413,7 @@ fn render_graphical_primary_display(
         let component_relations_vector = get_list_of_related_components(
             db_conn,
             component_id,
-            primary_display_key
+            primary_display_key.clone()
         );
         match component_relations_vector {
             Ok(component_relations_vector) => {
@@ -442,7 +442,77 @@ fn render_graphical_primary_display(
                                 view_type,
                                 style,
                                 component_relation.ComponentBId,
-                                component_relation.PropertyOfRelation
+                                primary_display_key.clone()
+                            );
+                        }
+                        Err(err) => {
+                            eprintln!(
+                                "Error: returned from get_component_by_id() for component id = {} - {}",
+                                component_relation.ComponentBId,
+                                err
+                            );
+                        }
+                    }
+                }
+            }
+            Err(err) => {
+                eprintln!("Error: returned from get_list_of_related_components() {}", err);
+            }
+        }
+    }
+}
+
+fn render_graphical_context_diagram(
+    markdown_file: &mut File,
+    db_conn: &Connection,
+    view_type: &str,
+    style: &str,
+    component_id: i32,
+    context_model_key: String
+) {
+    // TODO do I need this?
+    let top_component: Option<Component> = match get_component_by_id(db_conn, component_id) {
+        Ok(top_component) => Some(top_component),
+        Err(e) => {
+            eprintln!("Error retrieving component: {}", e);
+            None
+        }
+    };
+
+    if let Some(top_component) = top_component {
+        let component_relations_vector = get_list_of_related_components(
+            db_conn,
+            component_id,
+            context_model_key.clone()
+        );
+        match component_relations_vector {
+            Ok(component_relations_vector) => {
+                for component_relation in component_relations_vector {
+                    let component_b = get_component_by_id(db_conn, component_relation.ComponentBId);
+                    match component_b {
+                        Ok(component_b) => {
+                            let component_a_name = get_component_name_by_id(db_conn, component_id);
+                            let linkable_component_a_name = make_linkable_text(component_a_name.clone());
+                            let linkable_component_b_name = make_linkable_text(component_b.Name.clone());
+
+                            markdown_file
+                                .write(
+                                    &format!(
+                                        "    {}[{}]-->{}(({}))\n",
+                                        linkable_component_b_name,
+                                        component_b.Name,
+                                        linkable_component_a_name,
+                                        component_a_name
+                                    ).as_bytes()
+                                )
+                                .expect("Unable to write to file");
+                            render_graphical_context_diagram(
+                                markdown_file,
+                                db_conn,
+                                view_type,
+                                style,
+                                component_relation.ComponentBId,
+                                context_model_key.clone()
                             );
                         }
                         Err(err) => {
@@ -610,7 +680,7 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
                     .write(&format!("#### {section_number}: Primary presentation\n\n").as_bytes())
                     .expect("Unable to write to file");
 
-                // TODO generate the mermaid diagram
+                // generate the primary presentation mermaid diagram
                 markdown_file
                     .write("```mermaid\n  graph LR;\n".as_bytes())
                     .expect("Unable to write to file");
@@ -673,7 +743,32 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
                     .write(&format!("\n#### {section_number}: Context diagram\n\n").as_bytes())
                     .expect("Unable to write to file");
 
-                // TODO generate the mermaid diagram for context diagram
+                // generate the mermaid diagram for context diagram
+                markdown_file
+                    .write("```mermaid\n  graph TD;\n".as_bytes())
+                    .expect("Unable to write to file");
+                let top_component: Option<Component> = match
+                    get_component_by_id(db_conn, viewpacket.component_id)
+                {
+                    // TODO can the 'if let Some' code below be put into a code block here?
+                    Ok(top_component) => Some(top_component),
+                    Err(e) => {
+                        eprintln!("Error retrieving component: {}", e);
+                        None
+                    }
+                };
+                if let Some(top_component) = top_component {
+                    render_graphical_context_diagram(
+                        markdown_file,
+                        db_conn,
+                        view_type,
+                        style,
+                        viewpacket.component_id,
+                        viewpacket.context_model_key.clone()
+                    );
+                }
+
+                markdown_file.write("```\n\n".as_bytes()).expect("Unable to write to file");
 
                 // TOOD generate the table
 

@@ -64,3 +64,7 @@ Do not print the inital one like in the textual
  but in the recursive function, print a and b name in the same line
  create the diagram nodename by removing all spaces from the titel of the a and b component
 then have the mermaid lead-in and lead out in the parrent function( I thing iew packet riender fnction.)
+
+TODO the related view
+
+* The order number is used used within a style, and is the last part of the section name(z.y.z)
