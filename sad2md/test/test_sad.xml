@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE SoftwareArchitectureDocumentation SYSTEM "software_architecture_documentation.dtd">
 
-<SoftwareArchitectureDocumentation Version="0.1.0">
+<SoftwareArchitectureDocumentation Version="0.1.1">
   <Title>SW Arcitechture Documentation for ITP"</Title>
   <Issue>0.1.0</Issue>
   <Revision>0.1.0</Revision>
@@ -12,19 +12,27 @@
   <Summary></Summary>
 
   <ViewPacket Id="1" ViewType="Module" ViewStyle="Decomposition" SortOrder="1">
-    <Title>Viking conflict game</Title>
+    <Title>Card game</Title>
     <Introduction>An online card battle game.</Introduction>
-    <ContextModelKey>ContextDiagram001</ContextModelKey>
     <ComponentId>1</ComponentId>
     <PrimaryDisplayKey>Decomposition001</PrimaryDisplayKey>
+    <ContextModelKey>ContextDiagram001</ContextModelKey>
   </ViewPacket>
 
   <ViewPacket Id="2" ViewType="Module" ViewStyle="Decomposition" SortOrder="2">
     <Title>Game server</Title>
     <Introduction></Introduction>
-    <ContextModelKey>ContextDiagram002</ContextModelKey>
     <ComponentId>2</ComponentId>
     <PrimaryDisplayKey>Decomposition002</PrimaryDisplayKey>
+    <ContextModelKey>ContextDiagram002</ContextModelKey>
+  </ViewPacket>
+
+  <ViewPacket Id="3" ViewType="CnC" ViewStyle="ClientServer" SortOrder="1">
+    <Title>Client connection</Title>
+    <Introduction></Introduction>
+    <ComponentId>2</ComponentId>
+    <PrimaryDisplayKey>ClientServer301</PrimaryDisplayKey>
+    <ContextModelKey>ContextDiagram002</ContextModelKey>
   </ViewPacket>
 
   <Component Id="1" Name="Viking conflict card game">
@@ -87,6 +95,21 @@
     <Summary></Summary>
   </Component>
 
+  <Component Id="13" Name="VillageSquare">
+    <Responsibilities></Responsibilities>
+    <Summary></Summary>
+  </Component>
+
+  <Component Id="14" Name="BattleResolver">
+    <Responsibilities></Responsibilities>
+    <Summary></Summary>
+  </Component>
+
+  <Component Id="15" Name="CardDeckStorage">
+    <Responsibilities></Responsibilities>
+    <Summary></Summary>
+  </Component>
+
 <!-- 
   <Component Id="" Name="">
     <Responsibilities></Responsibilities>
@@ -95,64 +118,83 @@
   -->
 
 
-<ComponentRelation Id="1">
+<ComponentRelation Id="1" SortOrder="">
   <ComponentAId>1</ComponentAId>
   <ComponentBId>2</ComponentBId>
   <Key>Decomposition001</Key>
   <PropertyOfRelation></PropertyOfRelation>
 </ComponentRelation>
 
-<ComponentRelation Id="2">
+<ComponentRelation Id="2" SortOrder="">
   <ComponentAId>1</ComponentAId>
   <ComponentBId>3</ComponentBId>
   <Key>Decomposition001</Key>
   <PropertyOfRelation></PropertyOfRelation>
 </ComponentRelation>
 
-<ComponentRelation Id="3">
+<ComponentRelation Id="3" SortOrder="">
   <ComponentAId>1</ComponentAId>
   <ComponentBId>4</ComponentBId>
   <Key>Decomposition001</Key>
   <PropertyOfRelation></PropertyOfRelation>
 </ComponentRelation>
 
-<ComponentRelation Id="4">
+<ComponentRelation Id="4" SortOrder="">
   <ComponentAId>1</ComponentAId>
   <ComponentBId>5</ComponentBId>
   <Key>Decomposition001</Key>
   <PropertyOfRelation></PropertyOfRelation>
 </ComponentRelation>
 
-<ComponentRelation Id="5">
+<ComponentRelation Id="5" SortOrder="">
   <ComponentAId>1</ComponentAId>
   <ComponentBId>6</ComponentBId>
   <Key>Decomposition001</Key>
   <PropertyOfRelation></PropertyOfRelation>
 </ComponentRelation>
 
-<ComponentRelation Id="6">
+<ComponentRelation Id="6" SortOrder="">
   <ComponentAId>3</ComponentAId>
   <ComponentBId>7</ComponentBId>
   <Key>Decomposition001</Key>
   <PropertyOfRelation></PropertyOfRelation>
 </ComponentRelation>
 
-<ComponentRelation Id="7">
+<ComponentRelation Id="7" SortOrder="">
   <ComponentAId>3</ComponentAId>
   <ComponentBId>8</ComponentBId>
   <Key>Decomposition001</Key>
   <PropertyOfRelation></PropertyOfRelation>
 </ComponentRelation>
 
-<ComponentRelation Id="8">
+<ComponentRelation Id="8" SortOrder="">
   <ComponentAId>3</ComponentAId>
   <ComponentBId>9</ComponentBId>
   <Key>Decomposition001</Key>
   <PropertyOfRelation></PropertyOfRelation>
 </ComponentRelation>
 
+  <ComponentRelation Id="15" SortOrder="">
+    <ComponentAId>3</ComponentAId>
+    <ComponentBId>13</ComponentBId>
+    <Key>Decomposition001</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+  </ComponentRelation>
+  <ComponentRelation Id="16" SortOrder="">
+    <ComponentAId>3</ComponentAId>
+    <ComponentBId>14</ComponentBId>
+    <Key>Decomposition001</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+  </ComponentRelation>
+  <ComponentRelation Id="17" SortOrder="">
+    <ComponentAId>3</ComponentAId>
+    <ComponentBId>15</ComponentBId>
+    <Key>Decomposition001</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+  </ComponentRelation>
 
-<ComponentRelation Id="4">
+
+<ComponentRelation Id="9" SortOrder="">
   <ComponentAId>1</ComponentAId>
   <ComponentBId>10</ComponentBId>
   <Key>ContextDiagram001</Key>
@@ -160,18 +202,124 @@
 </ComponentRelation>
 
 <!-- The ComponentAId is 'The Work' in a context diagram. -->
-<ComponentRelation Id="4">
+<ComponentRelation Id="10" SortOrder="">
   <ComponentAId>1</ComponentAId>
   <ComponentBId>11</ComponentBId>
   <Key>ContextDiagram001</Key>
   <PropertyOfRelation></PropertyOfRelation>
 </ComponentRelation>
 
-<ComponentRelation Id="5">
+<ComponentRelation Id="11" SortOrder="">
   <ComponentAId>1</ComponentAId>
   <ComponentBId>12</ComponentBId>
   <Key>ContextDiagram001</Key>
   <PropertyOfRelation></PropertyOfRelation>
 </ComponentRelation>
+
+  <ComponentRelation Id="12" SortOrder="">
+    <ComponentAId>2</ComponentAId>
+    <ComponentBId>7</ComponentBId>
+    <Key>ClientServer301</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+  </ComponentRelation>
+
+  <ComponentRelation Id="13" SortOrder="">
+    <ComponentAId>7</ComponentAId>
+    <ComponentBId>8</ComponentBId>
+    <Key>ClientServer301</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+  </ComponentRelation>
+
+  <ComponentRelation Id="14" SortOrder="">
+    <ComponentAId>8</ComponentAId>
+    <ComponentBId>9</ComponentBId>
+    <Key>ClientServer301</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+  </ComponentRelation>
+
+  <ComponentRelation Id="18" SortOrder="">
+    <ComponentAId>8</ComponentAId>
+    <ComponentBId>13</ComponentBId>
+    <Key>ClientServer301</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+  </ComponentRelation>
+  
+  <ComponentRelation Id="19" SortOrder="">
+    <ComponentAId>8</ComponentAId>
+    <ComponentBId>14</ComponentBId>
+    <Key>ClientServer301</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+  </ComponentRelation>
+  
+  <ComponentRelation Id="20" SortOrder="">
+    <ComponentAId>8</ComponentAId>
+    <ComponentBId>15</ComponentBId>
+    <Key>ClientServer301</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+  </ComponentRelation>
+
+  <ComponentRelation Id="22" SortOrder="1">
+    <ComponentAId>2</ComponentAId>
+    <ComponentBId>7</ComponentBId>
+    <Key>MSC301</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+    <RelationText>Alpha</RelationText>
+    <ConnectionType>call</ConnectionType>
+  </ComponentRelation>
+  <ComponentRelation Id="23" SortOrder="2">
+    <ComponentAId>7</ComponentAId>
+    <ComponentBId>8</ComponentBId>
+    <Key>MSC301</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+    <RelationText>Bravo</RelationText>
+    <ConnectionType>call</ConnectionType>
+  </ComponentRelation>
+  <ComponentRelation Id="24" SortOrder="3">
+    <ComponentAId>8</ComponentAId>
+    <ComponentBId>9</ComponentBId>
+    <Key>MSC301</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+    <RelationText>Charlie</RelationText>
+    <ConnectionType>call</ConnectionType>
+  </ComponentRelation>
+  <ComponentRelation Id="25" SortOrder="4">
+    <ComponentAId>9</ComponentAId>
+    <ComponentBId>8</ComponentBId>
+    <Key>MSC301</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+    <RelationText>delta</RelationText>
+    <ConnectionType>response</ConnectionType>
+  </ComponentRelation>
+  <ComponentRelation Id="26" SortOrder="5">
+    <ComponentAId>8</ComponentAId>
+    <ComponentBId>7</ComponentBId>
+    <Key>MSC301</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+    <RelationText>echo</RelationText>
+    <ConnectionType>response</ConnectionType>
+  </ComponentRelation>
+  <ComponentRelation Id="27" SortOrder="6">
+    <ComponentAId>7</ComponentAId>
+    <ComponentBId>2</ComponentBId>
+    <Key>MSC301</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+    <RelationText></RelationText>
+    <ConnectionType>response</ConnectionType>
+  </ComponentRelation>
+
+<!-- 21
+  <ComponentRelation Id="" SortOrder="">
+    <ComponentAId></ComponentAId>
+    <ComponentBId></ComponentBId>
+    <Key></Key>
+    <PropertyOfRelation></PropertyOfRelation>
+  </ComponentRelation>
+  -->
+
+    <Behavior Id="1" SortOrder="1"> 
+      <ViewPacketId>3</ViewPacketId>
+      <Description></Description>
+      <DiagramKey>MSC301</DiagramKey>
+    </Behavior>
 
 </SoftwareArchitectureDocumentation>

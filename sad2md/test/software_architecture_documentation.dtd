@@ -12,7 +12,8 @@
   Summary,
   ViewPacket+,
   Component+,
-  ComponentRelation*
+  ComponentRelation*,
+  Behavior*
 )>
 <!ATTLIST SoftwareArchitectureDocumentation Version CDATA #REQUIRED>
 
@@ -29,12 +30,11 @@
   Title?,
   ComponentRecurseLevel?,
   Introduction,
-  ContextModelKey?,
   ComponentId+,
+  PrimaryDisplayKey,
   ContextModelKey?,
   DiagramKey*,
   ParentViewPacketId*,
-  PrimaryDisplayKey,
   ChildViewPacketId*,
   SiblingViewPacketId*
 )>
@@ -53,6 +53,19 @@
 <!ELEMENT  ChildViewPacketId (#PCDATA)>
 <!ELEMENT  PrimaryDisplayKey (#PCDATA)>
 <!ELEMENT  SiblingViewPacketId (#PCDATA)>
+
+<!ELEMENT Behavior (
+  ViewPacketId,
+  Description,
+  DiagramKey
+)>
+<!ATTLIST Behavior Id CDATA #REQUIRED>
+<!ATTLIST Behavior SortOrder CDATA #REQUIRED>
+
+
+<!ELEMENT  Description (#PCDATA)>
+<!ELEMENT  ViewPacketId (#PCDATA)>
+
 
 <!ELEMENT Component (
   ArtifactRepository*,
@@ -106,11 +119,20 @@
   ComponentAId,
   ComponentBId,
   Key,
-  PropertyOfRelation
+  PropertyOfRelation,
+  RelationText?,
+  ConnectionType?
 )>
 <!ATTLIST ComponentRelation Id CDATA #REQUIRED>
+<!ATTLIST ComponentRelation SortOrder  CDATA #REQUIRED>
 
 <!ELEMENT ComponentAId  (#PCDATA)>
 <!ELEMENT ComponentBId  (#PCDATA)>
 <!ELEMENT Key  (#PCDATA)>
 <!ELEMENT PropertyOfRelation  (#PCDATA)>
+<!ELEMENT RelationText  (#PCDATA)>
+<!ELEMENT ConnectionType  (#PCDATA)>
+
+<!ELEMENT Diagram  (
+  DiagramKey
+)>

@@ -41,6 +41,19 @@
   * The ComponentAId is 'The Work' in a context diagram.
     * it is known that it is a contextdiagram, from the referance in the viewpacket.
 
+## Design
+
+### Behavior
+
+* Has the following entries:
+  * Description - One entry.
+  * DiagramId* - 0 or more.
+
+* Have a Diagram Entity, for holding diagrams
+  * to be used in e.g. Behavior
+  * for e.g. MSCs
+  * TODO is a Diagram lke a mini viewpacket?
+
 ## Implementation notes
 
 ### How viewpacket is being used for rendering
@@ -58,7 +71,7 @@ these fielads are used for...
   * Combined with ContextModelKey to lookup component tree in the ComponentRelation
     * for generating the Context diagram.
 
-TODO Primar  representation graphical
+TODO Primary representation graphical
 
 Do not print the inital one like in the textual
  but in the recursive function, print a and b name in the same line
@@ -68,3 +81,28 @@ then have the mermaid lead-in and lead out in the parrent function( I thing iew 
 TODO the related view
 
 * The order number is used used within a style, and is the last part of the section name(z.y.z)
+
+#### ComponentRelation - ConnectionType
+
+* [](https://en.wikipedia.org/wiki/Message_sequence_chart)
+
+* Id - UUID
+* SortOrder - for used within the same diagram. Can be left empty if not required.
+* ComponentAId - Left component
+* ComponentBId - Right componnet
+* Key - Used for getting all relations for a specific diagram.
+* PropertyOfRelation - TODO what is this for?
+* RelationText - for MSC and possibly also ContextDiagrams?
+  * TODO should this be a reference instead, so that it can reference e.g. a protocol.
+* ConnectionType
+  * MSC connection types
+    * Call - Sending a message.
+    * Response - return a message.
+    * InstanceCreation - Create a line that did not exist from the start.
+    * InstanceDestruction - End the line.
+  
+#### ViewPacket Behavior
+
+* For now the Behavior element is outside the viewpacket and references the viewpacket it belongs to.
+  * Later the Behavior element could be defined inside the ViewPacket element.
+    * Choosing outside to make the code of reading it in from the XML simpler, even though writing the xml is harder.

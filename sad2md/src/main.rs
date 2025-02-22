@@ -1,8 +1,16 @@
+//! sad2md is a tool to convert Software Architecture Document (SAD) XML files to Markdown.
+//!
+//! Testing it out:
+//! `cargo run test/test_sad.xml && cat sad.md`
+
 use std::fs::File;
 use std::io::BufReader;
 use std::io::Write;
 use xmltree::{ Element, XMLNode };
+// A HashMap is a collection of key-value pairs. It allows you to store and retrieve values based on a unique key.
 use std::collections::HashMap;
+// A HashSet is a collection of unique values. It does not store key-value pairs, only unique keys.
+use std::collections::HashSet;
 
 use rusqlite::{ Connection, Result };
 
@@ -44,17 +52,29 @@ struct ViewPacket {
 #[derive(Debug)]
 struct ComponentRelation {
     id: i32,
-    ComponentAId: i32,
-    ComponentBId: i32,
-    Key: String,
-    PropertyOfRelation: String,
+    component_a_id: i32,
+    component_b_id: i32,
+    connection_type: String,
+    key: String,
+    property_of_relation: String,
+    relation_text: String,
 }
 
 #[derive(Debug)]
 struct Component {
-    Id: i32,
-    Name: String,
-    Summary: String,
+    id: i32,
+    name: String,
+    summary: String,
+}
+
+// TODO do I need sort_order and view_packet_id I do not think so
+#[derive(Debug)]
+struct Behavior {
+    id: i32,
+    sort_order: i32,
+    view_packet_id: i32,
+    description: String,
+    diagram_key: String,
 }
 
 fn create_hardcoded_map() -> HashMap<&'static str, i32> {
@@ -153,6 +173,82 @@ fn populate_db(db_conn: &Connection, xml_root: &Element) {
     populate_db_with_viewpackets(db_conn, xml_root);
     populate_db_with_components(db_conn, xml_root);
     populate_db_with_componentrelations(db_conn, xml_root);
+    populate_db_with_behaviors(db_conn, xml_root);
+}
+
+fn populate_db_with_behaviors(db_conn: &Connection, xml_root: &Element) {
+    // Create the table
+    db_conn
+        .execute(
+            "CREATE TABLE behavior (
+            id INTEGER PRIMARY KEY,
+            sort_order INTEGER,
+            view_packet_id INTEGER,
+            description TEXT,
+            diagram_key TEXT NOT NULL
+        )",
+            []
+        )
+        .expect("Unable to create table");
+
+    // Insert the data
+    for child in &xml_root.children {
+        match child {
+            XMLNode::Element(behavior) => {
+                if behavior.name == "Behavior" {
+                    // TODO can I get the line in the XML that is currently read?
+                    let id: i32 = behavior.attributes
+                        .get("Id")
+                        .expect("Missing 'Id' attribute for Behavior")
+                        .parse()
+                        .unwrap();
+                    let sort_order: i32 = behavior.attributes
+                        .get("SortOrder")
+                        .unwrap()
+                        .parse()
+                        .unwrap();
+                    let view_packet_id: i32 = behavior
+                        .get_child("ViewPacketId")
+                        .expect("<ViewPacketId> element missing")
+                        .get_text()
+                        .expect("<ViewPacketId> element has no data")
+                        .parse()
+                        .unwrap();
+                    let description = behavior
+                        .get_child("Description")
+                        .unwrap_or_else(||
+                            panic!("<Description> element missing in Behavior id= {}", id)
+                        )
+                        .get_text()
+                        .unwrap_or_else(|| "".to_string().into());
+                    let diagram_key = behavior
+                        .get_child("DiagramKey")
+                        .unwrap_or_else(||
+                            panic!("<DiagramKey> element missing in Behavior id= {}", id)
+                        )
+                        .get_text()
+                        .unwrap_or_else(||
+                            panic!("<DiagramKey> element empty in Behavior id= {}", id)
+                        );
+
+                    db_conn
+                        .execute(
+                            "INSERT INTO behavior (id, sort_order, view_packet_id, description, diagram_key)
+                            VALUES (?1, ?2, ?3, ?4, ?5)",
+                            (
+                                id,
+                                sort_order,
+                                view_packet_id,
+                                &description.to_string(),
+                                &diagram_key.to_string(),
+                            )
+                        )
+                        .expect("Unable to insert data");
+                }
+            }
+            _ => {}
+        }
+    }
 }
 
 fn populate_db_with_components(db_conn: &Connection, xml_root: &Element) {
@@ -208,10 +304,13 @@ fn populate_db_with_componentrelations(db_conn: &Connection, xml_root: &Element)
         .execute(
             "CREATE TABLE component_relation (
             id INTEGER NOT NULL,
+            sort_order INTEGER NOT NULL,
             component_a_id INTEGER NOT NULL,
             component_b_id INTEGER NOT NULL,
+            connection_type TEXT,
             key TEXT,
-            property_of_relation TEXT
+            property_of_relation TEXT,
+            relation_text TEXT
         )",
             []
         )
@@ -229,6 +328,11 @@ fn populate_db_with_componentrelations(db_conn: &Connection, xml_root: &Element)
                         .expect("Missing 'Id' attribute for ComponentRelation")
                         .parse()
                         .unwrap();
+                    let sort_order: i32 = component_relation.attributes
+                        .get("SortOrder")
+                        .expect("Missing 'SortOrder' attribute for ComponentRelation")
+                        .parse()
+                        .unwrap_or(0);
                     let component_a_id: i32 = component_relation
                         .get_child("ComponentAId")
                         .expect("<ComponentAId> element missing")
@@ -243,26 +347,37 @@ fn populate_db_with_componentrelations(db_conn: &Connection, xml_root: &Element)
                         .expect("<ComponentBId> element has no data")
                         .parse()
                         .unwrap();
+                    let connection_type = component_relation
+                        .get_child("ConnectionType")
+                        .and_then(|child| child.get_text())
+                        .unwrap_or_else(|| "".to_string().into());
                     let key = component_relation
                         .get_child("Key")
                         .expect("<PropertyOfRelation> element missing")
                         .get_text()
                         .unwrap_or_else(|| "".to_string().into());
                     let property_of_relation = component_relation
-                        .get_child("Key")
-                        .expect("<Key> element missing")
+                        .get_child("PropertyOfRelation")
+                        .expect("<PropertyOfRelation> element missing")
                         .get_text()
+                        .unwrap_or_else(|| "".to_string().into());
+                    let relation_text = component_relation
+                        .get_child("RelationText")
+                        .and_then(|child| child.get_text())
                         .unwrap_or_else(|| "".to_string().into());
                     db_conn
                         .execute(
-                            "INSERT INTO component_relation (id, component_a_id, component_b_id, key, property_of_relation)
-                            VALUES (?1, ?2, ?3, ?4, ?5)",
+                            "INSERT INTO component_relation (id, sort_order, component_a_id, component_b_id, connection_type, key, property_of_relation, relation_text)
+                            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
                             (
                                 id,
+                                sort_order,
                                 component_a_id,
                                 component_b_id,
+                                &connection_type.to_string(),
                                 &key.to_string(),
                                 &property_of_relation.to_string(),
+                                &relation_text.to_string()
                             )
                         )
                         .expect("Unable to insert data in component_relation");
@@ -392,230 +507,6 @@ fn render_document(markdown_file: &mut File, db_conn: &Connection) {
     }
 }
 
-fn render_graphical_primary_display(
-    markdown_file: &mut File,
-    db_conn: &Connection,
-    view_type: &str,
-    style: &str,
-    component_id: i32,
-    primary_display_key: String
-) {
-    // TODO do I need this?
-    let top_component: Option<Component> = match get_component_by_id(db_conn, component_id) {
-        Ok(top_component) => Some(top_component),
-        Err(e) => {
-            eprintln!("Error retrieving component: {}", e);
-            None
-        }
-    };
-
-    if let Some(top_component) = top_component {
-        let component_relations_vector = get_list_of_related_components(
-            db_conn,
-            component_id,
-            primary_display_key.clone()
-        );
-        match component_relations_vector {
-            Ok(component_relations_vector) => {
-                for component_relation in component_relations_vector {
-                    let component_b = get_component_by_id(db_conn, component_relation.ComponentBId);
-                    match component_b {
-                        Ok(component_b) => {
-                            let component_a_name = get_component_name_by_id(db_conn, component_id);
-                            let linkable_component_a_name = make_linkable_text(component_a_name.clone());
-                            let linkable_component_b_name = make_linkable_text(component_b.Name.clone());
-
-                            markdown_file
-                                .write(
-                                    &format!(
-                                        "    {}[{}]-->{}[{}]\n",
-                                        linkable_component_a_name,
-                                        component_a_name,
-                                        linkable_component_b_name,
-                                        component_b.Name
-                                    ).as_bytes()
-                                )
-                                .expect("Unable to write to file");
-                            render_graphical_primary_display(
-                                markdown_file,
-                                db_conn,
-                                view_type,
-                                style,
-                                component_relation.ComponentBId,
-                                primary_display_key.clone()
-                            );
-                        }
-                        Err(err) => {
-                            eprintln!(
-                                "Error: returned from get_component_by_id() for component id = {} - {}",
-                                component_relation.ComponentBId,
-                                err
-                            );
-                        }
-                    }
-                }
-            }
-            Err(err) => {
-                eprintln!("Error: returned from get_list_of_related_components() {}", err);
-            }
-        }
-    }
-}
-
-fn render_graphical_context_diagram(
-    markdown_file: &mut File,
-    db_conn: &Connection,
-    view_type: &str,
-    style: &str,
-    component_id: i32,
-    context_model_key: String
-) {
-    // TODO do I need this?
-    let top_component: Option<Component> = match get_component_by_id(db_conn, component_id) {
-        Ok(top_component) => Some(top_component),
-        Err(e) => {
-            eprintln!("Error retrieving component: {}", e);
-            None
-        }
-    };
-
-    if let Some(top_component) = top_component {
-        let component_relations_vector = get_list_of_related_components(
-            db_conn,
-            component_id,
-            context_model_key.clone()
-        );
-        match component_relations_vector {
-            Ok(component_relations_vector) => {
-                for component_relation in component_relations_vector {
-                    let component_b = get_component_by_id(db_conn, component_relation.ComponentBId);
-                    match component_b {
-                        Ok(component_b) => {
-                            let component_a_name = get_component_name_by_id(db_conn, component_id);
-                            let linkable_component_a_name = make_linkable_text(component_a_name.clone());
-                            let linkable_component_b_name = make_linkable_text(component_b.Name.clone());
-
-                            markdown_file
-                                .write(
-                                    &format!(
-                                        "    {}[{}]-->{}(({}))\n",
-                                        linkable_component_b_name,
-                                        component_b.Name,
-                                        linkable_component_a_name,
-                                        component_a_name
-                                    ).as_bytes()
-                                )
-                                .expect("Unable to write to file");
-                            render_graphical_context_diagram(
-                                markdown_file,
-                                db_conn,
-                                view_type,
-                                style,
-                                component_relation.ComponentBId,
-                                context_model_key.clone()
-                            );
-                        }
-                        Err(err) => {
-                            eprintln!(
-                                "Error: returned from get_component_by_id() for component id = {} - {}",
-                                component_relation.ComponentBId,
-                                err
-                            );
-                        }
-                    }
-                }
-            }
-            Err(err) => {
-                eprintln!("Error: returned from get_list_of_related_components() {}", err);
-            }
-        }
-    }
-}
-
-fn render_textual_primary_display(
-    markdown_file: &mut File,
-    db_conn: &Connection,
-    view_type: &str,
-    style: &str,
-    component_id: i32,
-    primary_display_key: String,
-    indent_level: usize
-) {
-    // TODO do I need this?
-    let top_component: Option<Component> = match get_component_by_id(db_conn, component_id) {
-        Ok(top_component) => Some(top_component),
-        Err(e) => {
-            eprintln!("Error retrieving component: {}", e);
-            None
-        }
-    };
-
-    if let Some(top_component) = top_component {
-        let indent_spaces = " ".repeat(indent_level * 2);
-        let component_relations_vector = get_list_of_related_components(
-            db_conn,
-            component_id,
-            primary_display_key
-        );
-        match component_relations_vector {
-            Ok(component_relations_vector) => {
-                let indent_spaces = " ".repeat(indent_level * 2);
-                for component_relation in component_relations_vector {
-                    let component_b = get_component_by_id(db_conn, component_relation.ComponentBId);
-                    match component_b {
-                        Ok(component_b) => {
-                            markdown_file
-                                .write(
-                                    &format!(
-                                        "{}* {}: {}\n",
-                                        indent_spaces,
-                                        component_b.Name,
-                                        component_b.Summary
-                                    ).as_bytes()
-                                )
-                                .expect("Unable to write to file");
-                            render_textual_primary_display(
-                                markdown_file,
-                                db_conn,
-                                view_type,
-                                style,
-                                component_relation.ComponentBId,
-                                component_relation.PropertyOfRelation,
-                                indent_level + 1
-                            );
-                        }
-                        Err(err) => {
-                            eprintln!(
-                                "Error: returned from get_component_by_id() for component id = {} - {}",
-                                component_relation.ComponentBId,
-                                err
-                            );
-                        }
-                    }
-                }
-            }
-            Err(err) => {
-                eprintln!("Error: returned from get_list_of_related_components() {}", err);
-            }
-        }
-        // TODO recursively retrieve the related components.
-        // TODO I probably need to use a key for this relation as well.
-    }
-}
-
-
-fn get_component_name_by_id(db_conn: &Connection, component_id: i32) -> String {
-    let mut stmt = db_conn.prepare("SELECT name FROM component WHERE id = ?1").unwrap();
-    let component_name = stmt.query_row([component_id], |row| {
-        Ok(row.get(0)?)
-    }).unwrap();
-    component_name
-}
-
-fn make_linkable_text(text: String) -> String {
-    text.replace(" ", "")
-}
-
 fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: &str, style: &str) {
     // TODO maybe call this in the parent function so it only gets called once.
     let type_and_style_to_section_number = create_hardcoded_map();
@@ -681,9 +572,7 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
                     .expect("Unable to write to file");
 
                 // generate the primary presentation mermaid diagram
-                markdown_file
-                    .write("```mermaid\n  graph LR;\n".as_bytes())
-                    .expect("Unable to write to file");
+                mermaid_leadin(markdown_file,"graph LR;");
                 let top_component: Option<Component> = match
                     get_component_by_id(db_conn, viewpacket.component_id)
                 {
@@ -705,7 +594,7 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
                     );
                 }
 
-                markdown_file.write("```\n\n".as_bytes()).expect("Unable to write to file");
+                mermaid_leadout(markdown_file);
 
                 let top_component: Option<Component> = match
                     get_component_by_id(db_conn, viewpacket.component_id)
@@ -722,8 +611,8 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
                         .write(
                             &format!(
                                 "* {}: {}\n",
-                                top_component.Name,
-                                top_component.Summary
+                                top_component.name,
+                                top_component.summary
                             ).as_bytes()
                         )
                         .expect("Unable to write to file");
@@ -744,9 +633,8 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
                     .expect("Unable to write to file");
 
                 // generate the mermaid diagram for context diagram
-                markdown_file
-                    .write("```mermaid\n  graph TD;\n".as_bytes())
-                    .expect("Unable to write to file");
+                mermaid_leadin(markdown_file, "graph TD;");
+
                 let top_component: Option<Component> = match
                     get_component_by_id(db_conn, viewpacket.component_id)
                 {
@@ -768,7 +656,7 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
                     );
                 }
 
-                markdown_file.write("```\n\n".as_bytes()).expect("Unable to write to file");
+                mermaid_leadout(markdown_file);
 
                 // TOOD generate the table
 
@@ -781,6 +669,21 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
                     .expect("Unable to write to file");
 
                 // TODO generate list with elements and their properties
+
+                markdown_file
+                    .write(
+                        &format!(
+                            "#### {section_number}: Element catalog - Element behavior\n\n"
+                        ).as_bytes()
+                    )
+                    .expect("Unable to write to file");
+                render_graphical_all_behaviors_for_viewpacket(
+                    markdown_file,
+                    db_conn,
+                    view_type,
+                    style,
+                    viewpacket.viewpacket_id
+                );
 
                 markdown_file
                     .write(&format!("#### {section_number}: Related views\n\n").as_bytes())
@@ -807,22 +710,428 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
     }
 }
 
-fn get_list_of_related_components(
+fn render_graphical_primary_display(
+    markdown_file: &mut File,
+    db_conn: &Connection,
+    view_type: &str,
+    style: &str,
+    component_id: i32,
+    primary_display_key: String
+) {
+    // TODO do I need this?
+    let top_component: Option<Component> = match get_component_by_id(db_conn, component_id) {
+        Ok(top_component) => Some(top_component),
+        Err(e) => {
+            eprintln!("Error retrieving component: {}", e);
+            None
+        }
+    };
+
+    if let Some(top_component) = top_component {
+        let component_relations_vector = get_vector_of_related_components_by_id_and_key(
+            db_conn,
+            component_id,
+            primary_display_key.clone()
+        );
+        match component_relations_vector {
+            Ok(component_relations_vector) => {
+                for component_relation in component_relations_vector {
+                    let component_b = get_component_by_id(
+                        db_conn,
+                        component_relation.component_b_id
+                    );
+                    match component_b {
+                        Ok(component_b) => {
+                            let component_a_name = get_component_name_by_id(db_conn, component_id);
+                            let linkable_component_a_name = make_linkable_text(
+                                component_a_name.clone()
+                            );
+                            let linkable_component_b_name = make_linkable_text(
+                                component_b.name.clone()
+                            );
+
+                            markdown_file
+                                .write(
+                                    &format!(
+                                        "    {}[{}]-->{}[{}]\n",
+                                        linkable_component_a_name,
+                                        component_a_name,
+                                        linkable_component_b_name,
+                                        component_b.name
+                                    ).as_bytes()
+                                )
+                                .expect("Unable to write to file");
+                            render_graphical_primary_display(
+                                markdown_file,
+                                db_conn,
+                                view_type,
+                                style,
+                                component_relation.component_b_id,
+                                primary_display_key.clone()
+                            );
+                        }
+                        Err(err) => {
+                            eprintln!(
+                                "Error: returned from get_component_by_id() for component id = {} - {}",
+                                component_relation.component_b_id,
+                                err
+                            );
+                        }
+                    }
+                }
+            }
+            Err(err) => {
+                eprintln!("Error: returned from get_vector_of_related_components_by_id_and_key() {}", err);
+            }
+        }
+    }
+}
+
+fn render_graphical_context_diagram(
+    markdown_file: &mut File,
+    db_conn: &Connection,
+    view_type: &str,
+    style: &str,
+    component_id: i32,
+    context_model_key: String
+) {
+    // TODO do I need this?
+    let top_component: Option<Component> = match get_component_by_id(db_conn, component_id) {
+        Ok(top_component) => Some(top_component),
+        Err(e) => {
+            eprintln!("Error retrieving component: {}", e);
+            None
+        }
+    };
+
+    if let Some(top_component) = top_component {
+        let component_relations_vector = get_vector_of_related_components_by_id_and_key(
+            db_conn,
+            component_id,
+            context_model_key.clone()
+        );
+        match component_relations_vector {
+            Ok(component_relations_vector) => {
+                for component_relation in component_relations_vector {
+                    let component_b = get_component_by_id(
+                        db_conn,
+                        component_relation.component_b_id
+                    );
+                    match component_b {
+                        Ok(component_b) => {
+                            let component_a_name = get_component_name_by_id(db_conn, component_id);
+                            let linkable_component_a_name = make_linkable_text(
+                                component_a_name.clone()
+                            );
+                            let linkable_component_b_name = make_linkable_text(
+                                component_b.name.clone()
+                            );
+
+                            markdown_file
+                                .write(
+                                    &format!(
+                                        "    {}[{}]-->{}(({}))\n",
+                                        linkable_component_b_name,
+                                        component_b.name,
+                                        linkable_component_a_name,
+                                        component_a_name
+                                    ).as_bytes()
+                                )
+                                .expect("Unable to write to file");
+                            render_graphical_context_diagram(
+                                markdown_file,
+                                db_conn,
+                                view_type,
+                                style,
+                                component_relation.component_b_id,
+                                context_model_key.clone()
+                            );
+                        }
+                        Err(err) => {
+                            eprintln!(
+                                "Error: returned from get_component_by_id() for component id = {} - {}",
+                                component_relation.component_b_id,
+                                err
+                            );
+                        }
+                    }
+                }
+            }
+            Err(err) => {
+                eprintln!("Error: returned from get_vector_of_related_components_by_id_and_key() {}", err);
+            }
+        }
+    }
+}
+
+fn render_textual_primary_display(
+    markdown_file: &mut File,
+    db_conn: &Connection,
+    view_type: &str,
+    style: &str,
+    component_id: i32,
+    primary_display_key: String,
+    indent_level: usize
+) {
+    // TODO do I need this?
+    let top_component: Option<Component> = match get_component_by_id(db_conn, component_id) {
+        Ok(top_component) => Some(top_component),
+        Err(e) => {
+            eprintln!("Error retrieving component: {}", e);
+            None
+        }
+    };
+
+    if let Some(top_component) = top_component {
+        let indent_spaces = " ".repeat(indent_level * 2);
+        let component_relations_vector = get_vector_of_related_components_by_id_and_key(
+            db_conn,
+            component_id,
+            primary_display_key
+        );
+        match component_relations_vector {
+            Ok(component_relations_vector) => {
+                let indent_spaces = " ".repeat(indent_level * 2);
+                for component_relation in component_relations_vector {
+                    let component_b = get_component_by_id(
+                        db_conn,
+                        component_relation.component_b_id
+                    );
+                    match component_b {
+                        Ok(component_b) => {
+                            markdown_file
+                                .write(
+                                    &format!(
+                                        "{}* {}: {}\n",
+                                        indent_spaces,
+                                        component_b.name,
+                                        component_b.summary
+                                    ).as_bytes()
+                                )
+                                .expect("Unable to write to file");
+                            render_textual_primary_display(
+                                markdown_file,
+                                db_conn,
+                                view_type,
+                                style,
+                                component_relation.component_b_id,
+                                component_relation.property_of_relation,
+                                indent_level + 1
+                            );
+                        }
+                        Err(err) => {
+                            eprintln!(
+                                "Error: returned from get_component_by_id() for component id = {} - {}",
+                                component_relation.component_b_id,
+                                err
+                            );
+                        }
+                    }
+                }
+            }
+            Err(err) => {
+                eprintln!("Error: returned from get_vector_of_related_components_by_id_and_key() {}", err);
+            }
+        }
+        // TODO recursively retrieve the related components.
+        // TODO I probably need to use a key for this relation as well.
+    }
+}
+
+
+
+/// Itterates through all behaviors that are linked to the given view packet id.
+fn render_graphical_all_behaviors_for_viewpacket(
+    markdown_file: &mut File,
+    db_conn: &Connection,
+    view_type: &str,
+    style: &str,
+    viewpacket_id: i32
+) {
+    let behaviors_vector = get_vector_of_behaviors_for_viewpacket_id(db_conn, viewpacket_id);
+    match behaviors_vector {
+        Ok(behaviors_vector) => {
+            for behavior in behaviors_vector {
+                // TODO Create a title entry for the behavior
+                //
+
+                let component_relations_vector = get_vector_of_related_components_by_key(
+                    db_conn,
+                    behavior.diagram_key.clone()
+                );
+
+                match component_relations_vector {
+                    Ok(component_relations_vector) => {
+                        mermaid_leadin(markdown_file, "sequenceDiagram");
+                        let mut encountered_names: HashSet<String> = HashSet::new();
+
+                        for component_relation in component_relations_vector {
+                            let component_b = get_component_by_id(
+                                db_conn,
+                                component_relation.component_b_id
+                            );
+                            match component_b {
+                                Ok(component_b) => {
+                                    let component_a_name = get_component_name_by_id(
+                                        db_conn,
+                                        component_relation.component_a_id
+                                    );
+                                    let linkable_component_a_name = make_linkable_text(
+                                        component_a_name.clone()
+                                    );
+                                    let linkable_component_b_name = make_linkable_text(
+                                        component_b.name.clone()
+                                    );
+
+                                    // TODO Turn these two code blocks into function calls.
+                                    if !encountered_names.contains(&linkable_component_a_name) {
+                                        // Process the component
+                                        markdown_file
+                                        .write(
+                                            &format!(
+                                                "    participant {} as {}\n",
+                                                linkable_component_a_name,
+                                                component_a_name
+                                            ).as_bytes()
+                                        )
+                                        .expect("Unable to write to file");
+                                        // Add the name to the HashSet
+                                        encountered_names.insert(linkable_component_a_name.clone());
+                                    }
+                                    if !encountered_names.contains(&linkable_component_b_name) {
+                                        // Process the component
+                                        markdown_file
+                                        .write(
+                                            &format!(
+                                                "    participant {} as {}\n",
+                                                linkable_component_b_name,
+                                                component_b.name
+                                            ).as_bytes()
+                                        )
+                                        .expect("Unable to write to file");
+                                        // Add the name to the HashSet
+                                        encountered_names.insert(linkable_component_b_name.clone());
+                                    }
+
+
+                                    // TODO C Get PropertyOfRelation and put it in the graph if it is not empty
+                                    
+                                    let connection_arrow_text = match component_relation.connection_type.to_lowercase().as_str() {
+                                        "response" => "-->>",
+                                        _ => "->>",
+                                    };
+
+                                    markdown_file
+                                        .write(
+                                            &format!(
+                                                "    {}{}{}: {}\n",
+                                                linkable_component_a_name,
+                                                connection_arrow_text,
+                                                linkable_component_b_name,
+                                                component_relation.relation_text
+                                            ).as_bytes()
+                                        )
+                                        .expect("Unable to write to file");
+                                }
+                                Err(err) => {
+                                    eprintln!(
+                                        "Error: returned from get_component_by_id() for component id = {} - {}",
+                                        component_relation.component_b_id,
+                                        err
+                                    );
+                                }
+                            }
+                        }
+                        mermaid_leadout(markdown_file);
+                    }
+                    Err(err) => {
+                        eprintln!("Error: returned from get_vector_of_related_components_by_key() {}", err);
+                    }
+                }
+            }
+        }
+        Err(err) => {
+            eprintln!("Error: returned from get_vector_of_behaviors_for_viewpacket_id() {}", err);
+        }
+    }
+}
+
+fn get_component_name_by_id(db_conn: &Connection, component_id: i32) -> String {
+    let mut stmt = db_conn.prepare("SELECT name FROM component WHERE id = ?1").unwrap();
+    let component_name = stmt.query_row([component_id], |row| { Ok(row.get(0)?) }).unwrap();
+    component_name
+}
+
+fn make_linkable_text(text: String) -> String {
+    text.replace(" ", "")
+}
+
+/// Get all the behaviors that are linked to the given view packet id.
+fn get_vector_of_behaviors_for_viewpacket_id(
+    db_conn: &Connection,
+    viewpacket_id: i32
+) -> Result<Vec<Behavior>> {
+    let mut stmt = db_conn.prepare(
+        "SELECT id, sort_order, description, diagram_key FROM behavior WHERE view_packet_id = ?1 ORDER BY sort_order"
+    )?;
+    let behavior = stmt
+        .query_map(rusqlite::params![viewpacket_id], |row| {
+            Ok(Behavior {
+                id: row.get(0)?,
+                sort_order: row.get(1)?,
+                view_packet_id: viewpacket_id,
+                description: row.get(2)?,
+                diagram_key: row.get(3)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(behavior)
+}
+
+// get a list of related components by component id and key
+fn get_vector_of_related_components_by_id_and_key(
     db_conn: &Connection,
     component_id: i32,
     primary_display_key: String
 ) -> Result<Vec<ComponentRelation>> {
     let mut stmt = db_conn.prepare(
-        "SELECT component_a_id, component_b_id, id, key, property_of_relation FROM component_relation WHERE component_a_id = ?1 AND key = ?2 ORDER BY id"
+        "SELECT component_a_id, component_b_id, connection_type, id, key, property_of_relation, relation_text FROM component_relation WHERE component_a_id = ?1 AND key = ?2 ORDER BY id"
     )?;
     let component_relations = stmt
         .query_map(rusqlite::params![component_id, primary_display_key], |row| {
             Ok(ComponentRelation {
-                ComponentAId: row.get(0)?,
-                ComponentBId: row.get(1)?,
-                id: row.get(2)?,
-                Key: row.get(3)?,
-                PropertyOfRelation: row.get(4)?,
+                component_a_id: row.get(0)?,
+                component_b_id: row.get(1)?,
+                connection_type: row.get(2)?,
+                id: row.get(3)?,
+                key: row.get(4)?,
+                property_of_relation: row.get(5)?,
+                relation_text: row.get(6)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(component_relations)
+}
+
+/// Filter only by key, return vector sorted by sort_order.
+fn get_vector_of_related_components_by_key(
+    db_conn: &Connection,
+    key: String
+) -> Result<Vec<ComponentRelation>> {
+    // TODO probably remove 'id'
+    let mut stmt = db_conn.prepare(
+        "SELECT component_a_id, component_b_id, connection_type, id, key, property_of_relation, relation_text FROM component_relation WHERE key = ?1 ORDER BY sort_order"
+    )?;
+    let component_relations = stmt
+        .query_map(rusqlite::params![key], |row| {
+            Ok(ComponentRelation {
+                component_a_id: row.get(0)?,
+                component_b_id: row.get(1)?,
+                connection_type: row.get(2)?,
+                id: row.get(3)?,
+                key: row.get(4)?,
+                property_of_relation: row.get(5)?,
+                relation_text: row.get(6)?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -833,12 +1142,18 @@ fn get_component_by_id(db_conn: &Connection, component_id: i32) -> Result<Compon
     let mut stmt = db_conn.prepare("SELECT id, name, summary FROM component WHERE id = ?1")?;
     let component = stmt.query_row([component_id], |row| {
         Ok(Component {
-            Id: row.get(0)?,
-            Name: row.get(1)?,
-            Summary: row.get(2)?,
+            id: row.get(0)?,
+            name: row.get(1)?,
+            summary: row.get(2)?,
         })
     })?;
     Ok(component)
+}
+
+fn mermaid_leadin(markdown_file: &mut File, diagram_type: &str) {
+    markdown_file
+        .write(format!("```mermaid\n  {}\n", diagram_type).as_bytes())
+        .expect("Unable to write to file");
 }
 
 fn markdown_leadin(markdown_file: &mut File) {
@@ -846,3 +1161,10 @@ fn markdown_leadin(markdown_file: &mut File) {
         .write("# Software Architecture Document\n\n".as_bytes())
         .expect("Unable to write to file");
 }
+
+fn mermaid_leadout(markdown_file: &mut File) {
+    markdown_file
+        .write("```\n\n".as_bytes())
+        .expect("Unable to write to file");
+}
+
