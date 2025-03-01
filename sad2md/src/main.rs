@@ -15,7 +15,7 @@ use db_retrieval::{
     get_vector_of_related_components_by_id_and_key,
     get_vector_of_related_components_by_key,
 };
-use models::{Behavior, Component, ComponentRelation, ViewPacket};
+use models::{ Behavior, Component, ComponentRelation, ViewPacket };
 
 use rusqlite::Connection;
 
@@ -46,7 +46,6 @@ const CNC_VIEW_TYPE_STYLE_SHAREDDATA: &str = "SharedData";
 const ALLOCATION_VIEW_TYPE_STYLE_DEPLOYEMNET: &str = "Deployment";
 const ALLOCATION_VIEW_TYPE_STYLE_IMPLEMENTATION: &str = "Implementation";
 const ALLOCATION_VIEW_TYPE_STYLE_ASSIGNMENT: &str = "Assignment";
-
 
 fn create_hardcoded_map() -> HashMap<&'static str, i32> {
     let mut map = HashMap::new();
@@ -114,7 +113,6 @@ fn main() {
         std::process::exit(1);
     }
     let filename = &args[1];
-
 
     populate_db(&db_conn, filename);
 
@@ -210,8 +208,7 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
                     .write(&format!("#### {section_number}: Primary presentation\n\n").as_bytes())
                     .expect("Unable to write to file");
 
-                // generate the primary presentation mermaid diagram
-                mermaid_leadin(markdown_file,"graph LR;");
+                // TODO find out what the leadin need to be for layers
                 let top_component: Option<Component> = match
                     get_component_by_id(db_conn, viewpacket.component_id)
                 {
@@ -222,20 +219,22 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
                         None
                     }
                 };
-                if let Some(top_component) = top_component {
-                    render_graphical_primary_display(
-                        markdown_file,
-                        db_conn,
-                        view_type,
-                        style,
-                        viewpacket.component_id,
-                        viewpacket.primary_display_key.clone()
-                    );
-                }
-
-                mermaid_leadout(markdown_file);
-
-                let top_component: Option<Component> = match
+                if view_type == MODULE_VIEW_TYPE && style == MODULE_VIEW_TYPE_STYLE_LAYERED {
+                    // generate a layered mermaid diagram
+                    mermaid_leadin(markdown_file, "block-beta\n    columns 1");
+                    if let Some(top_component) = top_component {
+                        render_graphical_layered_display(
+                            markdown_file,
+                            db_conn,
+                            view_type,
+                            style,
+                            viewpacket.component_id,
+                            viewpacket.primary_display_key.clone(),
+                            true
+                        );
+                    }
+                    mermaid_leadout(markdown_file);
+                    let top_component: Option<Component> = match
                     get_component_by_id(db_conn, viewpacket.component_id)
                 {
                     // TODO can the 'if let Some' code below be put into a code block here?
@@ -263,8 +262,58 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
                         style,
                         viewpacket.component_id,
                         viewpacket.primary_display_key,
-                        1
+                        0,
+                        0
                     );
+                }
+
+                } else {
+                    // generate the primary presentation mermaid diagram
+                    mermaid_leadin(markdown_file, "graph LR;");
+                    if let Some(top_component) = top_component {
+                        render_graphical_primary_display(
+                            markdown_file,
+                            db_conn,
+                            view_type,
+                            style,
+                            viewpacket.component_id,
+                            viewpacket.primary_display_key.clone()
+                        );
+                    }
+                    mermaid_leadout(markdown_file);
+                    let top_component: Option<Component> = match
+                        get_component_by_id(db_conn, viewpacket.component_id)
+                    {
+                        // TODO can the 'if let Some' code below be put into a code block here?
+                        Ok(top_component) => Some(top_component),
+                        Err(e) => {
+                            eprintln!("Error retrieving component: {}", e);
+                            None
+                        }
+                    };
+                    // TODO put this whole part in a function so it can be shared with the layered display, iwth just the parms changed.
+                    if let Some(top_component) = top_component {
+                        markdown_file
+                            .write(
+                                &format!(
+                                    "* {}: {}\n",
+                                    top_component.name,
+                                    top_component.summary
+                                ).as_bytes()
+                            )
+                            .expect("Unable to write to file");
+
+                        render_textual_primary_display(
+                            markdown_file,
+                            db_conn,
+                            view_type,
+                            style,
+                            viewpacket.component_id,
+                            viewpacket.primary_display_key,
+                            1,
+                            1
+                        );
+                    }
                 }
 
                 markdown_file
@@ -426,6 +475,126 @@ fn render_graphical_primary_display(
     }
 }
 
+/// Renders the graphical representation of the layered display.
+/// ### Parameters
+/// - `markdown_file` - The markdown file to write to.
+/// - `db_conn` - The database connection.
+/// - `view_type` - The type of view.
+/// - `style` - The style of view.
+/// - `component_id` - The id of the upper layer that needs to be connected to a lower layer.
+/// - `primary_display_key` - The key for filter the components when selecting from RelatedCp,åpmemts.
+/// - `first_layer` - A boolean to indicate if this is the first layer.
+fn render_graphical_layered_display(
+    markdown_file: &mut File,
+    db_conn: &Connection,
+    view_type: &str,
+    style: &str,
+    component_id: i32,
+    primary_display_key: String,
+    first_layer: bool
+) {
+    println!(
+        "render_graphical_layered_display {} {} {}",
+        component_id,
+        primary_display_key,
+        first_layer
+    );
+
+    if first_layer {
+        let component_a_name = get_component_name_by_id(db_conn, component_id);
+        let linkable_component_a_name = make_linkable_text(component_a_name.clone());
+        markdown_file
+            .write(
+                &format!("    {}[\"{}\"]\n", linkable_component_a_name, component_a_name).as_bytes()
+            )
+            .expect("Unable to write to file");
+    }
+
+    // TODO do I need this?
+    let top_component: Option<Component> = match get_component_by_id(db_conn, component_id) {
+        Ok(top_component) => Some(top_component),
+        Err(e) => {
+            eprintln!("Error retrieving component: {}", e);
+            None
+        }
+    };
+
+    // TODO print the current layer, if this is firt layer, before looking for lated layer.
+    if let Some(top_component) = top_component {
+        let component_relations_vector = get_vector_of_related_components_by_id_and_key(
+            db_conn,
+            component_id,
+            primary_display_key.clone()
+        );
+        // TODO something along the lines of if there are no more relations the print the b component(it is the lat)
+        match component_relations_vector {
+            Ok(component_relations_vector) => {
+                let last_component = component_relations_vector.len() == 0;
+                for component_relation in component_relations_vector {
+                    let component_b = get_component_by_id(
+                        db_conn,
+                        component_relation.component_b_id
+                    );
+                    match component_b {
+                        Ok(component_b) => {
+                            let linkable_component_b_name = make_linkable_text(
+                                component_b.name.clone()
+                            );
+
+                            // TODO the first call must do both layers, the next calls must only do the second layer.
+                            markdown_file
+                                .write(
+                                    &format!(
+                                        "    {}[\"{}\"]\n",
+                                        linkable_component_b_name,
+                                        component_b.name
+                                    ).as_bytes()
+                                )
+                                .expect("Unable to write to file");
+                            // TODO recurse the next layer
+
+                            render_graphical_layered_display(
+                                markdown_file,
+                                db_conn,
+                                view_type,
+                                style,
+                                component_relation.component_b_id,
+                                primary_display_key.clone(),
+                                false
+                            );
+                        }
+                        Err(err) => {
+                            eprintln!(
+                                "Error: returned from get_component_by_id() for component id = {} - {}",
+                                component_relation.component_b_id,
+                                err
+                            );
+                        }
+                    }
+                }
+                // TODO it seems this code isn't needed.
+                if false {
+                    //if last_component {
+                    let component_a_name = get_component_name_by_id(db_conn, component_id);
+                    let linkable_component_a_name = make_linkable_text(component_a_name.clone());
+                    markdown_file
+                        .write(
+                            &format!(
+                                "    {}[\"{}\"]\n",
+                                linkable_component_a_name,
+                                component_a_name
+                            ).as_bytes()
+                        )
+                        .expect("Unable to write to file");
+                }
+            }
+            Err(err) => {
+                eprintln!("Error: returned from get_vector_of_related_components_by_id_and_key() {}", err);
+            }
+        }
+    }
+}
+
 fn render_graphical_context_diagram(
     markdown_file: &mut File,
     db_conn: &Connection,
@@ -510,7 +679,8 @@ fn render_textual_primary_display(
     style: &str,
     component_id: i32,
     primary_display_key: String,
-    indent_level: usize
+    indent_level: usize,
+    indent_increment: usize
 ) {
     // TODO do I need this?
     let top_component: Option<Component> = match get_component_by_id(db_conn, component_id) {
@@ -526,7 +696,7 @@ fn render_textual_primary_display(
         let component_relations_vector = get_vector_of_related_components_by_id_and_key(
             db_conn,
             component_id,
-            primary_display_key
+            primary_display_key.clone()
         );
         match component_relations_vector {
             Ok(component_relations_vector) => {
@@ -554,8 +724,10 @@ fn render_textual_primary_display(
                                 view_type,
                                 style,
                                 component_relation.component_b_id,
-                                component_relation.property_of_relation,
-                                indent_level + 1
+                                //component_relation.property_of_relation,
+                                primary_display_key.clone(),
+                                indent_level + indent_increment,
+                                indent_increment
                             );
                         }
                         Err(err) => {
@@ -624,36 +796,37 @@ fn render_graphical_all_behaviors_for_viewpacket(
                                     if !encountered_names.contains(&linkable_component_a_name) {
                                         // Process the component
                                         markdown_file
-                                        .write(
-                                            &format!(
-                                                "    participant {} as {}\n",
-                                                linkable_component_a_name,
-                                                component_a_name
-                                            ).as_bytes()
-                                        )
-                                        .expect("Unable to write to file");
+                                            .write(
+                                                &format!(
+                                                    "    participant {} as {}\n",
+                                                    linkable_component_a_name,
+                                                    component_a_name
+                                                ).as_bytes()
+                                            )
+                                            .expect("Unable to write to file");
                                         // Add the name to the HashSet
                                         encountered_names.insert(linkable_component_a_name.clone());
                                     }
                                     if !encountered_names.contains(&linkable_component_b_name) {
                                         // Process the component
                                         markdown_file
-                                        .write(
-                                            &format!(
-                                                "    participant {} as {}\n",
-                                                linkable_component_b_name,
-                                                component_b.name
-                                            ).as_bytes()
-                                        )
-                                        .expect("Unable to write to file");
+                                            .write(
+                                                &format!(
+                                                    "    participant {} as {}\n",
+                                                    linkable_component_b_name,
+                                                    component_b.name
+                                                ).as_bytes()
+                                            )
+                                            .expect("Unable to write to file");
                                         // Add the name to the HashSet
                                         encountered_names.insert(linkable_component_b_name.clone());
                                     }
 
-
                                     // TODO C Get PropertyOfRelation and put it in the graph if it is not empty
-                                    
-                                    let connection_arrow_text = match component_relation.connection_type.to_lowercase().as_str() {
+
+                                    let connection_arrow_text = match
+                                        component_relation.connection_type.to_lowercase().as_str()
+                                    {
                                         "response" => "-->>",
                                         _ => "->>",
                                     };
@@ -710,7 +883,5 @@ fn markdown_leadin(markdown_file: &mut File) {
 }
 
 fn mermaid_leadout(markdown_file: &mut File) {
-    markdown_file
-        .write("```\n\n".as_bytes())
-        .expect("Unable to write to file");
+    markdown_file.write("```\n\n".as_bytes()).expect("Unable to write to file");
 }

@@ -27,7 +27,15 @@
     <ContextModelKey>ContextDiagram002</ContextModelKey>
   </ViewPacket>
 
-  <ViewPacket Id="3" ViewType="CnC" ViewStyle="ClientServer" SortOrder="1">
+  <ViewPacket Id="3" ViewType="Module" ViewStyle="Layered" SortOrder="1">
+    <Title>Cloud presence layers</Title>
+    <Introduction></Introduction>
+    <ComponentId>18</ComponentId>
+    <PrimaryDisplayKey>Layerd003</PrimaryDisplayKey>
+    <ContextModelKey></ContextModelKey>
+  </ViewPacket>
+
+  <ViewPacket Id="4" ViewType="CnC" ViewStyle="ClientServer" SortOrder="1">
     <Title>Client connection</Title>
     <Introduction></Introduction>
     <ComponentId>2</ComponentId>
@@ -35,7 +43,7 @@
     <ContextModelKey>ContextDiagram002</ContextModelKey>
   </ViewPacket>
 
-  <Component Id="1" Name="Viking conflict card game">
+  <Component Id="1" Name="Conflict card game">
     <Responsibilities></Responsibilities>
     <Summary></Summary>
   </Component>
@@ -80,7 +88,7 @@
     <Summary></Summary>
   </Component>
 
-  <Component Id="10" Name="IaaS">
+  <Component Id="10" Name="Cloud provider">
     <Responsibilities></Responsibilities>
     <Summary></Summary>
   </Component>
@@ -106,6 +114,21 @@
   </Component>
 
   <Component Id="15" Name="CardDeckStorage">
+    <Responsibilities></Responsibilities>
+    <Summary></Summary>
+  </Component>
+
+  <Component Id="16" Name="Infrastructure">
+    <Responsibilities></Responsibilities>
+    <Summary></Summary>
+  </Component>
+
+  <Component Id="17" Name="kubernetes">
+    <Responsibilities></Responsibilities>
+    <Summary></Summary>
+  </Component>
+
+  <Component Id="18" Name="Server applications">
     <Responsibilities></Responsibilities>
     <Summary></Summary>
   </Component>
@@ -307,7 +330,21 @@
     <ConnectionType>response</ConnectionType>
   </ComponentRelation>
 
-<!-- 21
+  <ComponentRelation Id="28" SortOrder="">
+    <ComponentAId>18</ComponentAId>
+    <ComponentBId>17</ComponentBId>
+    <Key>Layerd003</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+  </ComponentRelation>
+  <ComponentRelation Id="29" SortOrder="">
+    <ComponentAId>17</ComponentAId>
+    <ComponentBId>16</ComponentBId>
+    <Key>Layerd003</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+  </ComponentRelation>
+
+
+<!-- 30
   <ComponentRelation Id="" SortOrder="">
     <ComponentAId></ComponentAId>
     <ComponentBId></ComponentBId>
