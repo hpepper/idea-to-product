@@ -17,7 +17,7 @@ pub fn populate_db(db_conn: &Connection, filename: &String) {
 fn load_xml_file(filename: &str) -> Element {
     // verify the file exists
     if !std::path::Path::new(filename).exists() {
-        eprintln!("File not found: {}", filename);
+        eprintln!("!!! File not found: {}", filename);
         std::process::exit(1);
     }
 
