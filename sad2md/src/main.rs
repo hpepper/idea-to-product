@@ -203,118 +203,14 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
                     .expect("Unable to write to file");
 
                 // TODO make the primary display a sub function, so this viewpacket function doesn become huge.
-
-                markdown_file
-                    .write(&format!("#### {section_number}: Primary presentation\n\n").as_bytes())
-                    .expect("Unable to write to file");
-
-                // TODO find out what the leadin need to be for layers
-                let top_component: Option<Component> = match
-                    get_component_by_id(db_conn, viewpacket.component_id)
-                {
-                    // TODO can the 'if let Some' code below be put into a code block here?
-                    Ok(top_component) => Some(top_component),
-                    Err(e) => {
-                        eprintln!("Error retrieving component: {}", e);
-                        None
-                    }
-                };
-                if view_type == MODULE_VIEW_TYPE && style == MODULE_VIEW_TYPE_STYLE_LAYERED {
-                    // generate a layered mermaid diagram
-                    mermaid_leadin(markdown_file, "block-beta\n    columns 1");
-                    if let Some(top_component) = top_component {
-                        render_graphical_layered_display(
-                            markdown_file,
-                            db_conn,
-                            view_type,
-                            style,
-                            viewpacket.component_id,
-                            viewpacket.primary_display_key.clone(),
-                            true
-                        );
-                    }
-                    mermaid_leadout(markdown_file);
-                    let top_component: Option<Component> = match
-                    get_component_by_id(db_conn, viewpacket.component_id)
-                {
-                    // TODO can the 'if let Some' code below be put into a code block here?
-                    Ok(top_component) => Some(top_component),
-                    Err(e) => {
-                        eprintln!("Error retrieving component: {}", e);
-                        None
-                    }
-                };
-                if let Some(top_component) = top_component {
-                    markdown_file
-                        .write(
-                            &format!(
-                                "* {}: {}\n",
-                                top_component.name,
-                                top_component.summary
-                            ).as_bytes()
-                        )
-                        .expect("Unable to write to file");
-
-                    render_textual_primary_display(
-                        markdown_file,
-                        db_conn,
-                        view_type,
-                        style,
-                        viewpacket.component_id,
-                        viewpacket.primary_display_key,
-                        0,
-                        0
-                    );
-                }
-
-                } else {
-                    // generate the primary presentation mermaid diagram
-                    mermaid_leadin(markdown_file, "graph LR;");
-                    if let Some(top_component) = top_component {
-                        render_graphical_primary_display(
-                            markdown_file,
-                            db_conn,
-                            view_type,
-                            style,
-                            viewpacket.component_id,
-                            viewpacket.primary_display_key.clone()
-                        );
-                    }
-                    mermaid_leadout(markdown_file);
-                    let top_component: Option<Component> = match
-                        get_component_by_id(db_conn, viewpacket.component_id)
-                    {
-                        // TODO can the 'if let Some' code below be put into a code block here?
-                        Ok(top_component) => Some(top_component),
-                        Err(e) => {
-                            eprintln!("Error retrieving component: {}", e);
-                            None
-                        }
-                    };
-                    // TODO put this whole part in a function so it can be shared with the layered display, iwth just the parms changed.
-                    if let Some(top_component) = top_component {
-                        markdown_file
-                            .write(
-                                &format!(
-                                    "* {}: {}\n",
-                                    top_component.name,
-                                    top_component.summary
-                                ).as_bytes()
-                            )
-                            .expect("Unable to write to file");
-
-                        render_textual_primary_display(
-                            markdown_file,
-                            db_conn,
-                            view_type,
-                            style,
-                            viewpacket.component_id,
-                            viewpacket.primary_display_key,
-                            1,
-                            1
-                        );
-                    }
-                }
+                render_viewpacket_section_primary_display(
+                    markdown_file,
+                    db_conn,
+                    view_type,
+                    style,
+                    &viewpacket,
+                    section_number.clone()
+                );
 
                 markdown_file
                     .write(&format!("\n#### {section_number}: Context diagram\n\n").as_bytes())
@@ -394,6 +290,114 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
             Err(err) => {
                 eprintln!("Error: {}", err);
             }
+        }
+    }
+}
+
+fn render_viewpacket_section_primary_display(
+    markdown_file: &mut File,
+    db_conn: &Connection,
+    view_type: &str,
+    style: &str,
+    viewpacket: &ViewPacket,
+    section_number: String
+) {
+    markdown_file
+        .write(&format!("#### {section_number}: Primary presentation\n\n").as_bytes())
+        .expect("Unable to write to file");
+
+    // TODO find out what the leadin need to be for layers
+    let top_component: Option<Component> = match
+        get_component_by_id(db_conn, viewpacket.component_id)
+    {
+        // TODO can the 'if let Some' code below be put into a code block here?
+        Ok(top_component) => Some(top_component),
+        Err(e) => {
+            eprintln!("Error retrieving component: {}", e);
+            None
+        }
+    };
+    if view_type == MODULE_VIEW_TYPE && style == MODULE_VIEW_TYPE_STYLE_LAYERED {
+        // generate a layered mermaid diagram
+        mermaid_leadin(markdown_file, "block-beta\n    columns 1");
+        if let Some(top_component) = top_component {
+            render_graphical_layered_display(
+                markdown_file,
+                db_conn,
+                view_type,
+                style,
+                viewpacket.component_id,
+                viewpacket.primary_display_key.clone(),
+                true
+            );
+        }
+        mermaid_leadout(markdown_file);
+        let top_component: Option<Component> = match
+            get_component_by_id(db_conn, viewpacket.component_id)
+        {
+            // TODO can the 'if let Some' code below be put into a code block here?
+            Ok(top_component) => Some(top_component),
+            Err(e) => {
+                eprintln!("Error retrieving component: {}", e);
+                None
+            }
+        };
+        if let Some(top_component) = top_component {
+            markdown_file
+                .write(&format!("* {}: {}\n", top_component.name, top_component.summary).as_bytes())
+                .expect("Unable to write to file");
+
+            render_textual_primary_display(
+                markdown_file,
+                db_conn,
+                view_type,
+                style,
+                viewpacket.component_id,
+                viewpacket.primary_display_key.clone(),
+                0,
+                0
+            );
+        }
+    } else {
+        // generate the primary presentation mermaid diagram
+        mermaid_leadin(markdown_file, "graph LR;");
+        if let Some(top_component) = top_component {
+            render_graphical_primary_display(
+                markdown_file,
+                db_conn,
+                view_type,
+                style,
+                viewpacket.component_id,
+                viewpacket.primary_display_key.clone()
+            );
+        }
+        mermaid_leadout(markdown_file);
+        let top_component: Option<Component> = match
+            get_component_by_id(db_conn, viewpacket.component_id)
+        {
+            // TODO can the 'if let Some' code below be put into a code block here?
+            Ok(top_component) => Some(top_component),
+            Err(e) => {
+                eprintln!("Error retrieving component: {}", e);
+                None
+            }
+        };
+        // TODO put this whole part in a function so it can be shared with the layered display, iwth just the parms changed.
+        if let Some(top_component) = top_component {
+            markdown_file
+                .write(&format!("* {}: {}\n", top_component.name, top_component.summary).as_bytes())
+                .expect("Unable to write to file");
+
+            render_textual_primary_display(
+                markdown_file,
+                db_conn,
+                view_type,
+                style,
+                viewpacket.component_id,
+                viewpacket.primary_display_key.clone(),
+                1,
+                1
+            );
         }
     }
 }
