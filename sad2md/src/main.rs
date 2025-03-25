@@ -43,9 +43,10 @@ const CNC_VIEW_TYPE_STYLE_PUBSUB: &str = "PublishSubscribe";
 const CNC_VIEW_TYPE_STYLE_PIPEANDFILTER: &str = "PipeAndFilter";
 const CNC_VIEW_TYPE_STYLE_SHAREDDATA: &str = "SharedData";
 
-const ALLOCATION_VIEW_TYPE_STYLE_DEPLOYEMNET: &str = "Deployment";
-const ALLOCATION_VIEW_TYPE_STYLE_IMPLEMENTATION: &str = "Implementation";
+const ALLOCATION_VIEW_TYPE_STYLE_DEPLOYEMENT: &str = "Deployment";
+const ALLOCATION_VIEW_TYPE_STYLE_INSTALL: &str = "Install";
 const ALLOCATION_VIEW_TYPE_STYLE_ASSIGNMENT: &str = "Assignment";
+const ALLOCATION_VIEW_TYPE_STYLE_TESTING: &str = "Testing";
 
 fn create_hardcoded_map() -> HashMap<&'static str, i32> {
     let mut map = HashMap::new();
@@ -61,9 +62,10 @@ fn create_hardcoded_map() -> HashMap<&'static str, i32> {
     map.insert(CNC_VIEW_TYPE_STYLE_PUBSUB, 3);
     map.insert(CNC_VIEW_TYPE_STYLE_PIPEANDFILTER, 4);
     map.insert(CNC_VIEW_TYPE_STYLE_SHAREDDATA, 5);
-    map.insert(ALLOCATION_VIEW_TYPE_STYLE_DEPLOYEMNET, 1);
-    map.insert(ALLOCATION_VIEW_TYPE_STYLE_IMPLEMENTATION, 2);
+    map.insert(ALLOCATION_VIEW_TYPE_STYLE_DEPLOYEMENT, 1);
+    map.insert(ALLOCATION_VIEW_TYPE_STYLE_INSTALL, 2);
     map.insert(ALLOCATION_VIEW_TYPE_STYLE_ASSIGNMENT, 3);
+    map.insert(ALLOCATION_VIEW_TYPE_STYLE_TESTING, 4);
 
     map
 }
@@ -95,9 +97,10 @@ fn create_styles() -> HashMap<&'static str, Vec<&'static str>> {
     map.insert(
         ALLOCATION_VIEW_TYPE,
         vec![
-            ALLOCATION_VIEW_TYPE_STYLE_DEPLOYEMNET,
-            ALLOCATION_VIEW_TYPE_STYLE_IMPLEMENTATION,
-            ALLOCATION_VIEW_TYPE_STYLE_ASSIGNMENT
+            ALLOCATION_VIEW_TYPE_STYLE_DEPLOYEMENT,
+            ALLOCATION_VIEW_TYPE_STYLE_INSTALL,
+            ALLOCATION_VIEW_TYPE_STYLE_ASSIGNMENT,
+            ALLOCATION_VIEW_TYPE_STYLE_TESTING
         ]
     );
     map
