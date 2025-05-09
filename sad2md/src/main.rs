@@ -448,7 +448,7 @@ fn render_graphical_primary_display(
                             markdown_file
                                 .write(
                                     &format!(
-                                        "    {}[{}]-->{}[{}]\n",
+                                        "    {}[{}]---{}[{}]\n",
                                         linkable_component_a_name,
                                         component_a_name,
                                         linkable_component_b_name,
