@@ -28,6 +28,8 @@ view type to show the feature architecture.
 * Module
   * Decomposition, Uses:
     * Child: if a sub component is mentioned as the top id in a different view packet reference that view packet.
+      * itterate through the connected ComponentRelations,
+      * for each get all the viewpackets where the connected ComponentId is the the top id.
     * Parent:
 
 #### TODO Generating references from Primary display section

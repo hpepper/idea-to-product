@@ -123,15 +123,20 @@ fn main() {
     render_document(&mut markdown_file, &db_conn);
 }
 
-fn create_view_packet_title( view_type: &str, view_style: &str, view_title: &str, view_sort_order: i32) -> String {
+fn create_view_packet_title(
+    view_type: &str,
+    view_style: &str,
+    view_title: &str,
+    view_sort_order: i32,
+) -> String {
     let type_and_style_to_section_number = create_hardcoded_map();
     let section_number = format!(
-                    "{}.{}.{}",
-                    type_and_style_to_section_number[view_type],
-                    type_and_style_to_section_number[view_style],
-                    view_sort_order
-                );
-                    format!("{view_type} {view_style} view packet {section_number}: {view_title}")
+        "{}.{}.{}",
+        type_and_style_to_section_number[view_type],
+        type_and_style_to_section_number[view_style],
+        view_sort_order
+    );
+    format!("{view_type} {view_style} view packet {section_number}: {view_title}")
 }
 
 fn render_document(markdown_file: &mut File, db_conn: &Connection) {
@@ -266,16 +271,30 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
                     .write(&format!("* Parent:\n").as_bytes())
                     .expect("Unable to write to file");
                 // TODO find the parent viewpacket
-                render_sibling_relationship(
+
+                markdown_file
+                    .write(&format!("* Siblings:\n").as_bytes())
+                    .expect("Unable to write to file");
+
+                render_viewpacket_relationship(
                     markdown_file,
                     db_conn,
                     viewpacket.viewpacket_id,
                     viewpacket.component_id,
                 );
+
                 markdown_file
                     .write(&format!("* Children:\n").as_bytes())
                     .expect("Unable to write to file");
-                // TODO find the children viewpacket
+
+                render_child_relationship(
+                    markdown_file,
+                    db_conn,
+                    viewpacket.viewpacket_id,
+                    viewpacket.component_id,
+                    style,
+                    viewpacket.primary_display_key.clone(),
+                );
                 markdown_file
                     .write(&format!("\n").as_bytes())
                     .expect("Unable to write to file");
@@ -287,17 +306,61 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
     }
 }
 
-fn render_sibling_relationship(
+fn render_child_relationship(
+    markdown_file: &mut File,
+    db_conn: &Connection,
+    viewpacket_id: i32,
+    component_id: i32,
+    style: &str,
+    primary_display_key: String,
+) {
+    if style == MODULE_VIEW_TYPE_STYLE_DECOMPOSITION || style == MODULE_VIEW_TYPE_STYLE_USES {
+        let component_relations_vector = get_vector_of_related_components_by_id_and_key(
+            db_conn,
+            component_id,
+            primary_display_key,
+        );
+        match component_relations_vector {
+            Ok(component_relations_vector) => {
+                for component_relation in component_relations_vector {
+                    let component_b =
+                        get_component_by_id(db_conn, component_relation.component_b_id);
+                    match component_b {
+                        Ok(component_b) => {
+                            render_viewpacket_relationship(
+                                markdown_file,
+                                db_conn,
+                                viewpacket_id,
+                                component_b.id,
+                            );
+                        }
+                        Err(err) => {
+                            eprintln!(
+                                "Error: returned from get_component_by_id() for component id = {} - {}",
+                                component_relation.component_b_id,
+                                err
+                            );
+                        }
+                    }
+                }
+            }
+            Err(err) => {
+                eprintln!(
+                    "Error: returned from get_vector_of_related_components_by_id_and_key() {}",
+                    err
+                );
+            }
+        }
+    }
+}
+
+fn render_viewpacket_relationship(
     markdown_file: &mut File,
     db_conn: &Connection,
     viewpacket_id: i32,
     component_id: i32,
 ) {
     let type_and_style_to_section_number = create_hardcoded_map();
-
-    markdown_file
-        .write(&format!("* Siblings:\n").as_bytes())
-        .expect("Unable to write to file");
 
     let viewpacket_vector = get_vector_of_viewpacket_by_component_id_except_component_id(
         db_conn,
@@ -314,7 +377,7 @@ fn render_sibling_relationship(
                     viewpacket.view_type.as_str(),
                     viewpacket.view_style.as_str(),
                     viewpacket.title.as_str(),
-                    viewpacket.sort_order
+                    viewpacket.sort_order,
                 );
                 let linkable_view_title = make_markdown_linkable_text(view_title.clone());
                 markdown_file
@@ -365,6 +428,7 @@ fn render_viewpacket_section_primary_display(
             );
         }
         mermaid_leadout(markdown_file);
+
         let top_component: Option<Component> =
             match get_component_by_id(db_conn, viewpacket.component_id) {
                 // TODO can the 'if let Some' code below be put into a code block here?
@@ -610,7 +674,8 @@ fn render_graphical_layered_display(
                 if false {
                     //if last_component {
                     let component_a_name = get_component_name_by_id(db_conn, component_id);
-                    let linkable_component_a_name = make_mermaid_linkable_text(component_a_name.clone());
+                    let linkable_component_a_name =
+                        make_mermaid_linkable_text(component_a_name.clone());
                     markdown_file
                         .write(
                             &format!(
