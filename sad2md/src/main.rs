@@ -105,7 +105,12 @@ fn create_styles() -> HashMap<&'static str, Vec<&'static str>> {
 }
 
 fn main() {
-    let db_conn = Connection::open_in_memory().expect("Connecting to the SQLite database failed.");
+    // if the first argument is 'version' then print the version in Cargo.toml and exit
+    if std::env::args().any(|arg| arg == "version") {
+        let version = env!("CARGO_PKG_VERSION");
+        println!("Version: {}", version);
+        return;
+    }
 
     // get filename from command line arguments
     let args: Vec<String> = std::env::args().collect();
@@ -114,6 +119,8 @@ fn main() {
         std::process::exit(1);
     }
     let filename = &args[1];
+
+    let db_conn = Connection::open_in_memory().expect("Connecting to the SQLite database failed.");
 
     populate_db(&db_conn, filename);
 
