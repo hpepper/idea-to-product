@@ -5,6 +5,7 @@ OBJS =	itp.o\
            DatabaseInterface.o\
            ArchitectureDocument.o\
            ArchitectureDocumentLatex.o\
+		   ComponentRelationLists.o\
            ViewPacket.o\
            XmlSupport.o
 

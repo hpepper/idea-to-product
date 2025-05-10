@@ -41,9 +41,11 @@ int ViewPacket::SaveSection(std::ofstream *pFile) {
 	std::string sComponentId = m_pDatabaseInterface->GetViewPacketElementText(m_sViewPacketIndex, "ComponentId");
 	std::string sComponentRecurseLevel = m_pDatabaseInterface->GetViewPacketElementText(m_sViewPacketIndex, "ComponentRecurseLevel");
 
-	int nComponentRecurseLevel = std::stoi(sComponentRecurseLevel);
 
-	ComponentRelationLists *pComponentTree = m_pDatabaseInterface->GetComponentTree(sComponentId, nComponentRecurseLevel);
+	/* TODO implement this
+	  int nComponentRecurseLevel = std::stoi(sComponentRecurseLevel);
+	  ComponentRelationLists *pComponentTree = m_pDatabaseInterface->GetComponentTree(sComponentId, nComponentRecurseLevel);
+	 */
 
 	// TODO C call GenerateComponentDiagramTree / GenerateCncDiagramTree
 	//   Calls: GenerateComponentDiagramAndLegend

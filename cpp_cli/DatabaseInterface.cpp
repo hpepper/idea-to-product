@@ -1,8 +1,6 @@
 /*
  * DatabaseInterface.cpp
  *
- *  Created on: Sep 14, 2017
- *      Author: cadm
  */
 
 #include "DatabaseInterface.h"
