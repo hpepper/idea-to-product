@@ -1,3 +1,4 @@
+     : Add a reæease script.
 0.1.5: Print version when the app is called with 'version' as the parm.
 0.1.4: Add links to child viewpackets.
 0.1.3: Change graph connection lines to lines without arrows.
