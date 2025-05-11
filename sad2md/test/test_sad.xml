@@ -133,7 +133,7 @@
     <Summary></Summary>
   </Component>
 
-<!-- 
+  <!-- 
   <Component Id="" Name="">
     <Responsibilities></Responsibilities>
     <Summary></Summary>
@@ -141,61 +141,61 @@
   -->
 
 
-<ComponentRelation Id="1" SortOrder="">
-  <ComponentAId>1</ComponentAId>
-  <ComponentBId>2</ComponentBId>
-  <Key>Decomposition001</Key>
-  <PropertyOfRelation></PropertyOfRelation>
-</ComponentRelation>
+  <ComponentRelation Id="1" SortOrder="">
+    <ComponentAId>1</ComponentAId>
+    <ComponentBId>2</ComponentBId>
+    <Key>Decomposition001</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+  </ComponentRelation>
 
-<ComponentRelation Id="2" SortOrder="">
-  <ComponentAId>1</ComponentAId>
-  <ComponentBId>3</ComponentBId>
-  <Key>Decomposition001</Key>
-  <PropertyOfRelation></PropertyOfRelation>
-</ComponentRelation>
+  <ComponentRelation Id="2" SortOrder="">
+    <ComponentAId>1</ComponentAId>
+    <ComponentBId>3</ComponentBId>
+    <Key>Decomposition001</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+  </ComponentRelation>
 
-<ComponentRelation Id="3" SortOrder="">
-  <ComponentAId>1</ComponentAId>
-  <ComponentBId>4</ComponentBId>
-  <Key>Decomposition001</Key>
-  <PropertyOfRelation></PropertyOfRelation>
-</ComponentRelation>
+  <ComponentRelation Id="3" SortOrder="">
+    <ComponentAId>1</ComponentAId>
+    <ComponentBId>4</ComponentBId>
+    <Key>Decomposition001</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+  </ComponentRelation>
 
-<ComponentRelation Id="4" SortOrder="">
-  <ComponentAId>1</ComponentAId>
-  <ComponentBId>5</ComponentBId>
-  <Key>Decomposition001</Key>
-  <PropertyOfRelation></PropertyOfRelation>
-</ComponentRelation>
+  <ComponentRelation Id="4" SortOrder="">
+    <ComponentAId>1</ComponentAId>
+    <ComponentBId>5</ComponentBId>
+    <Key>Decomposition001</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+  </ComponentRelation>
 
-<ComponentRelation Id="5" SortOrder="">
-  <ComponentAId>1</ComponentAId>
-  <ComponentBId>6</ComponentBId>
-  <Key>Decomposition001</Key>
-  <PropertyOfRelation></PropertyOfRelation>
-</ComponentRelation>
+  <ComponentRelation Id="5" SortOrder="">
+    <ComponentAId>1</ComponentAId>
+    <ComponentBId>6</ComponentBId>
+    <Key>Decomposition001</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+  </ComponentRelation>
 
-<ComponentRelation Id="6" SortOrder="">
-  <ComponentAId>3</ComponentAId>
-  <ComponentBId>7</ComponentBId>
-  <Key>Decomposition001</Key>
-  <PropertyOfRelation></PropertyOfRelation>
-</ComponentRelation>
+  <ComponentRelation Id="6" SortOrder="">
+    <ComponentAId>3</ComponentAId>
+    <ComponentBId>7</ComponentBId>
+    <Key>Decomposition001</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+  </ComponentRelation>
 
-<ComponentRelation Id="7" SortOrder="">
-  <ComponentAId>3</ComponentAId>
-  <ComponentBId>8</ComponentBId>
-  <Key>Decomposition001</Key>
-  <PropertyOfRelation></PropertyOfRelation>
-</ComponentRelation>
+  <ComponentRelation Id="7" SortOrder="">
+    <ComponentAId>3</ComponentAId>
+    <ComponentBId>8</ComponentBId>
+    <Key>Decomposition001</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+  </ComponentRelation>
 
-<ComponentRelation Id="8" SortOrder="">
-  <ComponentAId>3</ComponentAId>
-  <ComponentBId>9</ComponentBId>
-  <Key>Decomposition001</Key>
-  <PropertyOfRelation></PropertyOfRelation>
-</ComponentRelation>
+  <ComponentRelation Id="8" SortOrder="">
+    <ComponentAId>3</ComponentAId>
+    <ComponentBId>9</ComponentBId>
+    <Key>Decomposition001</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+  </ComponentRelation>
 
   <ComponentRelation Id="15" SortOrder="">
     <ComponentAId>3</ComponentAId>
@@ -217,33 +217,37 @@
   </ComponentRelation>
 
 
-<ComponentRelation Id="9" SortOrder="">
-  <ComponentAId>1</ComponentAId>
-  <ComponentBId>10</ComponentBId>
-  <Key>ContextDiagram001</Key>
-  <PropertyOfRelation></PropertyOfRelation>
-</ComponentRelation>
+  <ComponentRelation Id="9" SortOrder="">
+    <ComponentAId>1</ComponentAId>
+    <ComponentBId>10</ComponentBId>
+    <Key>ContextDiagram001</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+    <RelationText>IaaS</RelationText>
+    <!-- TODO add relation description -->
 
-<!-- The ComponentAId is 'The Work' in a context diagram. -->
-<ComponentRelation Id="10" SortOrder="">
-  <ComponentAId>1</ComponentAId>
-  <ComponentBId>11</ComponentBId>
-  <Key>ContextDiagram001</Key>
-  <PropertyOfRelation></PropertyOfRelation>
-</ComponentRelation>
+  </ComponentRelation>
 
-<ComponentRelation Id="11" SortOrder="">
-  <ComponentAId>1</ComponentAId>
-  <ComponentBId>12</ComponentBId>
-  <Key>ContextDiagram001</Key>
-  <PropertyOfRelation></PropertyOfRelation>
-</ComponentRelation>
+  <!-- The ComponentAId is 'The Work' in a context diagram. -->
+  <ComponentRelation Id="10" SortOrder="">
+    <ComponentAId>1</ComponentAId>
+    <ComponentBId>11</ComponentBId>
+    <Key>ContextDiagram001</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+  </ComponentRelation>
+
+  <ComponentRelation Id="11" SortOrder="">
+    <ComponentAId>1</ComponentAId>
+    <ComponentBId>12</ComponentBId>
+    <Key>ContextDiagram001</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+  </ComponentRelation>
 
   <ComponentRelation Id="12" SortOrder="">
     <ComponentAId>2</ComponentAId>
     <ComponentBId>7</ComponentBId>
     <Key>ClientServer301</Key>
     <PropertyOfRelation></PropertyOfRelation>
+    <RelationText>Web Socket</RelationText>
   </ComponentRelation>
 
   <ComponentRelation Id="13" SortOrder="">
@@ -266,14 +270,14 @@
     <Key>ClientServer301</Key>
     <PropertyOfRelation></PropertyOfRelation>
   </ComponentRelation>
-  
+
   <ComponentRelation Id="19" SortOrder="">
     <ComponentAId>8</ComponentAId>
     <ComponentBId>14</ComponentBId>
     <Key>ClientServer301</Key>
     <PropertyOfRelation></PropertyOfRelation>
   </ComponentRelation>
-  
+
   <ComponentRelation Id="20" SortOrder="">
     <ComponentAId>8</ComponentAId>
     <ComponentBId>15</ComponentBId>
@@ -344,19 +348,20 @@
   </ComponentRelation>
 
 
-<!-- 30
+  <!-- 30
   <ComponentRelation Id="" SortOrder="">
     <ComponentAId></ComponentAId>
     <ComponentBId></ComponentBId>
     <Key></Key>
     <PropertyOfRelation></PropertyOfRelation>
+    <RelationText></RelationText>
   </ComponentRelation>
   -->
 
-    <Behavior Id="1" SortOrder="1"> 
-      <ViewPacketId>3</ViewPacketId>
-      <Description></Description>
-      <DiagramKey>MSC301</DiagramKey>
-    </Behavior>
+  <Behavior Id="1" SortOrder="1">
+    <ViewPacketId>3</ViewPacketId>
+    <Description></Description>
+    <DiagramKey>MSC301</DiagramKey>
+  </Behavior>
 
 </SoftwareArchitectureDocumentation>

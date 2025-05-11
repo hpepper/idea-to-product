@@ -539,11 +539,16 @@ fn render_graphical_primary_display(
                                 make_mermaid_linkable_text(component_a_name.clone());
                             let linkable_component_b_name =
                                 make_mermaid_linkable_text(component_b.name.clone());
+                            let link_annotation = if component_relation.relation_text.is_empty() {
+                                "".to_string()
+                            } else {
+                                format!("|{}|", component_relation.relation_text)
+                            };
 
                             markdown_file
                                 .write(
                                     &format!(
-                                        "    {}[{}]---{}[{}]\n",
+                                        "    {}[{}]---{link_annotation}{}[{}]\n",
                                         linkable_component_a_name,
                                         component_a_name,
                                         linkable_component_b_name,
@@ -739,11 +744,16 @@ fn render_graphical_context_diagram(
                                 make_mermaid_linkable_text(component_a_name.clone());
                             let linkable_component_b_name =
                                 make_mermaid_linkable_text(component_b.name.clone());
+                            let link_annotation = if component_relation.relation_text.is_empty() {
+                                "".to_string()
+                            } else {
+                                format!("|{}|", component_relation.relation_text)
+                            };
 
                             markdown_file
                                 .write(
                                     &format!(
-                                        "    {}[{}]-->{}(({}))\n",
+                                        "    {}[{}]---{link_annotation}{}(({}))\n",
                                         linkable_component_b_name,
                                         component_b.name,
                                         linkable_component_a_name,

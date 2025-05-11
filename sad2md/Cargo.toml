@@ -1,8 +1,8 @@
 [package]
 name = "sad2md"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2021"
 
 [dependencies]
-rusqlite = { version = "0.33.0", features = ["bundled"] }
+rusqlite = { version = "0.35.0", features = ["bundled"] }
 xmltree = "0.11.0"
