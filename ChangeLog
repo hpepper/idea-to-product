@@ -1,3 +1,4 @@
+0.1.7: Add support for component to the left of the viewpacket component on primary diagrams.
 0.1.6: Add annotation text to Context diagrams and primary displays.
      : Add a release script.
 0.1.5: Print version when the app is called with 'version' as the parm.

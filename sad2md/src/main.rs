@@ -10,7 +10,9 @@ mod models;
 use db_population::populate_db;
 use db_retrieval::{
     get_component_by_id, get_component_name_by_id, get_vector_of_behaviors_for_viewpacket_id,
-    get_vector_of_related_components_by_id_and_key, get_vector_of_related_components_by_key,
+    get_vector_of_related_components_by_id_and_key,
+    get_vector_of_related_components_by_id_and_key_both_directions,
+    get_vector_of_related_components_by_key,
     get_vector_of_viewpacket_by_component_id_except_component_id,
 };
 use models::{Behavior, Component, ComponentRelation, ViewPacket};
@@ -334,12 +336,14 @@ fn render_child_relationship(
                         get_component_by_id(db_conn, component_relation.component_b_id);
                     match component_b {
                         Ok(component_b) => {
-                            render_viewpacket_relationship(
-                                markdown_file,
-                                db_conn,
-                                viewpacket_id,
-                                component_b.id,
-                            );
+                            if component_relation.component_b_id != component_id {
+                                render_viewpacket_relationship(
+                                    markdown_file,
+                                    db_conn,
+                                    viewpacket_id,
+                                    component_b.id,
+                                );
+                            };
                         }
                         Err(err) => {
                             eprintln!(
@@ -459,6 +463,7 @@ fn render_viewpacket_section_primary_display(
                 viewpacket.primary_display_key.clone(),
                 0,
                 0,
+                false,
             );
         }
     } else {
@@ -472,6 +477,7 @@ fn render_viewpacket_section_primary_display(
                 style,
                 viewpacket.component_id,
                 viewpacket.primary_display_key.clone(),
+                true,
             );
         }
         mermaid_leadout(markdown_file);
@@ -499,6 +505,7 @@ fn render_viewpacket_section_primary_display(
                 viewpacket.primary_display_key.clone(),
                 1,
                 1,
+                true,
             );
         }
     }
@@ -511,6 +518,7 @@ fn render_graphical_primary_display(
     style: &str,
     component_id: i32,
     primary_display_key: String,
+    first_layer: bool,
 ) {
     // TODO do I need this?
     let top_component: Option<Component> = match get_component_by_id(db_conn, component_id) {
@@ -522,11 +530,19 @@ fn render_graphical_primary_display(
     };
 
     if let Some(top_component) = top_component {
-        let component_relations_vector = get_vector_of_related_components_by_id_and_key(
-            db_conn,
-            component_id,
-            primary_display_key.clone(),
-        );
+        let component_relations_vector = if first_layer {
+            get_vector_of_related_components_by_id_and_key_both_directions(
+                db_conn,
+                component_id,
+                primary_display_key.clone(),
+            )
+        } else {
+            get_vector_of_related_components_by_id_and_key(
+                db_conn,
+                component_id,
+                primary_display_key.clone(),
+            )
+        };
         match component_relations_vector {
             Ok(component_relations_vector) => {
                 for component_relation in component_relations_vector {
@@ -534,7 +550,11 @@ fn render_graphical_primary_display(
                         get_component_by_id(db_conn, component_relation.component_b_id);
                     match component_b {
                         Ok(component_b) => {
-                            let component_a_name = get_component_name_by_id(db_conn, component_id);
+                            // The component_a_id is retrieved here, since sometimes the component_id might point to the component_b_id.
+                            let component_a_name = get_component_name_by_id(
+                                db_conn,
+                                component_relation.component_a_id,
+                            );
                             let linkable_component_a_name =
                                 make_mermaid_linkable_text(component_a_name.clone());
                             let linkable_component_b_name =
@@ -557,14 +577,18 @@ fn render_graphical_primary_display(
                                     .as_bytes(),
                                 )
                                 .expect("Unable to write to file");
-                            render_graphical_primary_display(
-                                markdown_file,
-                                db_conn,
-                                view_type,
-                                style,
-                                component_relation.component_b_id,
-                                primary_display_key.clone(),
-                            );
+                            // We have to do this to avoid an endless loop, since for some drawing the component is in the b place instead of the a place.
+                            if component_relation.component_b_id != component_id {
+                                render_graphical_primary_display(
+                                    markdown_file,
+                                    db_conn,
+                                    view_type,
+                                    style,
+                                    component_relation.component_b_id,
+                                    primary_display_key.clone(),
+                                    false,
+                                );
+                            };
                         }
                         Err(err) => {
                             eprintln!(
@@ -663,15 +687,17 @@ fn render_graphical_layered_display(
                                 .expect("Unable to write to file");
                             // TODO recurse the next layer
 
-                            render_graphical_layered_display(
-                                markdown_file,
-                                db_conn,
-                                view_type,
-                                style,
-                                component_relation.component_b_id,
-                                primary_display_key.clone(),
-                                false,
-                            );
+                            if component_relation.component_b_id != component_id {
+                                render_graphical_layered_display(
+                                    markdown_file,
+                                    db_conn,
+                                    view_type,
+                                    style,
+                                    component_relation.component_b_id,
+                                    primary_display_key.clone(),
+                                    false,
+                                );
+                            };
                         }
                         Err(err) => {
                             eprintln!(
@@ -762,14 +788,16 @@ fn render_graphical_context_diagram(
                                     .as_bytes(),
                                 )
                                 .expect("Unable to write to file");
-                            render_graphical_context_diagram(
-                                markdown_file,
-                                db_conn,
-                                view_type,
-                                style,
-                                component_relation.component_b_id,
-                                context_model_key.clone(),
-                            );
+                            if component_relation.component_b_id != component_id {
+                                render_graphical_context_diagram(
+                                    markdown_file,
+                                    db_conn,
+                                    view_type,
+                                    style,
+                                    component_relation.component_b_id,
+                                    context_model_key.clone(),
+                                );
+                            };
                         }
                         Err(err) => {
                             eprintln!(
@@ -800,6 +828,7 @@ fn render_textual_primary_display(
     primary_display_key: String,
     indent_level: usize,
     indent_increment: usize,
+    first_layer: bool,
 ) {
     // TODO do I need this?
     let top_component: Option<Component> = match get_component_by_id(db_conn, component_id) {
@@ -812,47 +841,83 @@ fn render_textual_primary_display(
 
     if let Some(top_component) = top_component {
         let indent_spaces = " ".repeat(indent_level * 2);
-        let component_relations_vector = get_vector_of_related_components_by_id_and_key(
-            db_conn,
-            component_id,
-            primary_display_key.clone(),
-        );
+        let component_relations_vector = if first_layer {
+            get_vector_of_related_components_by_id_and_key_both_directions(
+                db_conn,
+                component_id,
+                primary_display_key.clone(),
+            )
+        } else {
+            get_vector_of_related_components_by_id_and_key(
+                db_conn,
+                component_id,
+                primary_display_key.clone(),
+            )
+        };
         match component_relations_vector {
             Ok(component_relations_vector) => {
                 let indent_spaces = " ".repeat(indent_level * 2);
                 for component_relation in component_relations_vector {
-                    let component_b =
-                        get_component_by_id(db_conn, component_relation.component_b_id);
-                    match component_b {
-                        Ok(component_b) => {
-                            markdown_file
-                                .write(
-                                    &format!(
-                                        "{}* {}: {}\n",
-                                        indent_spaces, component_b.name, component_b.summary
+                    if component_relation.component_a_id == component_id {
+                        let component_b =
+                            get_component_by_id(db_conn, component_relation.component_b_id);
+                        match component_b {
+                            Ok(component_b) => {
+                                markdown_file
+                                    .write(
+                                        &format!(
+                                            "{}* {}: {}\n",
+                                            indent_spaces, component_b.name, component_b.summary
+                                        )
+                                        .as_bytes(),
                                     )
-                                    .as_bytes(),
-                                )
-                                .expect("Unable to write to file");
-                            render_textual_primary_display(
-                                markdown_file,
-                                db_conn,
-                                view_type,
-                                style,
-                                component_relation.component_b_id,
-                                //component_relation.property_of_relation,
-                                primary_display_key.clone(),
-                                indent_level + indent_increment,
-                                indent_increment,
-                            );
-                        }
-                        Err(err) => {
-                            eprintln!(
+                                    .expect("Unable to write to file");
+                                if component_relation.component_b_id != component_id {
+                                    render_textual_primary_display(
+                                        markdown_file,
+                                        db_conn,
+                                        view_type,
+                                        style,
+                                        component_relation.component_b_id,
+                                        //component_relation.property_of_relation,
+                                        primary_display_key.clone(),
+                                        indent_level + indent_increment,
+                                        indent_increment,
+                                        false,
+                                    );
+                                };
+                            }
+                            Err(err) => {
+                                eprintln!(
                                 "Error: returned from get_component_by_id() for component id = {} - {}",
                                 component_relation.component_b_id,
                                 err
                             );
+                            }
                         }
+                    } else {
+                        let component_a =
+                            get_component_by_id(db_conn, component_relation.component_a_id);
+                        match component_a {
+                            Ok(component_a) => {
+                                markdown_file
+                                    .write(
+                                        &format!(
+                                            "{}* {}: {}\n",
+                                            indent_spaces, component_a.name, component_a.summary
+                                        )
+                                        .as_bytes(),
+                                    )
+                                    .expect("Unable to write to file");
+                            }
+                            Err(err) => {
+                                eprintln!(
+                                "Error: returned from get_component_by_id() for component id = {} - {}",
+                                component_relation.component_b_id,
+                                err
+                                );
+                            }
+                        };
                     }
                 }
             }

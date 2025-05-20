@@ -177,3 +177,9 @@ A CnC view packet can then refer to a system id.
   <RelationId></RelationId>
 </System>
 ```
+
+### Map view packet to primary display
+
+* sometimes the `<ComponentId/>` is not the first element to show.
+  * This can be handled by start by looking up component relations where the key is the same as in the viewpacket and the Viewpacket.ComponentId is the same as the ComponentRelation.ComponentBId
+  * or by adding a list of ids to start with, to the view packet.
