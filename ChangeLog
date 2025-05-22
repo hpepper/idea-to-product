@@ -1,3 +1,4 @@
+0.1.8: Add connector description to the textual rendering.
 0.1.7: Add support for component to the left of the viewpacket component on primary diagrams.
 0.1.6: Add annotation text to Context diagrams and primary displays.
      : Add a release script.

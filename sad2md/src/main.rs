@@ -454,6 +454,7 @@ fn render_viewpacket_section_primary_display(
                 .write(&format!("* {}: {}\n", top_component.name, top_component.summary).as_bytes())
                 .expect("Unable to write to file");
 
+            let mut connector_map: HashMap<String, String> = HashMap::new();
             render_textual_primary_display(
                 markdown_file,
                 db_conn,
@@ -463,8 +464,10 @@ fn render_viewpacket_section_primary_display(
                 viewpacket.primary_display_key.clone(),
                 0,
                 0,
+                &mut connector_map,
                 false,
             );
+            render_textural_connector_list(markdown_file, &connector_map);
         }
     } else {
         // generate the primary presentation mermaid diagram
@@ -496,6 +499,8 @@ fn render_viewpacket_section_primary_display(
                 .write(&format!("* {}: {}\n", top_component.name, top_component.summary).as_bytes())
                 .expect("Unable to write to file");
 
+            let mut connector_map: HashMap<String, String> = HashMap::new();
+
             render_textual_primary_display(
                 markdown_file,
                 db_conn,
@@ -505,8 +510,11 @@ fn render_viewpacket_section_primary_display(
                 viewpacket.primary_display_key.clone(),
                 1,
                 1,
+                &mut connector_map,
                 true,
             );
+
+            render_textural_connector_list(markdown_file, &connector_map);
         }
     }
 }
@@ -819,6 +827,9 @@ fn render_graphical_context_diagram(
     }
 }
 
+/**
+ * Renders the textual representation of the primary display and provide the list of connectors involved.
+ */
 fn render_textual_primary_display(
     markdown_file: &mut File,
     db_conn: &Connection,
@@ -828,6 +839,7 @@ fn render_textual_primary_display(
     primary_display_key: String,
     indent_level: usize,
     indent_increment: usize,
+    connector_map: &mut HashMap<String, String>,
     first_layer: bool,
 ) {
     // TODO do I need this?
@@ -872,6 +884,12 @@ fn render_textual_primary_display(
                                         .as_bytes(),
                                     )
                                     .expect("Unable to write to file");
+                                if !component_relation.relation_text.is_empty() {
+                                    connector_map.insert(
+                                        component_relation.relation_text.clone(),
+                                        component_relation.relation_description.clone(),
+                                    );
+                                }
                                 if component_relation.component_b_id != component_id {
                                     render_textual_primary_display(
                                         markdown_file,
@@ -883,6 +901,7 @@ fn render_textual_primary_display(
                                         primary_display_key.clone(),
                                         indent_level + indent_increment,
                                         indent_increment,
+                                        connector_map,
                                         false,
                                     );
                                 };
@@ -909,6 +928,12 @@ fn render_textual_primary_display(
                                         .as_bytes(),
                                     )
                                     .expect("Unable to write to file");
+                                if !component_relation.relation_text.is_empty() {
+                                    connector_map.insert(
+                                        component_relation.relation_text.clone(),
+                                        component_relation.relation_description.clone(),
+                                    );
+                                }
                             }
                             Err(err) => {
                                 eprintln!(
@@ -928,8 +953,25 @@ fn render_textual_primary_display(
                 );
             }
         }
-        // TODO recursively retrieve the related components.
-        // TODO I probably need to use a key for this relation as well.
+    }
+}
+
+fn render_textural_connector_list(
+    markdown_file: &mut File,
+    connector_map: &HashMap<String, String>,
+) {
+    if connector_map.is_empty() {
+        return;
+    }
+    markdown_file
+        .write(&format!("* Connectors:\n").as_bytes())
+        .expect("Unable to write to file");
+    let mut sorted_connectors: Vec<_> = connector_map.iter().collect();
+    sorted_connectors.sort_by_key(|(key, _)| *key);
+    for (key, value) in sorted_connectors {
+        markdown_file
+            .write(&format!("  * {}: {}\n", key, value).as_bytes())
+            .expect("Unable to write to file");
     }
 }
 

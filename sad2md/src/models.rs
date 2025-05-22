@@ -25,6 +25,7 @@ pub struct ComponentRelation {
     pub(crate) key: String,
     pub(crate) property_of_relation: String,
     pub(crate) relation_text: String,
+    pub(crate) relation_description: String,
 }
 
 #[derive(Debug)]

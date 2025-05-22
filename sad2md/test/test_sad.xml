@@ -36,9 +36,9 @@
   </ViewPacket>
 
   <ViewPacket Id="4" ViewType="CnC" ViewStyle="ClientServer" SortOrder="1">
-    <Title>Client connection</Title>
+    <Title>EdgeConnector</Title>
     <Introduction></Introduction>
-    <ComponentId>2</ComponentId>
+    <ComponentId>7</ComponentId>
     <PrimaryDisplayKey>ClientServer301</PrimaryDisplayKey>
     <ContextModelKey>ContextDiagram002</ContextModelKey>
   </ViewPacket>
@@ -248,6 +248,7 @@
     <Key>ClientServer301</Key>
     <PropertyOfRelation></PropertyOfRelation>
     <RelationText>Web Socket</RelationText>
+    <RelationDescription>Web Socket stream</RelationDescription>
   </ComponentRelation>
 
   <ComponentRelation Id="13" SortOrder="">
@@ -255,6 +256,7 @@
     <ComponentBId>8</ComponentBId>
     <Key>ClientServer301</Key>
     <PropertyOfRelation></PropertyOfRelation>
+    <RelationText>RabbitMQ msg</RelationText>
   </ComponentRelation>
 
   <ComponentRelation Id="14" SortOrder="">
@@ -290,48 +292,48 @@
     <ComponentBId>7</ComponentBId>
     <Key>MSC301</Key>
     <PropertyOfRelation></PropertyOfRelation>
-    <RelationText>Alpha</RelationText>
     <ConnectionType>call</ConnectionType>
+    <RelationText>Alpha</RelationText>
   </ComponentRelation>
   <ComponentRelation Id="23" SortOrder="2">
     <ComponentAId>7</ComponentAId>
     <ComponentBId>8</ComponentBId>
     <Key>MSC301</Key>
     <PropertyOfRelation></PropertyOfRelation>
-    <RelationText>Bravo</RelationText>
     <ConnectionType>call</ConnectionType>
+    <RelationText>Bravo</RelationText>
   </ComponentRelation>
   <ComponentRelation Id="24" SortOrder="3">
     <ComponentAId>8</ComponentAId>
     <ComponentBId>9</ComponentBId>
     <Key>MSC301</Key>
     <PropertyOfRelation></PropertyOfRelation>
-    <RelationText>Charlie</RelationText>
     <ConnectionType>call</ConnectionType>
+    <RelationText>Charlie</RelationText>
   </ComponentRelation>
   <ComponentRelation Id="25" SortOrder="4">
     <ComponentAId>9</ComponentAId>
     <ComponentBId>8</ComponentBId>
     <Key>MSC301</Key>
     <PropertyOfRelation></PropertyOfRelation>
-    <RelationText>delta</RelationText>
     <ConnectionType>response</ConnectionType>
+    <RelationText>delta</RelationText>
   </ComponentRelation>
   <ComponentRelation Id="26" SortOrder="5">
     <ComponentAId>8</ComponentAId>
     <ComponentBId>7</ComponentBId>
     <Key>MSC301</Key>
     <PropertyOfRelation></PropertyOfRelation>
-    <RelationText>echo</RelationText>
     <ConnectionType>response</ConnectionType>
+    <RelationText>echo</RelationText>
   </ComponentRelation>
   <ComponentRelation Id="27" SortOrder="6">
     <ComponentAId>7</ComponentAId>
     <ComponentBId>2</ComponentBId>
     <Key>MSC301</Key>
     <PropertyOfRelation></PropertyOfRelation>
-    <RelationText></RelationText>
     <ConnectionType>response</ConnectionType>
+    <RelationText></RelationText>
   </ComponentRelation>
 
   <ComponentRelation Id="28" SortOrder="">

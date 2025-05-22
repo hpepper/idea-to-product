@@ -120,8 +120,9 @@
   ComponentBId,
   Key,
   PropertyOfRelation,
+  ConnectionType?,
   RelationText?,
-  ConnectionType?
+  RelationDescription?
 )>
 <!ATTLIST ComponentRelation Id CDATA #REQUIRED>
 <!ATTLIST ComponentRelation SortOrder  CDATA #REQUIRED>
@@ -130,8 +131,9 @@
 <!ELEMENT ComponentBId  (#PCDATA)>
 <!ELEMENT Key  (#PCDATA)>
 <!ELEMENT PropertyOfRelation  (#PCDATA)>
-<!ELEMENT RelationText  (#PCDATA)>
 <!ELEMENT ConnectionType  (#PCDATA)>
+<!ELEMENT RelationText  (#PCDATA)>
+<!ELEMENT RelationDescription  (#PCDATA)>
 
 <!ELEMENT Diagram  (
   DiagramKey
