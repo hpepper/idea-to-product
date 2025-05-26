@@ -10,8 +10,7 @@ mod models;
 use db_population::{insert_into_context_model_ignore_duplicates, populate_db};
 use db_retrieval::{
     get_component_by_id, get_component_name_by_id, get_vector_of_behaviors_for_viewpacket_id,
-    get_vector_of_context_model_by_key,
-    get_vector_of_related_components_by_id_and_key,
+    get_vector_of_context_model_by_key, get_vector_of_related_components_by_id_and_key,
     get_vector_of_related_components_by_id_and_key_both_directions,
     get_vector_of_related_components_by_key,
     get_vector_of_viewpacket_by_component_id_except_component_id,
@@ -218,10 +217,6 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
                     section_number.clone(),
                 );
 
-                markdown_file
-                    .write(&format!("\n#### {section_number}: Context diagram\n\n").as_bytes())
-                    .expect("Unable to write to file");
-
                 let top_component: Option<Component> =
                     match get_component_by_id(db_conn, viewpacket.component_id) {
                         // TODO can the 'if let Some' code below be put into a code block here?
@@ -232,28 +227,37 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
                         }
                     };
                 if let Some(_top_component) = top_component {
-                    // generate the mermaid diagram for context diagram
-                    mermaid_leadin(markdown_file, "graph TD;");
-                    // How do I populate a db_con context_model table with key, component, connection type, and description?
+                    if !viewpacket.context_model_key.is_empty() {
+                        markdown_file
+                            .write(
+                                &format!("\n#### {section_number}: Context diagram\n\n").as_bytes(),
+                            )
+                            .expect("Unable to write to file");
 
-                    render_graphical_context_diagram(
-                        markdown_file,
-                        db_conn,
-                        view_type,
-                        style,
-                        viewpacket.component_id,
-                        viewpacket.context_model_key.clone(),
-                        true,
-                    );
-                    mermaid_leadout(markdown_file);
+                        // generate the mermaid diagram for context diagram
+                        mermaid_leadin(markdown_file, "graph TD;");
+                        // How do I populate a db_con context_model table with key, component, connection type, and description?
 
-                    render_context_table(
-                        markdown_file,
-                        db_conn,
-                        viewpacket.context_model_key.clone(),
-                    );
+                        render_graphical_context_diagram(
+                            markdown_file,
+                            db_conn,
+                            view_type,
+                            style,
+                            viewpacket.component_id,
+                            viewpacket.context_model_key.clone(),
+                            true,
+                        );
+                        mermaid_leadout(markdown_file);
+
+                        render_context_table(
+                            markdown_file,
+                            db_conn,
+                            viewpacket.context_model_key.clone(),
+                        );
+                    }
                 }
 
+                /*
                 markdown_file
                     .write(
                         &format!(
@@ -263,20 +267,29 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
                     .expect("Unable to write to file");
 
                 // TODO generate list with elements and their properties
+                 */
 
-                markdown_file
-                    .write(
-                        &format!("#### {section_number}: Element catalog - Element behavior\n\n")
-                            .as_bytes(),
-                    )
-                    .expect("Unable to write to file");
-                render_graphical_all_behaviors_for_viewpacket(
-                    markdown_file,
-                    db_conn,
-                    view_type,
-                    style,
-                    viewpacket.viewpacket_id,
-                );
+                if let Ok(behaviors) =
+                    get_vector_of_behaviors_for_viewpacket_id(db_conn, viewpacket.viewpacket_id)
+                {
+                    if !behaviors.is_empty() {
+                        markdown_file
+                            .write(
+                                &format!(
+                                    "#### {section_number}: Element catalog - Element behavior\n\n"
+                                )
+                                .as_bytes(),
+                            )
+                            .expect("Unable to write to file");
+                        render_graphical_all_behaviors_for_viewpacket(
+                            markdown_file,
+                            db_conn,
+                            view_type,
+                            style,
+                            viewpacket.viewpacket_id,
+                        );
+                    }
+                }
 
                 markdown_file
                     .write(&format!("#### {section_number}: Related views\n\n").as_bytes())
@@ -474,6 +487,9 @@ fn render_viewpacket_section_primary_display(
                 false,
             );
             render_textural_connector_list(markdown_file, &connector_map);
+            markdown_file
+                .write("\n".as_bytes())
+                .expect("Unable to write to file");
         }
     } else {
         // generate the primary presentation mermaid diagram
@@ -864,11 +880,7 @@ fn render_graphical_context_diagram(
     }
 }
 
-fn render_context_table(
-    markdown_file: &mut File,
-    db_conn: &Connection,
-    context_model_key: String,
-) {
+fn render_context_table(markdown_file: &mut File, db_conn: &Connection, context_model_key: String) {
     let context_model_vector = get_vector_of_context_model_by_key(db_conn, &context_model_key);
     match context_model_vector {
         Ok(context_model_vector) => {
@@ -886,7 +898,10 @@ fn render_context_table(
                     .write(
                         &format!(
                             "| {} | {} | {} | {} |\n",
-                            context_model.entity, context_model.entity_type, context_model.description, context_model.reference
+                            context_model.entity,
+                            context_model.entity_type,
+                            context_model.description,
+                            context_model.reference
                         )
                         .as_bytes(),
                     )

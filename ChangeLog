@@ -1,3 +1,4 @@
+0.1.10: Only print section titles when it contains data.
 0.1.9: Add context diagram text table.
 0.1.8: Add connector description to the textual rendering.
 0.1.7: Add support for component to the left of the viewpacket component on primary diagrams.
