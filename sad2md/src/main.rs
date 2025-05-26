@@ -7,9 +7,10 @@ mod db_population;
 mod db_retrieval;
 mod models;
 
-use db_population::populate_db;
+use db_population::{insert_into_context_model_ignore_duplicates, populate_db};
 use db_retrieval::{
     get_component_by_id, get_component_name_by_id, get_vector_of_behaviors_for_viewpacket_id,
+    get_vector_of_context_model_by_key,
     get_vector_of_related_components_by_id_and_key,
     get_vector_of_related_components_by_id_and_key_both_directions,
     get_vector_of_related_components_by_key,
@@ -188,7 +189,7 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
                     viewpacket.sort_order
                 );
 
-                let top_component: Option<Component> =
+                let _top_component: Option<Component> =
                     match get_component_by_id(db_conn, viewpacket.component_id) {
                         Ok(top_component) => Some(top_component),
                         Err(e) => {
@@ -221,9 +222,6 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
                     .write(&format!("\n#### {section_number}: Context diagram\n\n").as_bytes())
                     .expect("Unable to write to file");
 
-                // generate the mermaid diagram for context diagram
-                mermaid_leadin(markdown_file, "graph TD;");
-
                 let top_component: Option<Component> =
                     match get_component_by_id(db_conn, viewpacket.component_id) {
                         // TODO can the 'if let Some' code below be put into a code block here?
@@ -233,7 +231,11 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
                             None
                         }
                     };
-                if let Some(top_component) = top_component {
+                if let Some(_top_component) = top_component {
+                    // generate the mermaid diagram for context diagram
+                    mermaid_leadin(markdown_file, "graph TD;");
+                    // How do I populate a db_con context_model table with key, component, connection type, and description?
+
                     render_graphical_context_diagram(
                         markdown_file,
                         db_conn,
@@ -241,12 +243,16 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
                         style,
                         viewpacket.component_id,
                         viewpacket.context_model_key.clone(),
+                        true,
+                    );
+                    mermaid_leadout(markdown_file);
+
+                    render_context_table(
+                        markdown_file,
+                        db_conn,
+                        viewpacket.context_model_key.clone(),
                     );
                 }
-
-                mermaid_leadout(markdown_file);
-
-                // TOOD generate the table
 
                 markdown_file
                     .write(
@@ -371,7 +377,7 @@ fn render_viewpacket_relationship(
     viewpacket_id: i32,
     component_id: i32,
 ) {
-    let type_and_style_to_section_number = create_hardcoded_map();
+    let _type_and_style_to_section_number = create_hardcoded_map();
 
     let viewpacket_vector = get_vector_of_viewpacket_by_component_id_except_component_id(
         db_conn,
@@ -427,7 +433,7 @@ fn render_viewpacket_section_primary_display(
     if view_type == MODULE_VIEW_TYPE && style == MODULE_VIEW_TYPE_STYLE_LAYERED {
         // generate a layered mermaid diagram
         mermaid_leadin(markdown_file, "block-beta\n    columns 1");
-        if let Some(top_component) = top_component {
+        if let Some(_top_component) = top_component {
             render_graphical_layered_display(
                 markdown_file,
                 db_conn,
@@ -472,7 +478,7 @@ fn render_viewpacket_section_primary_display(
     } else {
         // generate the primary presentation mermaid diagram
         mermaid_leadin(markdown_file, "graph LR;");
-        if let Some(top_component) = top_component {
+        if let Some(_top_component) = top_component {
             render_graphical_primary_display(
                 markdown_file,
                 db_conn,
@@ -537,7 +543,7 @@ fn render_graphical_primary_display(
         }
     };
 
-    if let Some(top_component) = top_component {
+    if let Some(_top_component) = top_component {
         let component_relations_vector = if first_layer {
             get_vector_of_related_components_by_id_and_key_both_directions(
                 db_conn,
@@ -665,7 +671,7 @@ fn render_graphical_layered_display(
     };
 
     // TODO print the current layer, if this is firt layer, before looking for lated layer.
-    if let Some(top_component) = top_component {
+    if let Some(_top_component) = top_component {
         let component_relations_vector = get_vector_of_related_components_by_id_and_key(
             db_conn,
             component_id,
@@ -674,7 +680,7 @@ fn render_graphical_layered_display(
         // TODO something along the lines of if there are no more relations the print the b component(it is the lat)
         match component_relations_vector {
             Ok(component_relations_vector) => {
-                let last_component = component_relations_vector.len() == 0;
+                let _last_component = component_relations_vector.len() == 0;
                 for component_relation in component_relations_vector {
                     let component_b =
                         get_component_by_id(db_conn, component_relation.component_b_id);
@@ -750,17 +756,30 @@ fn render_graphical_context_diagram(
     style: &str,
     component_id: i32,
     context_model_key: String,
+    first_call: bool,
 ) {
     // TODO do I need this?
     let top_component: Option<Component> = match get_component_by_id(db_conn, component_id) {
-        Ok(top_component) => Some(top_component),
+        Ok(top_component) => {
+            if first_call {
+                insert_into_context_model_ignore_duplicates(
+                    db_conn,
+                    &context_model_key.clone(),
+                    &top_component.name.clone(),
+                    "TheWork",
+                    &top_component.summary.clone(),
+                    "",
+                );
+            };
+            Some(top_component)
+        }
         Err(e) => {
             eprintln!("Error retrieving component: {}", e);
             None
         }
     };
 
-    if let Some(top_component) = top_component {
+    if let Some(_top_component) = top_component {
         let component_relations_vector = get_vector_of_related_components_by_id_and_key(
             db_conn,
             component_id,
@@ -797,6 +816,23 @@ fn render_graphical_context_diagram(
                                 )
                                 .expect("Unable to write to file");
                             if component_relation.component_b_id != component_id {
+                                insert_into_context_model_ignore_duplicates(
+                                    db_conn,
+                                    &context_model_key.clone(),
+                                    &component_b.name.clone(),
+                                    "Adjacent",
+                                    &linkable_component_b_name.clone(),
+                                    "",
+                                );
+                                // TODO get connection description from the component_relation
+                                insert_into_context_model_ignore_duplicates(
+                                    db_conn,
+                                    &context_model_key.clone(),
+                                    &component_relation.relation_text.clone(),
+                                    "Connector",
+                                    &component_relation.relation_description.clone(),
+                                    "",
+                                );
                                 render_graphical_context_diagram(
                                     markdown_file,
                                     db_conn,
@@ -804,6 +840,7 @@ fn render_graphical_context_diagram(
                                     style,
                                     component_relation.component_b_id,
                                     context_model_key.clone(),
+                                    false,
                                 );
                             };
                         }
@@ -823,6 +860,44 @@ fn render_graphical_context_diagram(
                     err
                 );
             }
+        }
+    }
+}
+
+fn render_context_table(
+    markdown_file: &mut File,
+    db_conn: &Connection,
+    context_model_key: String,
+) {
+    let context_model_vector = get_vector_of_context_model_by_key(db_conn, &context_model_key);
+    match context_model_vector {
+        Ok(context_model_vector) => {
+            if context_model_vector.is_empty() {
+                return;
+            }
+            markdown_file
+                .write(&format!("| Entity | Type | Description | Reference |\n").as_bytes())
+                .expect("Unable to write to file");
+            markdown_file
+                .write(&format!("| ------ | ---- | ----------- | --------- |\n").as_bytes())
+                .expect("Unable to write to file");
+            for context_model in context_model_vector {
+                markdown_file
+                    .write(
+                        &format!(
+                            "| {} | {} | {} | {} |\n",
+                            context_model.entity, context_model.entity_type, context_model.description, context_model.reference
+                        )
+                        .as_bytes(),
+                    )
+                    .expect("Unable to write to file");
+            }
+            markdown_file
+                .write("\n".as_bytes())
+                .expect("Unable to write to file");
+        }
+        Err(err) => {
+            eprintln!("Error: {}", err);
         }
     }
 }
@@ -851,8 +926,8 @@ fn render_textual_primary_display(
         }
     };
 
-    if let Some(top_component) = top_component {
-        let indent_spaces = " ".repeat(indent_level * 2);
+    if let Some(_top_component) = top_component {
+        let _indent_spaces = " ".repeat(indent_level * 2);
         let component_relations_vector = if first_layer {
             get_vector_of_related_components_by_id_and_key_both_directions(
                 db_conn,
@@ -979,8 +1054,8 @@ fn render_textural_connector_list(
 fn render_graphical_all_behaviors_for_viewpacket(
     markdown_file: &mut File,
     db_conn: &Connection,
-    view_type: &str,
-    style: &str,
+    _view_type: &str,
+    _style: &str,
     viewpacket_id: i32,
 ) {
     let behaviors_vector = get_vector_of_behaviors_for_viewpacket_id(db_conn, viewpacket_id);

@@ -1,7 +1,7 @@
-use rusqlite::{ Connection, Result };
+use rusqlite::{Connection, Result};
 use std::fs::File;
 use std::io::BufReader;
-use xmltree::{ Element, XMLNode };
+use xmltree::{Element, XMLNode};
 
 pub fn populate_db(db_conn: &Connection, filename: &String) {
     // Parse the XML file
@@ -11,8 +11,29 @@ pub fn populate_db(db_conn: &Connection, filename: &String) {
     populate_db_with_components(db_conn, &xml_root);
     populate_db_with_componentrelations(db_conn, &xml_root);
     populate_db_with_behaviors(db_conn, &xml_root);
+    create_db_with_context_model(db_conn);
 }
 
+/// TODO be able to detect duplicates and do not insert them,
+pub fn insert_into_context_model_ignore_duplicates(
+    db_conn: &Connection,
+    key: &str,
+    entity: &str,
+    entity_type: &str,
+    description: &str,
+    reference: &str,
+) {
+    if !entity.is_empty() {
+        // Insert into context_model table, ignoring duplicates
+        db_conn
+        .execute(
+            "INSERT OR IGNORE INTO context_model (key, entity, entity_type, description, reference)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            (key, entity, entity_type, description, reference),
+        )
+        .expect("Failed to insert into context_model");
+    }
+}
 
 fn load_xml_file(filename: &str) -> Element {
     // verify the file exists
@@ -28,7 +49,6 @@ fn load_xml_file(filename: &str) -> Element {
     Element::parse(file).expect("Unable to parse XML")
 }
 
-
 fn populate_db_with_behaviors(db_conn: &Connection, xml_root: &Element) {
     // Create the table
     db_conn
@@ -40,7 +60,7 @@ fn populate_db_with_behaviors(db_conn: &Connection, xml_root: &Element) {
             description TEXT,
             diagram_key TEXT NOT NULL
         )",
-            []
+            [],
         )
         .expect("Unable to create table");
 
@@ -50,12 +70,14 @@ fn populate_db_with_behaviors(db_conn: &Connection, xml_root: &Element) {
             XMLNode::Element(behavior) => {
                 if behavior.name == "Behavior" {
                     // TODO can I get the line in the XML that is currently read?
-                    let id: i32 = behavior.attributes
+                    let id: i32 = behavior
+                        .attributes
                         .get("Id")
                         .expect("Missing 'Id' attribute for Behavior")
                         .parse()
                         .unwrap();
-                    let sort_order: i32 = behavior.attributes
+                    let sort_order: i32 = behavior
+                        .attributes
                         .get("SortOrder")
                         .unwrap()
                         .parse()
@@ -69,20 +91,20 @@ fn populate_db_with_behaviors(db_conn: &Connection, xml_root: &Element) {
                         .unwrap();
                     let description = behavior
                         .get_child("Description")
-                        .unwrap_or_else(||
+                        .unwrap_or_else(|| {
                             panic!("<Description> element missing in Behavior id= {}", id)
-                        )
+                        })
                         .get_text()
                         .unwrap_or_else(|| "".to_string().into());
                     let diagram_key = behavior
                         .get_child("DiagramKey")
-                        .unwrap_or_else(||
+                        .unwrap_or_else(|| {
                             panic!("<DiagramKey> element missing in Behavior id= {}", id)
-                        )
+                        })
                         .get_text()
-                        .unwrap_or_else(||
+                        .unwrap_or_else(|| {
                             panic!("<DiagramKey> element empty in Behavior id= {}", id)
-                        );
+                        });
 
                     db_conn
                         .execute(
@@ -113,7 +135,7 @@ fn populate_db_with_components(db_conn: &Connection, xml_root: &Element) {
             name TEXT NOT NULL,
             summary TEXT
         )",
-            []
+            [],
         )
         .expect("Unable to create table");
 
@@ -123,7 +145,8 @@ fn populate_db_with_components(db_conn: &Connection, xml_root: &Element) {
             XMLNode::Element(component) => {
                 if component.name == "Component" {
                     // TODO can I get the line in the XML that is currently read?
-                    let id: i32 = component.attributes
+                    let id: i32 = component
+                        .attributes
                         .get("Id")
                         .expect("Missing 'Id' attribute for Component")
                         .parse()
@@ -131,9 +154,9 @@ fn populate_db_with_components(db_conn: &Connection, xml_root: &Element) {
                     let name = component.attributes.get("Name").unwrap();
                     let summary = component
                         .get_child("Summary")
-                        .unwrap_or_else(||
+                        .unwrap_or_else(|| {
                             panic!("<Summary> element missing in Component id= {}", id)
-                        )
+                        })
                         .get_text()
                         .unwrap_or_else(|| "".to_string().into());
 
@@ -141,7 +164,7 @@ fn populate_db_with_components(db_conn: &Connection, xml_root: &Element) {
                         .execute(
                             "INSERT INTO component (id, name, summary)
                             VALUES (?1, ?2, ?3)",
-                            (id, &name.to_string(), &summary.to_string())
+                            (id, &name.to_string(), &summary.to_string()),
                         )
                         .expect("Unable to insert data");
                 }
@@ -166,7 +189,7 @@ fn populate_db_with_componentrelations(db_conn: &Connection, xml_root: &Element)
             relation_text TEXT,
             relation_description TEXT
         )",
-            []
+            [],
         )
         .expect("Unable to create table");
 
@@ -177,12 +200,14 @@ fn populate_db_with_componentrelations(db_conn: &Connection, xml_root: &Element)
                 if component_relation.name == "ComponentRelation" {
                     // TODO can I get the line in the XML that is currently read?
 
-                    let id: i32 = component_relation.attributes
+                    let id: i32 = component_relation
+                        .attributes
                         .get("Id")
                         .expect("Missing 'Id' attribute for ComponentRelation")
                         .parse()
                         .unwrap();
-                    let sort_order: i32 = component_relation.attributes
+                    let sort_order: i32 = component_relation
+                        .attributes
                         .get("SortOrder")
                         .expect("Missing 'SortOrder' attribute for ComponentRelation")
                         .parse()
@@ -262,7 +287,7 @@ fn populate_db_with_viewpackets(db_conn: &Connection, xml_root: &Element) {
             view_type TEXT NOT NULL,
             viewpacket_id INTEGER PRIMARY KEY
         )",
-            []
+            [],
         )
         .expect("Unable to create table");
 
@@ -272,44 +297,58 @@ fn populate_db_with_viewpackets(db_conn: &Connection, xml_root: &Element) {
             XMLNode::Element(viewpacket) => {
                 if viewpacket.name == "ViewPacket" {
                     // TODO can I get the line in the XML that is currently read?
-                    let viewpacket_id: i32 = viewpacket.attributes
+                    let viewpacket_id: i32 = viewpacket
+                        .attributes
                         .get("Id")
                         .expect("Missing 'Id' attribute for ViewPacket")
                         .parse()
                         .unwrap();
                     let view_type = viewpacket.attributes.get("ViewType").unwrap();
                     let view_style = viewpacket.attributes.get("ViewStyle").unwrap();
-                    let sort_order: i32 = viewpacket.attributes
+                    let sort_order: i32 = viewpacket
+                        .attributes
                         .get("SortOrder")
                         .unwrap()
                         .parse()
                         .unwrap();
                     let title = viewpacket
                         .get_child("Title")
-                        .unwrap_or_else(||
-                            panic!("<Title> element missing in ViewPacket id= {}", viewpacket_id)
-                        )
+                        .unwrap_or_else(|| {
+                            panic!(
+                                "<Title> element missing in ViewPacket id= {}",
+                                viewpacket_id
+                            )
+                        })
                         .get_text()
                         .unwrap_or_else(|| "".to_string().into());
                     let introduction = viewpacket
                         .get_child("Introduction")
-                        .unwrap_or_else(||
-                            panic!("<Introduction> element missing in ViewPacket id= {}", viewpacket_id)
-                        )
+                        .unwrap_or_else(|| {
+                            panic!(
+                                "<Introduction> element missing in ViewPacket id= {}",
+                                viewpacket_id
+                            )
+                        })
                         .get_text()
                         .unwrap_or_else(|| "".to_string().into());
                     let context_model_key = viewpacket
                         .get_child("ContextModelKey")
-                        .unwrap_or_else(||
-                            panic!("<ContextModelKey> element missing in ViewPacket id= {}", viewpacket_id)
-                        )
+                        .unwrap_or_else(|| {
+                            panic!(
+                                "<ContextModelKey> element missing in ViewPacket id= {}",
+                                viewpacket_id
+                            )
+                        })
                         .get_text()
                         .unwrap_or_else(|| "".to_string().into());
                     let primary_display_key = viewpacket
                         .get_child("PrimaryDisplayKey")
-                        .unwrap_or_else(||
-                            panic!("<PrimaryDisplayKey> element missing in ViewPacket id= {}", viewpacket_id)
-                        )
+                        .unwrap_or_else(|| {
+                            panic!(
+                                "<PrimaryDisplayKey> element missing in ViewPacket id= {}",
+                                viewpacket_id
+                            )
+                        })
                         .get_text()
                         .unwrap_or_else(|| "".to_string().into());
                     let component_id: i32 = viewpacket
@@ -342,4 +381,20 @@ fn populate_db_with_viewpackets(db_conn: &Connection, xml_root: &Element) {
             _ => {}
         }
     }
+}
+
+fn create_db_with_context_model(db_conn: &Connection) {
+    // Create the tables
+    db_conn
+        .execute(
+            "CREATE TABLE IF NOT EXISTS context_model (
+        key TEXT,
+        entity TEXT,
+        entity_type TEXT,
+        description TEXT,
+        reference TEXT
+    )",
+            [],
+        )
+        .expect("Failed to create context_model table");
 }

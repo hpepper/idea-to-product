@@ -29,6 +29,14 @@ pub struct ComponentRelation {
 }
 
 #[derive(Debug)]
+pub struct ContextModel {
+    pub(crate) entity: String,
+    pub(crate) entity_type: String,
+    pub(crate) description: String,
+    pub(crate) reference: String,
+}
+
+#[derive(Debug)]
 pub struct ViewPacket {
     pub(crate) component_id: i32,
     pub(crate) context_model_key: String,

@@ -1,8 +1,8 @@
 # TODO
 
-* Generate Context Diagram table
 * For the Deployment viewpacket use 'Contains' to describe the subgraph thingy.
   * I guess I have to have some memory of the first Contains, so that I only creat the subgraph the first time I see this contains op.
+* Add support for TransportProtocol in ComponentRelations and present as VikGameProtocol/websocket
 * Add support for layers rendering.
 * generate the allocation mode
 * add relation description to ComponentRelation

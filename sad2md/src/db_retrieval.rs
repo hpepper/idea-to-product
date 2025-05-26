@@ -1,4 +1,4 @@
-use crate::models::{Behavior, Component, ComponentRelation, ViewPacket};
+use crate::models::{Behavior, Component, ComponentRelation, ContextModel, ViewPacket};
 
 use rusqlite::{Connection, Result};
 
@@ -10,6 +10,23 @@ pub fn get_component_name_by_id(db_conn: &Connection, component_id: i32) -> Stri
         .query_row([component_id], |row| Ok(row.get(0)?))
         .unwrap();
     component_name
+}
+
+pub fn get_vector_of_context_model_by_key(db_conn: &Connection, key: &str) -> Result<Vec<ContextModel>> {
+       let mut stmt = db_conn.prepare(
+        "SELECT entity, entity_type, description, reference FROM context_model WHERE key = ?1 ORDER BY LOWER(entity)"
+    )?;
+    let context_model = stmt
+        .query_map(rusqlite::params![key], |row| {
+            Ok(ContextModel {
+                entity: row.get(0)?,
+                entity_type: row.get(1)?,
+                description: row.get(2)?,
+                reference: row.get(3)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(context_model)
 }
 
 /// Get all the behaviors that are linked to the given view packet id.
