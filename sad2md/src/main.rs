@@ -837,7 +837,7 @@ fn render_graphical_context_diagram(
                                     &context_model_key.clone(),
                                     &component_b.name.clone(),
                                     "Adjacent",
-                                    &linkable_component_b_name.clone(),
+                                    &component_b.summary.clone(),
                                     "",
                                 );
                                 // TODO get connection description from the component_relation
