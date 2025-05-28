@@ -126,7 +126,7 @@ fn main() {
 
     populate_db(&db_conn, filename);
 
-    let markdown_filname = "Architecture.md";
+    let markdown_filname = "draft_architecture.md";
     let mut markdown_file = File::create(markdown_filname).expect("Unable to create file");
 
     render_document(&mut markdown_file, &db_conn);

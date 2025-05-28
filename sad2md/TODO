@@ -1,9 +1,16 @@
 # TODO
 
+* Add install of edge connector
+* Add deployment of edge connector
+* Add prrotocol info on edge connector to CnC
 * For the Deployment viewpacket use 'Contains' to describe the subgraph thingy.
   * I guess I have to have some memory of the first Contains, so that I only creat the subgraph the first time I see this contains op.
+* Generate a link to the parent(prefereably automatically)
 * Add support for TransportProtocol in ComponentRelations and present as VikGameProtocol/websocket
 * Add support for layers rendering.
 * generate the allocation mode
 * add relation description to ComponentRelation
 * Be able to limit the level in the primary display.
+* Change the viewpacket to behavior reference to be stored in the viewpacket.
+  * Having the reference in the behavior, you might forget to update if the viewpacket id is changed.
+  * Another way could be to have a behavior key that selects all behaviours.
