@@ -115,18 +115,31 @@ TODO the related view
 
 ### Introduction to Software Architecture Documentation
 
-Software Architecture Documentation(SAD) is there to give stakeholders a way to understand the product without having to go through and learn the source code.
+Software Architecture Documentation(SAD) is there to provide stakeholders with an understanding of the product without having to go through and learn the source code.
 
-SAD takes the approach of looking at one aspect of a entity of a product, like how to install it is one aspect.
+The goal of documenting an architecture is to write it down so that others can successfully use it, maintain it, and build a system from it(Cle02,p20).
+
+#### SAD Vocabulary
 
 * Component - principal units of computation(Bas24, p6), like services, peers, clients, servers, filter etc.
 * Connectors - communication vehicles among componets, like call-return, pipes etc.(Bas24,p6)
-* Element - a unit of software architecture that participates in the system’s structure and behavior. It can be a component, connector, interface, data element, or even a configuration.
+* Element - a unit of software architecture that participates in the system’s structure and behavior.
+  * It can be a component, connector, interface, data element, or even a configuration.
+* Entity - can be a Component or a Module.
+* Module - TODO
 * Product - the complete solution available to the customers.
+  * A product consists of many entities; like DB, logging, user authentication etc.
 
-A product consists of many entities; like DB, logging, user authentication etc.
-SAD splits each entity of
-SAD splits the description each entity into a number subentitys(viewpackets); like 
+#### What are view packets / The viewpacket approach
+
+A view packet is the smallest cohesive bundle of documentation that you would give to a stakeholder, such as a development team or a subcontractor(Cle03, ch6.p139).
+
+SAD uses ViewPackets to look at one aspect of an entity at a time.
+
+
+TODO clean up
+
+Some examples of aspects:
 
 * what does the entity consist of
 * what does the entity depend on
@@ -134,42 +147,46 @@ SAD splits the description each entity into a number subentitys(viewpackets); li
 * how is this entity installed
 * where is this entity deployed; like in a k8s cluster, in an EC2, lambda etc.
 
+A viewpacket will include refrences to the other relevant viewpackets.
+
+Viewpackets are used to split the documentation into managable and easily digestible sections.
+
 TODO why the viewpacket approach, where the description of a component is split out over multiple viewpackets, and not everything about the enity in one viewpacket?
 
-* TODO you would still need to have the sections, like breakdown and once you have the breakdown, it is easier for that broken down entity to be described in the various ways at that level, so that you would not have the gamesever broken down into sub modules and
-when you break down the game server into its components, then it is easier to describe each of those broken down components than have everything in the same section.
+* TODO you would still need to have the sections, like breakdown and once you have the breakdown, it is easier for that broken down entity to be described in the various ways at that level, so that you would not have the gamesever broken down into sub modules and when you break down the game server into its components, then it is easier to describe each of those broken down components than have everything in the same section.
 
-TODO why the break down into the styles?
+#### At the high level there are three types of viewpackets
 
 The documentation is split into three major types:
 
 * Module - look at the product as as enities can be implemented
   * (from high level to detailed entities that can be implemented by a single team)
-  * The module part are split into a number of sections called styles
-* Component and Connectors - how each entity communicates with other entities TODO rework this, make it logical like in philosophy
-  * Component - TODO
-  * Connector - TODO
-* Allocation - TODO catch-all
+* Component and Connectors(CnC) - focus on the way the elements interact with each other at runtime.
+* Allocation - how the relationship between the software elements and the elements in one or more external environments in which the software is created and executed.
+
+#### The styles of viewpackets
 
 Each type is split into a number of styles:
 
 * Module styles
-  * decomposistion - TODO
-  * uses - TODO
-  * layers - TODO
-* Component and connectores(CnC) - focus on the way the elements interact with each other at runtime.
-  * pub-sub - TODO
-  * client-server - TODO
+  * decomposistion - TODO presents the functionality of a system understanable modules that grows ever more detailed as you dive deeper.
+  * uses - TODO Show what a module requires to operate correctly.
+  * layers - TODO used to describe the allowed-to-use relation in a restricted fashion between groups of modules called layers(Cle11,p65)
+* Component and connectores(CnC)
+  * pub-sub - TODO components interact via announced events.
+  * client-server - TODO components interact by requesting services of other components. The essence of this style is that communication is typically paired and initiated by the client(,99).
+  * Peer-to-peer - components directly interact as peers by exchanging services.
   * ... TODO others?
 * Allocation
-  * Deployment - describes where a component is running.
+  * Deployment - describes where a component is running. In the deployment style it is shown which logical groups components are assigned to(Cle11, p191)
     * e.g. in a k8s cluster or on an EC2 instance, etc.
   * Installation - describes how the component is transferred to the target.
     * where the target can be a k8s cluster, an ec2 instance or another cloud service.
-  * Testing - how to test the component
+  * Testing - how to test the component. Show what major testing is done to significant modules.
     * Both during build and also after deployment.
+  * Work assignment - Show which signinicant modules belong to what groups. (Cle11, p190).
 
-### Viewpackets - TODO short description
+#### Example of a Viewpacket split
 
 A view packet is a way to hold the relevant information for an entity.
 
@@ -190,6 +207,90 @@ TODO also explain about how the Threatmodel can be buildt from this archecture, 
 * Headline
 * Primary display
 * Context diagram
+
+* Primary presentation
+  * Shows the elements and the relationship among those that populate the view(Bas03, p206)
+  * Both graphical and textual
+* Context diagram
+  * TODO Shows how the component depicted in this view packet relates to its environment(Bas03, p208).
+* Element catalog
+  * Summarises at least those elements and relations depicted in the primary presentation, and perhaps others that are not in the primary presentation(Bas03, p207).
+* Element behavior
+  * Some elements have complex interactions with their environment, which will be descriped here.
+* Related view packets
+  * (Bas03, p207).
+  * Parent* Variability guide
+  * What can be cusotmized to allow this element to be used in a different way than how it works in this description(cel11,23)
+* Architecture background
+  * explain to someone why the design is as it is and to provide a convincing agument that it is sound(Bas03, p208)
+* Design rationale
+  * The architect explains why the design decisions reflected in the view packet were made and gives a list of rejected alternatives and why they were rejected.
+* Result of Analysis
+  * The architect should document the results of analyses that have been conducted, such as the results of performance or security analysis or a list of what would have to change in the face of a particular kind of system modification.
+* Assumptions
+  * The architect should document any assumptions he or she made when crafting the design. Assumptions are usually about either environment or need.
+* Glossary of terms
+  * Words used in the view, with a brief description of each(Bas03, p208).
+* Other information
+  * Content will vary according to the standard practices of your organization (Bas03, p208).
+
+* Elements and their properties
+  * names each element in the view packet and lists the properties of that element.
+* Relations and their properties
+  * the specific relation type(s) that are depicts among the elements in this view.
+* Element interfaces section
+  * An interface is a boundary across which elements interact or communicate with each other.
+* Variability guide
+  * What can be cusotmized to allow this element to be used in a different way than how it works in this description(cel11,23)
+* Architecture background
+  * explain to someone why the design is as it is and to provide a convincing agument that it is sound(Bas03, p208)
+* Design rationale
+  * The architect explains why the design decisions reflected in the view packet were made and gives a list of rejected alternatives and why they were rejected.
+* Result of Analysis
+  * The architect should document the results of analyses that have been conducted, such as the results of performance or security analysis or a list of what would have to change in the face of a particular kind of system modification.
+* Assumptions
+  * The architect should document any assumptions he or she made when crafting the design. Assumptions are usually about either environment or need.
+* Glossary of terms
+  * Words used in the view, with a brief description of each(Bas03, p208).
+* Other information
+  * Content will vary according to the standard practices of your organization (Bas03, p208).
+
+#### Relation between the "4+1 view" and DocArch
+
+(Bas03, p41)
+
+* Logical = Module view
+* Process = component-and-connector
+* Developement =  Allocation
+* Physical = allocation
+
+#### Stakeholders and the Architecture Documentation view packets the stakeholders might find most useful
+
+(Bas03, p205)
+
+Source: (Cle11,p326)
+
+Stakeholder           | M-Decomp | M-Uses | M-Layer | M-Gen  | C&C | A-Depl | A-Imp | A-inst | A-work
+--------------------  | -------- | ------ | ------- | ------ | --- | ------ | ----- | ------ | ------
+Analyst               | d        | d      | d       | s      | s   | d      |       | s     | .
+Architect             | d        | d      | d       | d      | d   | d      | s     | d     | s
+Customer              |          |        |         |        |     | o      |       |       | .
+Dev team              | d        | d      | d       | d      | d   | s      | s     | d     | .
+End user              |          |        |         |        | s   | s      |       | o     | .
+Infrastructure supp   | s        | s      |         |        | s   | d      | d     | o     | .
+Maintainer            | d        | d      | d       | d      | d   | s      | s     |       | .
+New stakeholder       | x        | x      | x       | x      | x   | x      | x     | x     | x
+Prod line app bld     | d        | d      | o       | s      | s   | s      | s     | s     | .
+Projet Manager        | s        | s      | s       |        |     | d      |       |       | d
+Test and Integration  | d        | d      | d       | d      | s   | s      | s     | d     | .
+
+* d: detailed information
+* s: some details
+* o: overview information
+* x: anything
+* .: ignore, for formating rule purposes.
+
+See also Choosing the Views(Cle11, p315).
 
 ## Adding to the document
 
