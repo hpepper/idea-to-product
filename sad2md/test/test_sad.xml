@@ -11,7 +11,7 @@
   <Author></Author>
   <Summary></Summary>
 
-  <ViewPacket Id="1" ViewType="Module" ViewStyle="Decomposition" SortOrder="1">
+  <ViewPacket Id="1101" ViewType="Module" ViewStyle="Decomposition" SortOrder="1">
     <Title>Card game</Title>
     <Introduction>An online card battle game.</Introduction>
     <ComponentId>1</ComponentId>
@@ -19,15 +19,43 @@
     <ContextModelKey>ContextDiagram001</ContextModelKey>
   </ViewPacket>
 
-  <ViewPacket Id="2" ViewType="Module" ViewStyle="Decomposition" SortOrder="2">
+  <ViewPacket Id="1102" ViewType="Module" ViewStyle="Decomposition" SortOrder="2">
     <Title>Game server</Title>
     <Introduction></Introduction>
-    <ComponentId>2</ComponentId>
+    <ComponentId>3</ComponentId>
     <PrimaryDisplayKey>Decomposition002</PrimaryDisplayKey>
-    <ContextModelKey>ContextDiagram002</ContextModelKey>
+    <ContextModelKey></ContextModelKey>
   </ViewPacket>
 
-  <ViewPacket Id="3" ViewType="Module" ViewStyle="Layered" SortOrder="1">
+  <ViewPacket Id="1103" ViewType="Module" ViewStyle="Decomposition" SortOrder="3">
+    <Title>Edge connector</Title>
+    <Introduction></Introduction>
+    <ComponentId>7</ComponentId>
+    <PrimaryDisplayKey>Decomposition003</PrimaryDisplayKey>
+    <ContextModelKey></ContextModelKey>
+  </ViewPacket>
+
+  <ViewPacket Id="1106" ViewType="Module" ViewStyle="Decomposition" SortOrder="4">
+    <Title>Message broker</Title>
+    <Introduction></Introduction>
+    <ComponentId>19</ComponentId>
+    <PrimaryDisplayKey>Decomposition1106</PrimaryDisplayKey>
+    <ContextModelKey></ContextModelKey>
+  </ViewPacket>
+
+  <ViewPacket Id="1202" ViewType="Module" ViewStyle="Uses" SortOrder="3">
+    <Title>Edge connector</Title>
+    <Introduction></Introduction>
+    <ComponentId>7</ComponentId>
+    <PrimaryDisplayKey>Uses1202</PrimaryDisplayKey>
+    <ContextModelKey></ContextModelKey>
+  </ViewPacket>
+  <!-- TODO 
+     What dependencies can be listed here?
+     The contiainer is dependent on the OS being selected; rust vs javascript.
+   -->
+
+  <ViewPacket Id="1404" ViewType="Module" ViewStyle="Layered" SortOrder="1">
     <Title>Cloud presence layers</Title>
     <Introduction></Introduction>
     <ComponentId>18</ComponentId>
@@ -35,7 +63,7 @@
     <ContextModelKey></ContextModelKey>
   </ViewPacket>
 
-  <ViewPacket Id="4" ViewType="CnC" ViewStyle="ClientServer" SortOrder="1">
+  <ViewPacket Id="14" ViewType="CnC" ViewStyle="ClientServer" SortOrder="1">
     <Title>EdgeConnector</Title>
     <Introduction></Introduction>
     <ComponentId>7</ComponentId>
@@ -43,97 +71,86 @@
     <ContextModelKey>ContextDiagram002</ContextModelKey>
   </ViewPacket>
 
-  <Component Id="1" Name="Conflict card game">
+  <Component Id="14" Name="BattleResolver">
     <Responsibilities></Responsibilities>
-    <Summary></Summary>
+    <Summary>Execute the battle</Summary>
   </Component>
-
-  <Component Id="2" Name="Game client">
+  <Component Id="15" Name="CardDeckStorage">
     <Responsibilities></Responsibilities>
-    <Summary></Summary>
+    <Summary>Holds the current deck, plus any version of deck still being used in an ongoing session.</Summary>
   </Component>
-
-  <Component Id="3" Name="Game server">
-    <Responsibilities></Responsibilities>
-    <Summary></Summary>
-  </Component>
-
-  <Component Id="4" Name="server telemetry">
-    <Responsibilities></Responsibilities>
-    <Summary></Summary>
-  </Component>
-
-  <Component Id="5" Name="game download server">
-    <Responsibilities></Responsibilities>
-    <Summary></Summary>
-  </Component>
-
-  <Component Id="6" Name="player statistics">
-    <Responsibilities></Responsibilities>
-    <Summary></Summary>
-  </Component>
-
-  <Component Id="7" Name="Edge connector">
-    <Responsibilities></Responsibilities>
-    <Summary>Receive client connections, validate the message and route the message.</Summary>
-  </Component>
-
-  <Component Id="8" Name="Message broker">
-    <Responsibilities></Responsibilities>
-    <Summary></Summary>
-  </Component>
-
-  <Component Id="9" Name="Session manager">
-    <Responsibilities></Responsibilities>
-    <Summary></Summary>
-  </Component>
-
   <Component Id="10" Name="Cloud provider">
     <Responsibilities></Responsibilities>
     <Summary></Summary>
   </Component>
-
-  <Component Id="11" Name="oAuth">
+  <Component Id="1" Name="Conflict card game">
     <Responsibilities></Responsibilities>
-    <Summary></Summary>
+    <Summary>An online multiplayer tournament conflict card game.</Summary>
   </Component>
-
-  <Component Id="12" Name="Web browser">
+  <Component Id="7" Name="Edge connector">
     <Responsibilities></Responsibilities>
-    <Summary></Summary>
+    <Summary>Receive client connections, validate the message and route the message.</Summary>
   </Component>
-
-  <Component Id="13" Name="VillageSquare">
+  <Component Id="5" Name="game download server">
     <Responsibilities></Responsibilities>
-    <Summary></Summary>
+    <Summary>Hosts the download site for the game client application.</Summary>
   </Component>
-
-  <Component Id="14" Name="BattleResolver">
+  <Component Id="2" Name="Game client">
     <Responsibilities></Responsibilities>
-    <Summary></Summary>
+    <Summary>Application running at the player end.</Summary>
   </Component>
-
-  <Component Id="15" Name="CardDeckStorage">
+  <Component Id="3" Name="Game server">
     <Responsibilities></Responsibilities>
-    <Summary></Summary>
+    <Summary>The server side solution.</Summary>
   </Component>
-
   <Component Id="16" Name="Infrastructure">
     <Responsibilities></Responsibilities>
     <Summary></Summary>
   </Component>
-
   <Component Id="17" Name="kubernetes">
     <Responsibilities></Responsibilities>
     <Summary></Summary>
   </Component>
-
+  <Component Id="8" Name="Message broker">
+    <Responsibilities></Responsibilities>
+    <Summary>Pub-sub server, enable transferring messages among server services.</Summary>
+  </Component>
+  <Component Id="19" Name="RabbitMQ Message broker">
+    <Responsibilities></Responsibilities>
+    <Summary>Pub-sub server, enable transferring messages among server services.</Summary>
+    <!-- TODO describe why this RabbitMQ was chossen as the message broker. -->
+  </Component>
+  <Component Id="11" Name="oAuth">
+    <Responsibilities></Responsibilities>
+    <Summary>authorization that enables a user to grant an application access to their data on another application without sharing their credentials</Summary>
+  </Component>
+  <Component Id="6" Name="player statistics">
+    <Responsibilities></Responsibilities>
+    <Summary>API with access to all player statistics.</Summary>
+  </Component>
   <Component Id="18" Name="Server applications">
     <Responsibilities></Responsibilities>
     <Summary></Summary>
   </Component>
+  <Component Id="4" Name="server telemetry">
+    <Responsibilities></Responsibilities>
+    <Summary>Holds the the telemetry of all server side entities.</Summary>
+  </Component>
+  <Component Id="9" Name="Session manager">
+    <Responsibilities></Responsibilities>
+    <Summary>TODO Handle setting up game sessions, and transition the session between the different stations until the game is done.</Summary>
+  </Component>
+  <Component Id="13" Name="VillageSquare">
+    <Responsibilities></Responsibilities>
+    <Summary>Modify the deck for the next battle.</Summary>
+  </Component>
+  <Component Id="12" Name="Web browser">
+    <Responsibilities></Responsibilities>
+    <Summary>Web browser application.</Summary>
+  </Component>
 
-  <!-- 
+
+  <!-- 19
   <Component Id="" Name="">
     <Responsibilities></Responsibilities>
     <Summary></Summary>
@@ -179,40 +196,40 @@
   <ComponentRelation Id="6" SortOrder="">
     <ComponentAId>3</ComponentAId>
     <ComponentBId>7</ComponentBId>
-    <Key>Decomposition001</Key>
+    <Key>Decomposition002</Key>
     <PropertyOfRelation></PropertyOfRelation>
   </ComponentRelation>
 
   <ComponentRelation Id="7" SortOrder="">
     <ComponentAId>3</ComponentAId>
     <ComponentBId>8</ComponentBId>
-    <Key>Decomposition001</Key>
+    <Key>Decomposition002</Key>
     <PropertyOfRelation></PropertyOfRelation>
   </ComponentRelation>
 
   <ComponentRelation Id="8" SortOrder="">
     <ComponentAId>3</ComponentAId>
     <ComponentBId>9</ComponentBId>
-    <Key>Decomposition001</Key>
+    <Key>Decomposition002</Key>
     <PropertyOfRelation></PropertyOfRelation>
   </ComponentRelation>
 
   <ComponentRelation Id="15" SortOrder="">
     <ComponentAId>3</ComponentAId>
     <ComponentBId>13</ComponentBId>
-    <Key>Decomposition001</Key>
+    <Key>Decomposition002</Key>
     <PropertyOfRelation></PropertyOfRelation>
   </ComponentRelation>
   <ComponentRelation Id="16" SortOrder="">
     <ComponentAId>3</ComponentAId>
     <ComponentBId>14</ComponentBId>
-    <Key>Decomposition001</Key>
+    <Key>Decomposition002</Key>
     <PropertyOfRelation></PropertyOfRelation>
   </ComponentRelation>
   <ComponentRelation Id="17" SortOrder="">
     <ComponentAId>3</ComponentAId>
     <ComponentBId>15</ComponentBId>
-    <Key>Decomposition001</Key>
+    <Key>Decomposition002</Key>
     <PropertyOfRelation></PropertyOfRelation>
   </ComponentRelation>
 
@@ -223,8 +240,7 @@
     <Key>ContextDiagram001</Key>
     <PropertyOfRelation></PropertyOfRelation>
     <RelationText>IaaS</RelationText>
-    <!-- TODO add relation description -->
-
+    <RelationDescription>Iaas operations</RelationDescription>
   </ComponentRelation>
 
   <!-- The ComponentAId is 'The Work' in a context diagram. -->
@@ -349,6 +365,33 @@
     <PropertyOfRelation></PropertyOfRelation>
   </ComponentRelation>
 
+  <ComponentRelation Id="30" SortOrder="">
+    <ComponentAId>7</ComponentAId>
+    <ComponentBId>7</ComponentBId>
+    <Key>Decomposition003</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+    <RelationText></RelationText>
+    <RelationDescription></RelationDescription>
+  </ComponentRelation>
+
+  <!-- TODO what is it dependent on? Are the library dependencies listed here? websocekt, message broker? -->
+  <ComponentRelation Id="31" SortOrder="">
+    <ComponentAId>7</ComponentAId>
+    <ComponentBId>19</ComponentBId>
+    <Key>Uses1202</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+    <RelationText></RelationText>
+    <RelationDescription></RelationDescription>
+  </ComponentRelation>
+
+    <ComponentRelation Id="32" SortOrder="">
+    <ComponentAId>19</ComponentAId>
+    <ComponentBId>19</ComponentBId>
+    <Key>Decomposition1106</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+    <RelationText></RelationText>
+    <RelationDescription></RelationDescription>
+  </ComponentRelation>
 
   <!-- 30
   <ComponentRelation Id="" SortOrder="">
@@ -357,13 +400,28 @@
     <Key></Key>
     <PropertyOfRelation></PropertyOfRelation>
     <RelationText></RelationText>
+    <RelationDescription></RelationDescription>
   </ComponentRelation>
   -->
 
   <Behavior Id="1" SortOrder="1">
-    <ViewPacketId>3</ViewPacketId>
+    <ViewPacketId>4</ViewPacketId>
     <Description></Description>
     <DiagramKey>MSC301</DiagramKey>
   </Behavior>
 
+  <!-- PTLF-AR-13030 -->
+  <Requirement Identification="" Title="">
+    <Priority></Priority>
+    <Criticality></Criticality>
+    <Stability></Stability>
+    <Feasibility></Feasibility>
+    <Difficulty></Difficulty>
+    <Risk></Risk>
+    <Source></Source>
+    <Type></Type>
+    <PatternType></PatternType>
+    <Status></Status>
+    <Description></Description>
+  </Requirement>
 </SoftwareArchitectureDocumentation>

@@ -117,7 +117,7 @@ TODO the related view
 
 Software Architecture Documentation(SAD) is there to provide stakeholders with an understanding of the product without having to go through and learn the source code.
 
-The goal of documenting an architecture is to write it down so that others can successfully use it, maintain it, and build a system from it(Cle02,p20).
+The goal of documenting an architecture is also to write it down so that others can successfully use it, maintain it, and build a system from it(Cle02,p20).
 
 #### SAD Vocabulary
 
@@ -134,8 +134,9 @@ The goal of documenting an architecture is to write it down so that others can s
 
 A view packet is the smallest cohesive bundle of documentation that you would give to a stakeholder, such as a development team or a subcontractor(Cle03, ch6.p139).
 
-SAD uses ViewPackets to look at one aspect of an entity at a time.
+It’s is a set of diagrams, descriptions, and rationale that explain one slice or perspective of the system.
 
+SAD uses ViewPackets to look at one aspect of an entity at a time.
 
 TODO clean up
 

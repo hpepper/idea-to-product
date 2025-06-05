@@ -1,5 +1,7 @@
 # TODO
 
+
+* If a relationsB in componentrelation is 0, then just render the A and not the link.
 * Add install of edge connector
 * Add deployment of edge connector
 * Add prrotocol info on edge connector to CnC
