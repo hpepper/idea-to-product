@@ -67,6 +67,7 @@
   * VillageSquare: Modify the deck for the next battle.
   * BattleResolver: Execute the battle
   * CardDeckStorage: Holds the current deck, plus any version of deck still being used in an ongoing session.
+
 #### 1.1.2: Related views
 
 * Parent:
@@ -77,6 +78,10 @@
   * [Module Uses view packet 1.2.3: Edge connector](#module-uses-view-packet-123-edge-connector)
 
 ### Module Decomposition view packet 1.1.3: Edge connector
+
+#### 1.1.3: Purpose
+
+Ensure the client is authticated and the payload is valid(not a security risk)
 
 #### 1.1.3: Primary presentation
 
@@ -91,6 +96,7 @@
 #### 1.1.3: Related views
 
 * Parent:
+  * [Module Decomposition 1.1.2: Game server](#module-decomposition-view-packet-112-game-server)
 * Siblings:
   * [CnC ClientServer view packet 2.1.1: EdgeConnector](#cnc-clientserver-view-packet-211-edgeconnector)
   * [Module Uses view packet 1.2.3: Edge connector](#module-uses-view-packet-123-edge-connector)
@@ -122,15 +128,27 @@ TODO where to document the ENV vars? is that also the implementation document? I
 
 ### Module Uses view packet 1.2.3: Edge connector
 
+#### 1.2.3: Purpose
+
+Ensure the client is authticated and the payload is valid(not a security risk)
+
 #### 1.2.3: Primary presentation
+
+TODO Add uses on the messages being sent into the system, and the subscriber of those messages is also dependent on those messages.
 
 ```mermaid
   graph LR;
+    Edgeconnector[Edge connector]---WebSocket[WebSocket]
     Edgeconnector[Edge connector]---RabbitMQMessagebroker[RabbitMQ Message broker]
+    Edgeconnector[Edge connector]---oAuth[oAuth]
+    Edgeconnector[Edge connector]---JSONpayload[JSON payload]
 ```
 
 * Edge connector: Receive client connections, validate the message and route the message.
+  * WebSocket: WebSocket library for the client application.
   * RabbitMQ Message broker: Pub-sub server, enable transferring messages among server services.
+  * oAuth: authorization that enables a user to grant an application access to their data on another application without sharing their credentials
+  * JSON payload: JSON message payloads.
 
 #### 1.2.3: Related views
 
@@ -166,6 +184,10 @@ TODO where to document the ENV vars? is that also the implementation document? I
 ## CnC
 
 ### CnC ClientServer view packet 2.1.1: EdgeConnector
+
+#### 2.1.1: Purpose
+
+Ensure the client is authticated and the payload is valid(not a security risk)
 
 #### 2.1.1: Primary presentation
 
@@ -315,7 +337,15 @@ TODO where is the configuration documented? the install packet?
 * REQ - Must the received package is safe to send into the system.
   * Description:
 
-| sub       |         |          |        |             |        |
+| x         |         | x        |        | x           |        |
+| --------- | ------- | -------- | ------ | ----------- | ------ |
+| State     | Initial | Priority | medium | Criticality | medium |
+| Stability |         | Type     |        | PatternType |        |
+
+* REQ - Clients must be authenticated to access the servers.
+  * Description:
+
+| x         |         | x        |        | x           |        |
 | --------- | ------- | -------- | ------ | ----------- | ------ |
 | State     | Initial | Priority | medium | Criticality | medium |
 | Stability |         | Type     |        | PatternType |        |

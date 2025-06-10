@@ -207,6 +207,12 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
                     )
                     .expect("Unable to write to file");
 
+                render_viewpacket_section_purpose(
+                    markdown_file,
+                    db_conn,
+                    &viewpacket,
+                    section_number.clone(),
+                );
                 // TODO make the primary display a sub function, so this viewpacket function doesn become huge.
                 render_viewpacket_section_primary_display(
                     markdown_file,
@@ -765,6 +771,45 @@ fn render_graphical_layered_display(
     }
 }
 
+fn render_viewpacket_section_purpose(
+    markdown_file: &mut File,
+    db_conn: &Connection,
+    viewpacket: &ViewPacket,
+    section_number: String,
+) {
+    // TODO find out what the leadin need to be for layers
+    let top_component: Option<Component> =
+        match get_component_by_id(db_conn, viewpacket.component_id) {
+            // TODO can the 'if let Some' code below be put into a code block here?
+            Ok(top_component) => Some(top_component),
+            Err(e) => {
+                eprintln!("Error retrieving component: {}", e);
+                None
+            }
+        };
+    if let Some(_top_component) = top_component {
+        let top_component: Option<Component> =
+            match get_component_by_id(db_conn, viewpacket.component_id) {
+                // TODO can the 'if let Some' code below be put into a code block here?
+                Ok(top_component) => Some(top_component),
+                Err(e) => {
+                    eprintln!("Error retrieving component: {}", e);
+                    None
+                }
+            };
+        if let Some(top_component) = top_component {
+            if !top_component.purpose.is_empty() {
+                markdown_file
+                    .write(&format!("#### {}: Purpose\n\n", section_number).as_bytes())
+                    .expect("Unable to write to file");
+                markdown_file
+                    .write(&format!("{}\n\n", top_component.purpose).as_bytes())
+                    .expect("Unable to write to file");
+            }
+        }
+    }
+}
+
 fn render_graphical_context_diagram(
     markdown_file: &mut File,
     db_conn: &Connection,
@@ -1051,6 +1096,9 @@ fn render_textural_connector_list(
     connector_map: &HashMap<String, String>,
 ) {
     if connector_map.is_empty() {
+        markdown_file
+            .write(&format!("\n").as_bytes())
+            .expect("Unable to write to file");
         return;
     }
     markdown_file
@@ -1063,6 +1111,9 @@ fn render_textural_connector_list(
             .write(&format!("  * {}: {}\n", key, value).as_bytes())
             .expect("Unable to write to file");
     }
+    markdown_file
+        .write(&format!("\n").as_bytes())
+        .expect("Unable to write to file");
 }
 
 /// Itterates through all behaviors that are linked to the given view packet id.

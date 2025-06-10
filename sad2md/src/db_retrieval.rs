@@ -196,12 +196,13 @@ pub fn get_vector_of_related_components_by_key(
 }
 
 pub fn get_component_by_id(db_conn: &Connection, component_id: i32) -> Result<Component> {
-    let mut stmt = db_conn.prepare("SELECT id, name, summary FROM component WHERE id = ?1")?;
+    let mut stmt = db_conn.prepare("SELECT id, name, purpose, summary FROM component WHERE id = ?1")?;
     let component = stmt.query_row([component_id], |row| {
         Ok(Component {
             id: row.get(0)?,
             name: row.get(1)?,
-            summary: row.get(2)?,
+            purpose: row.get(2)?,
+            summary: row.get(3)?,
         })
     })?;
     Ok(component)

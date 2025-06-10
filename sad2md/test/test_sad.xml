@@ -71,88 +71,101 @@
     <ContextModelKey>ContextDiagram002</ContextModelKey>
   </ViewPacket>
 
+  <!-- TODO how are the requiremnts linked to the componnent?
+       a: Componnents list the requirements they implement.
+       b: Requirements list the components that implement them.
+
+       TODO how do I find out which viewpacket should show which requirements?
+   -->
   <Component Id="14" Name="BattleResolver">
-    <Responsibilities></Responsibilities>
+    <Purpose></Purpose>
     <Summary>Execute the battle</Summary>
   </Component>
   <Component Id="15" Name="CardDeckStorage">
-    <Responsibilities></Responsibilities>
+    <Purpose></Purpose>
     <Summary>Holds the current deck, plus any version of deck still being used in an ongoing session.</Summary>
   </Component>
   <Component Id="10" Name="Cloud provider">
-    <Responsibilities></Responsibilities>
+    <Purpose></Purpose>
     <Summary></Summary>
   </Component>
   <Component Id="1" Name="Conflict card game">
-    <Responsibilities></Responsibilities>
+    <Purpose></Purpose>
     <Summary>An online multiplayer tournament conflict card game.</Summary>
   </Component>
   <Component Id="7" Name="Edge connector">
-    <Responsibilities></Responsibilities>
+    <Purpose>Ensure the client is authticated and the payload is valid(not a security risk)</Purpose>
     <Summary>Receive client connections, validate the message and route the message.</Summary>
   </Component>
   <Component Id="5" Name="game download server">
-    <Responsibilities></Responsibilities>
+    <Purpose></Purpose>
     <Summary>Hosts the download site for the game client application.</Summary>
   </Component>
   <Component Id="2" Name="Game client">
-    <Responsibilities></Responsibilities>
+    <Purpose></Purpose>
     <Summary>Application running at the player end.</Summary>
   </Component>
   <Component Id="3" Name="Game server">
-    <Responsibilities></Responsibilities>
+    <Purpose></Purpose>
     <Summary>The server side solution.</Summary>
   </Component>
+  <Component Id="21" Name="JSON payload">
+    <Purpose></Purpose>
+    <Summary>JSON message payloads.</Summary>
+  </Component>
   <Component Id="16" Name="Infrastructure">
-    <Responsibilities></Responsibilities>
+    <Purpose></Purpose>
     <Summary></Summary>
   </Component>
   <Component Id="17" Name="kubernetes">
-    <Responsibilities></Responsibilities>
+    <Purpose></Purpose>
     <Summary></Summary>
   </Component>
   <Component Id="8" Name="Message broker">
-    <Responsibilities></Responsibilities>
+    <Purpose></Purpose>
     <Summary>Pub-sub server, enable transferring messages among server services.</Summary>
   </Component>
   <Component Id="19" Name="RabbitMQ Message broker">
-    <Responsibilities></Responsibilities>
+    <Purpose></Purpose>
     <Summary>Pub-sub server, enable transferring messages among server services.</Summary>
     <!-- TODO describe why this RabbitMQ was chossen as the message broker. -->
   </Component>
   <Component Id="11" Name="oAuth">
-    <Responsibilities></Responsibilities>
+    <Purpose></Purpose>
     <Summary>authorization that enables a user to grant an application access to their data on another application without sharing their credentials</Summary>
   </Component>
   <Component Id="6" Name="player statistics">
-    <Responsibilities></Responsibilities>
+    <Purpose></Purpose>
     <Summary>API with access to all player statistics.</Summary>
   </Component>
   <Component Id="18" Name="Server applications">
-    <Responsibilities></Responsibilities>
+    <Purpose></Purpose>
     <Summary></Summary>
   </Component>
   <Component Id="4" Name="server telemetry">
-    <Responsibilities></Responsibilities>
+    <Purpose></Purpose>
     <Summary>Holds the the telemetry of all server side entities.</Summary>
   </Component>
   <Component Id="9" Name="Session manager">
-    <Responsibilities></Responsibilities>
+    <Purpose></Purpose>
     <Summary>TODO Handle setting up game sessions, and transition the session between the different stations until the game is done.</Summary>
   </Component>
   <Component Id="13" Name="VillageSquare">
-    <Responsibilities></Responsibilities>
+    <Purpose></Purpose>
     <Summary>Modify the deck for the next battle.</Summary>
   </Component>
   <Component Id="12" Name="Web browser">
-    <Responsibilities></Responsibilities>
+    <Purpose></Purpose>
     <Summary>Web browser application.</Summary>
   </Component>
+  <Component Id="20" Name="WebSocket">
+    <Purpose></Purpose>
+    <Summary>WebSocket library for the client application.</Summary>
+  </Component>
 
-
-  <!-- 19
+  <!-- 20
   <Component Id="" Name="">
-    <Responsibilities></Responsibilities>
+    <Purpose></Purpose>
     <Summary></Summary>
   </Component>
   -->
@@ -375,9 +388,33 @@
   </ComponentRelation>
 
   <!-- TODO what is it dependent on? Are the library dependencies listed here? websocekt, message broker? -->
-  <ComponentRelation Id="31" SortOrder="">
+  <ComponentRelation Id="31" SortOrder="1">
+    <ComponentAId>7</ComponentAId>
+    <ComponentBId>20</ComponentBId>
+    <Key>Uses1202</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+    <RelationText></RelationText>
+    <RelationDescription></RelationDescription>
+  </ComponentRelation>
+  <ComponentRelation Id="33" SortOrder="2">
     <ComponentAId>7</ComponentAId>
     <ComponentBId>19</ComponentBId>
+    <Key>Uses1202</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+    <RelationText></RelationText>
+    <RelationDescription></RelationDescription>
+  </ComponentRelation>
+  <ComponentRelation Id="34" SortOrder="3">
+    <ComponentAId>7</ComponentAId>
+    <ComponentBId>11</ComponentBId>
+    <Key>Uses1202</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+    <RelationText></RelationText>
+    <RelationDescription></RelationDescription>
+  </ComponentRelation>
+  <ComponentRelation Id="35" SortOrder="4">
+    <ComponentAId>7</ComponentAId>
+    <ComponentBId>21</ComponentBId>
     <Key>Uses1202</Key>
     <PropertyOfRelation></PropertyOfRelation>
     <RelationText></RelationText>
@@ -393,7 +430,7 @@
     <RelationDescription></RelationDescription>
   </ComponentRelation>
 
-  <!-- 30
+  <!-- 35
   <ComponentRelation Id="" SortOrder="">
     <ComponentAId></ComponentAId>
     <ComponentBId></ComponentBId>
@@ -419,9 +456,9 @@
     <Difficulty></Difficulty>
     <Risk></Risk>
     <Source></Source>
-    <Type></Type>
+    <Category></Category>
     <PatternType></PatternType>
-    <Status></Status>
+    <ReqStatus></ReqStatus>
     <Description></Description>
   </Requirement>
 </SoftwareArchitectureDocumentation>

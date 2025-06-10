@@ -13,7 +13,8 @@
   ViewPacket+,
   Component+,
   ComponentRelation*,
-  Behavior*
+  Behavior*,
+  Requirement*
 )>
 <!ATTLIST SoftwareArchitectureDocumentation Version CDATA #REQUIRED>
 
@@ -82,7 +83,7 @@
   Performance*,
   Reliability?,
   ResourceRequirement?,
-  Responsibilities?,
+  Purpose?,
   SchedulerPriority?,
   Security?,
   SourceRepository*,
@@ -94,7 +95,7 @@
 <!ATTLIST Component Name CDATA #REQUIRED>
 
 <!ELEMENT BehaviorDescription  (#PCDATA)>
-<!ELEMENT Responsibilities  (#PCDATA)>
+<!ELEMENT Purpose  (#PCDATA)>
 <!ELEMENT VisibilityOfInterfaces  (#PCDATA)>
 <!ELEMENT Interface  (#PCDATA)>
 <!ELEMENT Overview  (#PCDATA)>
@@ -138,3 +139,97 @@
 <!ELEMENT Diagram  (
   DiagramKey
 )>
+
+<!--See also: SwArcDocRequirements.md -->
+<!ELEMENT Requirement (
+  Priority?,
+  Criticality?,
+  Stability?,
+  Feasibility?,
+  Difficulty?,
+  Risk?,
+  Source?,
+  Category?,
+  PatternType?,
+  ReqStatus?,
+  Description?
+)>
+<!ATTLIST Requirement Identification CDATA #REQUIRED>
+<!ATTLIST Requirement Title CDATA #REQUIRED>
+<!ELEMENT Priority  (#PCDATA)>
+<!ELEMENT Criticality  (#PCDATA)>
+<!ELEMENT Stability  (#PCDATA)>
+<!ELEMENT Feasibility  (#PCDATA)>
+<!ELEMENT Difficulty  (#PCDATA)>
+<!ELEMENT Risk  (#PCDATA)>
+<!ELEMENT Source  (#PCDATA)>
+<!ELEMENT Category  (#PCDATA)>
+<!-- Category
+  * Accessibility (e.g., different navigation paths for novice and experienced users);
+  * Availability (e.g., expected hours of operation);
+  * Compatibility to existing systems (e.g., uses analog telephone system as default mode);
+  * Conversion (e.g., will accept data produced by older versions of system);
+  * Documentation (e.g., on-line help facility);
+  * Environmental conditions (e.g., dust levels that must be tolerated);
+  * Ergonomic (e.g., use of particular colors to reduce eye strain);
+  * External interfaces (e.g., support for industry standard communication mode/format);
+  * Facility requirements (e.g., use of domestic electrical current);
+  * Growth capacity (e.g., will support an additional number of users);
+  * Input (e.g., receive EDI data);
+  * Installation (e.g., ability to put a new system into service).
+  * Maintainability (e.g., ease with which components can be replaced);
+  * Output (e.g., export a particular format);
+  * Performance (e.g., response time);
+  * Policy and regulatory (e.g., environmental protection agency policies);
+  * Quality provisions (e.g., minimum required calibration intervals);
+  * Reliability (e.g., mean time to failure);
+  * Safety (e.g., below specified limits for electrical magnetic radiation);
+  * Security (e.g., limits to physical, functional, or data access, by authorized or unauthorized users);
+  * Standards and technical policies (e.g., products to conform to ASME codes);
+  * Testing (e.g., support for remote diagnostics);
+  * Transportability (e.g., weight limits for portability);
+  * Training (e.g., includes tutorials or computer-based training);  
+  -->
+<!ELEMENT PatternType  (#PCDATA)>
+<!-- PatternType
+  * Accessibility
+  * Approval
+  * Availability
+  * Calculation Formula
+  * Capacity, Dynamic
+  * Capacity, Static
+  * Chronicle
+  * Comply-with-Standard
+  * Configurable Authorization
+  * Configuration
+  * Data Archiving
+  * Data Longevity
+  * Data Structure
+  * Data Type
+  * Documentation
+  * Extendability
+  * ID
+  * Information Storage Infrastructure
+  * Inquiry
+  * Installability
+  * Inter-System Interface (e.g. )
+  * Inter-System Interaction
+  * Living Entity
+  * Multi-Lingual
+  * Multiness
+  * Refer-to-Requirements
+  * Report
+  * Reporting Infrastructure
+  * Response Time
+  * Scalability
+  * Specific Authorization
+  * Technology
+  * Throughput
+  * Transaction
+  * Unparochialness ' should this be Universalism?
+  * Authentication, User
+  * Authorizations, User
+  * User Interface Infrastructure: A user interface infrastructure is a coherent set of components that together enable a user to interact with the system, excluding anything developed as part of a specific system, general underlying software (such as an operating system), and hardware(Wit07,163).
+  * Registration, User
+  -->
+<!ELEMENT ReqStatus  (#PCDATA)>

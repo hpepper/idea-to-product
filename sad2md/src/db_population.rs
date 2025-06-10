@@ -133,6 +133,7 @@ fn populate_db_with_components(db_conn: &Connection, xml_root: &Element) {
             "CREATE TABLE component (
             id INTEGER PRIMARY KEY,
             name TEXT NOT NULL,
+            purpose TEXT,
             summary TEXT
         )",
             [],
@@ -152,6 +153,13 @@ fn populate_db_with_components(db_conn: &Connection, xml_root: &Element) {
                         .parse()
                         .unwrap();
                     let name = component.attributes.get("Name").unwrap();
+                    let purpose = component
+                        .get_child("Purpose")
+                        .unwrap_or_else(|| {
+                            panic!("<Purpose> element missing in Component id= {}", id)
+                        })
+                        .get_text()
+                        .unwrap_or_else(|| "".to_string().into());
                     let summary = component
                         .get_child("Summary")
                         .unwrap_or_else(|| {
@@ -162,9 +170,9 @@ fn populate_db_with_components(db_conn: &Connection, xml_root: &Element) {
 
                     db_conn
                         .execute(
-                            "INSERT INTO component (id, name, summary)
-                            VALUES (?1, ?2, ?3)",
-                            (id, &name.to_string(), &summary.to_string()),
+                            "INSERT INTO component (id, name, purpose, summary)
+                            VALUES (?1, ?2, ?3, ?4)",
+                            (id, &name.to_string(), &purpose.to_string(), &summary.to_string()),
                         )
                         .expect("Unable to insert data");
                 }

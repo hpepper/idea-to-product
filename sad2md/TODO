@@ -1,6 +1,6 @@
 # TODO
 
-
+* In mermaid diagrams the name of a node cannot start with 'o' like in 'oAuth' because then it becomes a dot as an arrow on the line. Perhaps upper case all the diagram references.
 * If a relationsB in componentrelation is 0, then just render the A and not the link.
 * Add install of edge connector
 * Add deployment of edge connector

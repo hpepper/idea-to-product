@@ -13,6 +13,7 @@ pub struct Component {
     pub(crate) id: i32,
     pub(crate) name: String,
     pub(crate) summary: String,
+    pub(crate) purpose: String,
 }
 
 // TODO Add Id from attribute
