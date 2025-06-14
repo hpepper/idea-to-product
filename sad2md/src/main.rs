@@ -12,7 +12,7 @@ use db_retrieval::{
     get_component_by_id, get_component_name_by_id, get_vector_of_behaviors_for_viewpacket_id,
     get_vector_of_context_model_by_key, get_vector_of_related_components_by_id_and_key,
     get_vector_of_related_components_by_id_and_key_both_directions,
-    get_vector_of_related_components_by_key,
+    get_vector_of_related_components_by_key, get_vector_of_usedby_components_by_id_and_key,
     get_vector_of_viewpacket_by_component_id_except_component_id,
 };
 use models::{Behavior, Component, ComponentRelation, ViewPacket};
@@ -34,6 +34,7 @@ const VIEW_TYPE_LIST: &[&str] = &[MODULE_VIEW_TYPE, CNC_VIEW_TYPE, ALLOCATION_VI
 
 const MODULE_VIEW_TYPE_STYLE_DECOMPOSITION: &str = "Decomposition";
 const MODULE_VIEW_TYPE_STYLE_USES: &str = "Uses";
+const MODULE_VIEW_TYPE_STYLE_USEDBY: &str = "UsedBy";
 const MODULE_VIEW_TYPE_STYLE_GENERALIZE: &str = "Generalize";
 const MODULE_VIEW_TYPE_STYLE_LAYERED: &str = "Layered";
 
@@ -55,8 +56,9 @@ fn create_hardcoded_map() -> HashMap<&'static str, i32> {
     map.insert(ALLOCATION_VIEW_TYPE, 3);
     map.insert(MODULE_VIEW_TYPE_STYLE_DECOMPOSITION, 1);
     map.insert(MODULE_VIEW_TYPE_STYLE_USES, 2);
-    map.insert(MODULE_VIEW_TYPE_STYLE_GENERALIZE, 3);
-    map.insert(MODULE_VIEW_TYPE_STYLE_LAYERED, 4);
+    map.insert(MODULE_VIEW_TYPE_STYLE_USEDBY, 3);
+    map.insert(MODULE_VIEW_TYPE_STYLE_GENERALIZE, 4);
+    map.insert(MODULE_VIEW_TYPE_STYLE_LAYERED, 5);
     map.insert(CNC_VIEW_TYPE_STYLE_CLIENTSERVER, 1);
     map.insert(CNC_VIEW_TYPE_STYLE_PEERTOPEER, 2);
     map.insert(CNC_VIEW_TYPE_STYLE_PUBSUB, 3);
@@ -80,6 +82,7 @@ fn create_styles() -> HashMap<&'static str, Vec<&'static str>> {
         vec![
             MODULE_VIEW_TYPE_STYLE_DECOMPOSITION,
             MODULE_VIEW_TYPE_STYLE_USES,
+            MODULE_VIEW_TYPE_STYLE_USEDBY,
             MODULE_VIEW_TYPE_STYLE_GENERALIZE,
             MODULE_VIEW_TYPE_STYLE_LAYERED,
         ],
@@ -567,11 +570,19 @@ fn render_graphical_primary_display(
 
     if let Some(_top_component) = top_component {
         let component_relations_vector = if first_layer {
-            get_vector_of_related_components_by_id_and_key_both_directions(
-                db_conn,
-                component_id,
-                primary_display_key.clone(),
-            )
+            if style == MODULE_VIEW_TYPE_STYLE_USEDBY {
+                get_vector_of_usedby_components_by_id_and_key(
+                    db_conn,
+                    component_id,
+                    MODULE_VIEW_TYPE_STYLE_USES.to_string(),
+                )
+            } else {
+                get_vector_of_related_components_by_id_and_key_both_directions(
+                    db_conn,
+                    component_id,
+                    primary_display_key.clone(),
+                )
+            }
         } else {
             get_vector_of_related_components_by_id_and_key(
                 db_conn,

@@ -22,6 +22,7 @@
   * game download server: Hosts the download site for the game client application.
   * player statistics: API with access to all player statistics.
 
+
 #### 1.1.1: Context diagram
 
 ```mermaid
@@ -74,8 +75,9 @@
 * Siblings:
 * Children:
   * [CnC ClientServer view packet 2.1.1: EdgeConnector](#cnc-clientserver-view-packet-211-edgeconnector)
+  * [Module Uses view packet 1.2.2: Edge connector](#module-uses-view-packet-122-edge-connector)
   * [Module Decomposition view packet 1.1.3: Edge connector](#module-decomposition-view-packet-113-edge-connector)
-  * [Module Uses view packet 1.2.3: Edge connector](#module-uses-view-packet-123-edge-connector)
+  * [Module Uses view packet 1.2.4: Session manager](#module-uses-view-packet-124-session-manager)
 
 ### Module Decomposition view packet 1.1.3: Edge connector
 
@@ -96,10 +98,9 @@ Ensure the client is authticated and the payload is valid(not a security risk)
 #### 1.1.3: Related views
 
 * Parent:
-  * [Module Decomposition 1.1.2: Game server](#module-decomposition-view-packet-112-game-server)
 * Siblings:
   * [CnC ClientServer view packet 2.1.1: EdgeConnector](#cnc-clientserver-view-packet-211-edgeconnector)
-  * [Module Uses view packet 1.2.3: Edge connector](#module-uses-view-packet-123-edge-connector)
+  * [Module Uses view packet 1.2.2: Edge connector](#module-uses-view-packet-122-edge-connector)
 * Children:
 
 ### Module Decomposition view packet 1.1.4: Message broker
@@ -124,15 +125,16 @@ TODO where to document the ENV vars? is that also the implementation document? I
 
 * Parent:
 * Siblings:
+  * [Module UsedBy view packet 1.3.3: RabbitMQ](#module-usedby-view-packet-133-rabbitmq)
 * Children:
 
-### Module Uses view packet 1.2.3: Edge connector
+### Module Uses view packet 1.2.2: Edge connector
 
-#### 1.2.3: Purpose
+#### 1.2.2: Purpose
 
 Ensure the client is authticated and the payload is valid(not a security risk)
 
-#### 1.2.3: Primary presentation
+#### 1.2.2: Primary presentation
 
 TODO Add uses on the messages being sent into the system, and the subscriber of those messages is also dependent on those messages.
 
@@ -150,18 +152,58 @@ TODO Add uses on the messages being sent into the system, and the subscriber of 
   * oAuth: authorization that enables a user to grant an application access to their data on another application without sharing their credentials
   * JSON payload: JSON message payloads.
 
-#### 1.2.3: Related views
+#### 1.2.2: Related views
 
 * Parent:
 * Siblings:
   * [CnC ClientServer view packet 2.1.1: EdgeConnector](#cnc-clientserver-view-packet-211-edgeconnector)
   * [Module Decomposition view packet 1.1.3: Edge connector](#module-decomposition-view-packet-113-edge-connector)
 * Children:
+  * [Module UsedBy view packet 1.3.3: RabbitMQ](#module-usedby-view-packet-133-rabbitmq)
   * [Module Decomposition view packet 1.1.4: Message broker](#module-decomposition-view-packet-114-message-broker)
 
-### Module Layered view packet 1.4.1: Cloud presence layers
+### Module Uses view packet 1.2.4: Session manager
 
-#### 1.4.1: Primary presentation
+#### 1.2.4: Primary presentation
+
+```mermaid
+  graph LR;
+    Sessionmanager[Session manager]---RabbitMQMessagebroker[RabbitMQ Message broker]
+```
+
+* Session manager: TODO Handle setting up game sessions, and transition the session between the different stations until the game is done.
+  * RabbitMQ Message broker: Pub-sub server, enable transferring messages among server services.
+
+#### 1.2.4: Related views
+
+* Parent:
+* Siblings:
+* Children:
+  * [Module UsedBy view packet 1.3.3: RabbitMQ](#module-usedby-view-packet-133-rabbitmq)
+  * [Module Decomposition view packet 1.1.4: Message broker](#module-decomposition-view-packet-114-message-broker)
+
+### Module UsedBy view packet 1.3.3: RabbitMQ
+
+#### 1.3.3: Primary presentation
+
+```mermaid
+  graph LR;
+    Edgeconnector[Edge connector]---RabbitMQMessagebroker[RabbitMQ Message broker]
+    Sessionmanager[Session manager]---RabbitMQMessagebroker[RabbitMQ Message broker]
+```
+
+* RabbitMQ Message broker: Pub-sub server, enable transferring messages among server services.
+
+#### 1.3.3: Related views
+
+* Parent:
+* Siblings:
+  * [Module Decomposition view packet 1.1.4: Message broker](#module-decomposition-view-packet-114-message-broker)
+* Children:
+
+### Module Layered view packet 1.5.1: Cloud presence layers
+
+#### 1.5.1: Primary presentation
 
 ```mermaid
   block-beta
@@ -175,7 +217,8 @@ TODO Add uses on the messages being sent into the system, and the subscriber of 
 * kubernetes: 
 * Infrastructure: 
 
-#### 1.4.1: Related views
+
+#### 1.5.1: Related views
 
 * Parent:
 * Siblings:
@@ -211,6 +254,7 @@ Ensure the client is authticated and the payload is valid(not a security risk)
 * Connectors:
   * RabbitMQ msg: 
   * Web Socket: Web Socket stream
+
 
 #### 2.1.1: Context diagram
 
@@ -369,8 +413,10 @@ TODO where is the configuration documented? the install packet?
 
 * Parent:
 * Siblings:
+  * [Module Uses view packet 1.2.2: Edge connector](#module-uses-view-packet-122-edge-connector)
   * [Module Decomposition view packet 1.1.3: Edge connector](#module-decomposition-view-packet-113-edge-connector)
   * [Module Uses view packet 1.2.3: Edge connector](#module-uses-view-packet-123-edge-connector)
+  * [Module UsedBy view packet 1.3.3: RabbitMQ](#module-usedby-view-packet-133-rabbitmq)
 * Children:
 
 ## Allocation

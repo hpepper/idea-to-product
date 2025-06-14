@@ -195,7 +195,8 @@ fn populate_db_with_componentrelations(db_conn: &Connection, xml_root: &Element)
             key TEXT,
             property_of_relation TEXT,
             relation_text TEXT,
-            relation_description TEXT
+            relation_description TEXT,
+            style TEXT
         )",
             [],
         )
@@ -256,10 +257,14 @@ fn populate_db_with_componentrelations(db_conn: &Connection, xml_root: &Element)
                         .get_child("RelationDescription")
                         .and_then(|child| child.get_text())
                         .unwrap_or_else(|| "".to_string().into());
+                    let style = component_relation
+                        .get_child("Style")
+                        .and_then(|child| child.get_text())
+                        .unwrap_or_else(|| "".to_string().into());
                     db_conn
                         .execute(
-                            "INSERT INTO component_relation (id, sort_order, component_a_id, component_b_id, connection_type, key, property_of_relation, relation_text, relation_description)
-                            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                            "INSERT INTO component_relation (id, sort_order, component_a_id, component_b_id, connection_type, key, property_of_relation, relation_text, relation_description, style)
+                            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
                             (
                                 id,
                                 sort_order,
@@ -270,6 +275,7 @@ fn populate_db_with_componentrelations(db_conn: &Connection, xml_root: &Element)
                                 &property_of_relation.to_string(),
                                 &relation_text.to_string(),
                                 &relation_description.to_string(),
+                                &style.to_string(),
                             )
                         )
                         .expect("Unable to insert data in component_relation");

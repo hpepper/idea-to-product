@@ -298,3 +298,28 @@ See also Choosing the Views(Cle11, p315).
 ### What not to include
 
 * things that change often and does not affect other teams/modules, need not/should not be documented in the architecture document.
+
+## Using the _sad.xml file
+
+### Introduction to _sad.xml
+
+#### Purpose of _sad.xml
+
+#### Overview of _sad.xml
+
+### Fill in usage
+
+* Create a Viewpacket `<ViewPacket Id="1202" ViewType="Module" ViewStyle="Uses" SortOrder="2">`
+  * ComponentId - the id of the component you are focusing on.
+  * PrimaryDisplayKey - unique key.
+* ComponentRelation
+  * ComponentAId - the id of the component in focus.
+  * ComponentBId - the id of the component that ComponentAId uses.
+  * Key - the PrimaryDisplayKey of the view packet.
+  * Style - Set to 'Uses' if you want to be able to create a used-by viewpacket for the ComponentBId.
+
+* For the UsedBy view packet
+  * Create a Viewpacket `<ViewPacket Id="1302" ViewType="Module" ViewStyle="UsedBy" SortOrder="3">`
+    * ComponentId - the id of the component you want to show all the components that uses it.
+    * PrimaryDisplayKey - empty(not used). TODO maybe this could be used in the search instead of the hard-coded 'Uses'
+  * ComponentRelation - none defined, the code will search for all ComponentRelation where ComponentId is in ComponentBId and the Style is 'Uses'.

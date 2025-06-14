@@ -43,7 +43,7 @@
     <ContextModelKey></ContextModelKey>
   </ViewPacket>
 
-  <ViewPacket Id="1202" ViewType="Module" ViewStyle="Uses" SortOrder="3">
+  <ViewPacket Id="1202" ViewType="Module" ViewStyle="Uses" SortOrder="2">
     <Title>Edge connector</Title>
     <Introduction></Introduction>
     <ComponentId>7</ComponentId>
@@ -54,6 +54,22 @@
      What dependencies can be listed here?
      The contiainer is dependent on the OS being selected; rust vs javascript.
    -->
+  <ViewPacket Id="1204" ViewType="Module" ViewStyle="Uses" SortOrder="4">
+    <Title>Session manager</Title>
+    <Introduction></Introduction>
+    <ComponentId>9</ComponentId>
+    <PrimaryDisplayKey>Uses1204</PrimaryDisplayKey>
+    <ContextModelKey></ContextModelKey>
+  </ViewPacket>
+
+  <ViewPacket Id="1302" ViewType="Module" ViewStyle="UsedBy" SortOrder="3">
+    <Title>RabbitMQ</Title>
+    <Introduction></Introduction>
+    <ComponentId>19</ComponentId>
+    <PrimaryDisplayKey></PrimaryDisplayKey>
+    <ContextModelKey></ContextModelKey>
+  </ViewPacket>
+   
 
   <ViewPacket Id="1404" ViewType="Module" ViewStyle="Layered" SortOrder="1">
     <Title>Cloud presence layers</Title>
@@ -403,6 +419,7 @@
     <PropertyOfRelation></PropertyOfRelation>
     <RelationText></RelationText>
     <RelationDescription></RelationDescription>
+    <Style>Uses</Style>
   </ComponentRelation>
   <ComponentRelation Id="34" SortOrder="3">
     <ComponentAId>7</ComponentAId>
@@ -430,7 +447,17 @@
     <RelationDescription></RelationDescription>
   </ComponentRelation>
 
-  <!-- 35
+  <ComponentRelation Id="36" SortOrder="">
+    <ComponentAId>9</ComponentAId>
+    <ComponentBId>19</ComponentBId>
+    <Key>Uses1204</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+    <RelationText></RelationText>
+    <RelationDescription></RelationDescription>
+    <Style>Uses</Style>
+  </ComponentRelation>
+
+  <!-- 36
   <ComponentRelation Id="" SortOrder="">
     <ComponentAId></ComponentAId>
     <ComponentBId></ComponentBId>
@@ -438,6 +465,7 @@
     <PropertyOfRelation></PropertyOfRelation>
     <RelationText></RelationText>
     <RelationDescription></RelationDescription>
+    <Style></Style>
   </ComponentRelation>
   -->
 

@@ -123,7 +123,8 @@
   PropertyOfRelation,
   ConnectionType?,
   RelationText?,
-  RelationDescription?
+  RelationDescription?,
+  Style?
 )>
 <!ATTLIST ComponentRelation Id CDATA #REQUIRED>
 <!ATTLIST ComponentRelation SortOrder  CDATA #REQUIRED>
@@ -135,6 +136,7 @@
 <!ELEMENT ConnectionType  (#PCDATA)>
 <!ELEMENT RelationText  (#PCDATA)>
 <!ELEMENT RelationDescription  (#PCDATA)>
+<!ELEMENT Style  (#PCDATA)>
 
 <!ELEMENT Diagram  (
   DiagramKey
