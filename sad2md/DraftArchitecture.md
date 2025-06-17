@@ -72,6 +72,7 @@
 #### 1.1.2: Related views
 
 * Parent:
+  * [Module Decomposition view packet 1.1.1: Card game](#module-decomposition-view-packet-111-card-game)
 * Siblings:
 * Children:
   * [CnC ClientServer view packet 2.1.1: EdgeConnector](#cnc-clientserver-view-packet-211-edgeconnector)
@@ -98,6 +99,7 @@ Ensure the client is authticated and the payload is valid(not a security risk)
 #### 1.1.3: Related views
 
 * Parent:
+  * [Module Decomposition view packet 1.1.2: Game server](#module-decomposition-view-packet-112-game-server)
 * Siblings:
   * [CnC ClientServer view packet 2.1.1: EdgeConnector](#cnc-clientserver-view-packet-211-edgeconnector)
   * [Module Uses view packet 1.2.2: Edge connector](#module-uses-view-packet-122-edge-connector)
@@ -124,6 +126,7 @@ TODO where to document the ENV vars? is that also the implementation document? I
 #### 1.1.4: Related views
 
 * Parent:
+  * [Module Decomposition view packet 1.1.3: Edge connector](#module-decomposition-view-packet-113-edge-connector)
 * Siblings:
   * [Module UsedBy view packet 1.3.3: RabbitMQ](#module-usedby-view-packet-133-rabbitmq)
 * Children:
@@ -155,6 +158,7 @@ TODO Add uses on the messages being sent into the system, and the subscriber of 
 #### 1.2.2: Related views
 
 * Parent:
+  * [Module Uses view packet 1.2.2: Edge connector](#module-uses-view-packet-122-edge-connector)
 * Siblings:
   * [CnC ClientServer view packet 2.1.1: EdgeConnector](#cnc-clientserver-view-packet-211-edgeconnector)
   * [Module Decomposition view packet 1.1.3: Edge connector](#module-decomposition-view-packet-113-edge-connector)
@@ -197,6 +201,7 @@ TODO Add uses on the messages being sent into the system, and the subscriber of 
 #### 1.3.3: Related views
 
 * Parent:
+  * [Module UsedBy view packet 1.3.3: RabbitMQ](#module-usedby-view-packet-133-rabbitmq)
 * Siblings:
   * [Module Decomposition view packet 1.1.4: Message broker](#module-decomposition-view-packet-114-message-broker)
 * Children:
@@ -412,6 +417,7 @@ TODO where is the configuration documented? the install packet?
 #### 2.1.1: Related views
 
 * Parent:
+  * [CnC ClientServer view packet 2.1.1: EdgeConnector](#cnc-clientserver-view-packet-211-edgeconnector)
 * Siblings:
   * [Module Uses view packet 1.2.2: Edge connector](#module-uses-view-packet-122-edge-connector)
   * [Module Decomposition view packet 1.1.3: Edge connector](#module-decomposition-view-packet-113-edge-connector)

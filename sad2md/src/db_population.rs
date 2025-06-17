@@ -1,4 +1,4 @@
-use rusqlite::{Connection, Result};
+use rusqlite::{Connection};
 use std::fs::File;
 use std::io::BufReader;
 use xmltree::{Element, XMLNode};

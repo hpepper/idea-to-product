@@ -14,6 +14,7 @@ use db_retrieval::{
     get_vector_of_related_components_by_id_and_key_both_directions,
     get_vector_of_related_components_by_key, get_vector_of_usedby_components_by_id_and_key,
     get_vector_of_viewpacket_by_component_id_except_component_id,
+    get_vector_of_viewpacket_parents_by_component_id_and_style_and_key,
 };
 use models::{Behavior, Component, ComponentRelation, ViewPacket};
 
@@ -307,7 +308,14 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
                 markdown_file
                     .write(&format!("* Parent:\n").as_bytes())
                     .expect("Unable to write to file");
-                // TODO find the parent viewpacket
+
+                render_parent_relationship(
+                    markdown_file,
+                    db_conn,
+                    viewpacket.component_id,
+                    style,
+                    viewpacket.primary_display_key.clone(),
+                );
 
                 markdown_file
                     .write(&format!("* Siblings:\n").as_bytes())
@@ -339,6 +347,43 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
         }
         Err(err) => {
             eprintln!("Error: {}", err);
+        }
+    }
+}
+
+fn render_parent_relationship(
+    markdown_file: &mut File,
+    db_conn: &Connection,
+    component_id: i32,
+    style: &str,
+    primary_display_key: String,
+) {
+    let viewpacket_vector = get_vector_of_viewpacket_parents_by_component_id_and_style_and_key(
+            db_conn,
+            component_id,
+            style,
+            &primary_display_key,
+        );
+    match viewpacket_vector {
+        Ok(viewpacket_vector) => {
+            for viewpacket in viewpacket_vector {
+                let view_title = create_view_packet_title(
+                    viewpacket.view_type.as_str(),
+                    viewpacket.view_style.as_str(),
+                    viewpacket.title.as_str(),
+                    viewpacket.sort_order,
+                );
+                let linkable_view_title = make_markdown_linkable_text(view_title.clone());
+                markdown_file
+                    .write(&format!("  * [{view_title}](#{linkable_view_title})\n").as_bytes())
+                    .expect("Unable to write to file");
+            }
+        }
+        Err(err) => {
+            eprintln!(
+                "Error: returned from get_vector_of_related_components_by_key() {}",
+                err
+            );
         }
     }
 }
