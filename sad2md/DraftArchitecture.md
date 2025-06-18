@@ -1,5 +1,22 @@
 # Software Architecture Document
 
+This document is generated from the Software Architecture Document (SAD) XML file.
+
+## Table of Contents
+
+* [Module](#module)
+  * [Module Decomposition view packet 1.1.1: Card game](#module-decomposition-view-packet-111-card-game)
+  * [Module Decomposition view packet 1.1.2: Game server](#module-decomposition-view-packet-112-game-server)
+  * [Module Decomposition view packet 1.1.3: Edge connector](#module-decomposition-view-packet-113-edge-connector)
+  * [Module Decomposition view packet 1.1.4: Message broker](#module-decomposition-view-packet-114-message-broker)
+  * [Module Uses view packet 1.2.2: Edge connector](#module-uses-view-packet-122-edge-connector)
+  * [Module Uses view packet 1.2.4: Session manager](#module-uses-view-packet-124-session-manager)
+  * [Module UsedBy view packet 1.3.3: RabbitMQ](#module-usedby-view-packet-133-rabbitmq)
+  * [Module Layered view packet 1.5.1: Cloud presence layers](#module-layered-view-packet-151-cloud-presence-layers)
+* [CnC](#cnc)
+  * [CnC ClientServer view packet 2.1.1: EdgeConnector](#cnc-clientserver-view-packet-211-edgeconnector)
+* [Allocation](#allocation)
+
 ## Module
 
 ### Module Decomposition view packet 1.1.1: Card game

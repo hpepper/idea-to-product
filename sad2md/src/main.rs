@@ -155,7 +155,9 @@ fn create_view_packet_title(
 fn render_document(markdown_file: &mut File, db_conn: &Connection) {
     let styles_map = create_styles();
 
-    markdown_leadin(markdown_file);
+    //markdown_leadin(markdown_file);
+
+    render_partone(markdown_file, db_conn, &styles_map);
 
     // get list of keys from the hashmap
     for view_type in VIEW_TYPE_LIST {
@@ -172,6 +174,81 @@ fn render_document(markdown_file: &mut File, db_conn: &Connection) {
             }
         }
     }
+}
+
+fn render_partone(
+    markdown_file: &mut File,
+    db_conn: &Connection,
+    styles_map: &HashMap<&str, Vec<&str>>,
+) {
+    let type_and_style_to_section_number = create_hardcoded_map();
+
+    markdown_file
+        .write("# Software Architecture Document\n\n".as_bytes())
+        .expect("Unable to write to file");
+
+    markdown_file
+        .write("This document is generated from the Software Architecture Document (SAD) XML file.\n\n".as_bytes())
+        .expect("Unable to write to file");
+
+    markdown_file
+        .write("## Table of Contents\n\n".as_bytes())
+        .expect("Unable to write to file");
+    for view_type in VIEW_TYPE_LIST {
+        markdown_file
+            .write(
+                &format!(
+                    "* [{}](#{})\n",
+                    view_type,
+                    make_markdown_linkable_text(format!("{view_type}"))
+                )
+                .as_bytes(),
+            )
+            .expect("Unable to write to file");
+        if let Some(styles) = styles_map.get(view_type) {
+            for style in styles {
+                let viewpacket_vector =
+                    get_vector_of_viewpacket_by_component_id_except_component_id(
+                        db_conn, 0, view_type, style, 0,
+                    );
+
+                match viewpacket_vector {
+                    Ok(viewpacket_vector) => {
+                        for viewpacket in viewpacket_vector {
+                            let section_number = format!(
+                                "{}.{}.{}",
+                                type_and_style_to_section_number[view_type],
+                                type_and_style_to_section_number[style],
+                                viewpacket.sort_order
+                            );
+
+                            let section_title = format!(
+                                "{} {} view packet {}: {}",
+                                view_type, style, section_number, viewpacket.title
+                            );
+
+                            markdown_file
+                                .write(
+                                    &format!(
+                                        "  * [{}]({})\n",
+                                        section_title,
+                                        make_markdown_linkable_text(format!("#{section_title}"))
+                                    )
+                                    .as_bytes(),
+                                )
+                                .expect("Unable to write to file");
+                        }
+                    }
+                    Err(err) => {
+                        eprintln!("Error: {}", err);
+                    }
+                } // end of match
+            }
+        }
+    }
+    markdown_file
+        .write("\n".as_bytes())
+        .expect("Unable to write to file");
 }
 
 fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: &str, style: &str) {
@@ -359,11 +436,11 @@ fn render_parent_relationship(
     primary_display_key: String,
 ) {
     let viewpacket_vector = get_vector_of_viewpacket_parents_by_component_id_and_style_and_key(
-            db_conn,
-            component_id,
-            style,
-            &primary_display_key,
-        );
+        db_conn,
+        component_id,
+        style,
+        &primary_display_key,
+    );
     match viewpacket_vector {
         Ok(viewpacket_vector) => {
             for viewpacket in viewpacket_vector {
