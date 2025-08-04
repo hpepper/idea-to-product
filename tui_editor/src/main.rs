@@ -19,9 +19,10 @@ mod work;
 use work::{handle_work_key, render_work, WorkState};
 
 fn main() -> color_eyre::Result<()> {
-    color_eyre::install()?;
-    let backend = CrosstermBackend::new(stdout());
-    let mut terminal = Terminal::new(backend)?;
+    // color_eyre::install()?;
+    // let backend = CrosstermBackend::new(stdout());
+    // let mut terminal = Terminal::new(backend)?;
+    let mut terminal = ratatui::init();
 
     // TODO understand what this is do
     //let mut list_state = ListState::default().with_selected(Some(0));
@@ -30,10 +31,6 @@ fn main() -> color_eyre::Result<()> {
 
     loop {
         terminal.draw(|f| {
-            // Split into three vertical panes
-            //  - Menu pane
-            //  - Work pane
-            //  - Status pane
             let panes = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints(vec![
@@ -71,31 +68,33 @@ fn main() -> color_eyre::Result<()> {
             f.render_widget(status_widget, status_pane);
         })?;
 
-        if let Event::Key(key) = event::read()? {
-            match event::read()? {
-                Event::Key(key) if key.kind == KeyEventKind::Press => {
-                    if handle_menu_key(&mut menu_state, key.modifiers, key.code) {
-                        continue; // Menu handled the key, continue to next iteration
-                    }
-                    // Try work pane key handling
-                    if handle_work_key(&mut work_state, key.modifiers, key.code) {
-                        continue; // Work pane handled the key, continue to next iteration
-                    }
-                    match (key.modifiers, key.code) {
-                        (_, KeyCode::Esc | KeyCode::Char('q'))
-                        | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => {
-                            break;
-                        }
-                        // Add other key handlers here.
-                        _ => {}
-                    }
+        match event::read()? {
+            Event::Key(key) if key.kind == KeyEventKind::Press => {
+                if handle_menu_key(&mut menu_state, key.modifiers, key.code) {
+                    continue; // Menu handled the key, continue to next iteration
                 }
-                Event::Mouse(_) => {}
-                Event::Resize(_, _) => {}
-                _ => {}
+                // Try work pane key handling
+                if handle_work_key(&mut work_state, key.modifiers, key.code) {
+                    continue; // Work pane handled the key, continue to next iteration
+                }
+                match (key.modifiers, key.code) {
+                    (_, KeyCode::Esc | KeyCode::Char('q'))
+                    | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => {
+                        break;
+                    }
+                    // Add other key handlers here.
+                    _ => {}
+                }
             }
+            Event::Mouse(_) => {
+                // Handle mouse events
+            }
+            Event::Resize(_, _) => {
+                // Handle resize events
+            }
+            _ => {}
         }
-    }
+    } // end loop
     ratatui::restore();
     Ok(())
 }
