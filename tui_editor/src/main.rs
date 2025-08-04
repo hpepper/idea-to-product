@@ -5,11 +5,13 @@ use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
+    symbols,
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListState, Paragraph},
+    widgets::{Block, Borders, List, ListState, Paragraph, Tabs},
     Terminal,
 };
 use std::io::stdout;
+use tui_textarea::{Input, Key, TextArea};
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
     let backend = CrosstermBackend::new(stdout());
@@ -28,7 +30,8 @@ fn main() -> color_eyre::Result<()> {
                 .direction(Direction::Vertical)
                 .constraints(vec![
                     Constraint::Length(3),
-                    Constraint::Min(1),
+                    Constraint::Length(1),
+                    Constraint::Min(4),
                     Constraint::Length(3),
                 ])
                 .split(f.area());
@@ -59,13 +62,23 @@ fn main() -> color_eyre::Result<()> {
             );
             f.render_widget(menu_widget, pane[0]);
 
+            // ------------------------------- tab pane
             // TODO add the tab bar here: Components | Viewpackets | Diagrams
+            let tab_widget = 
+                Tabs::new(vec!["1 Components", "2 Viewpackets", "3 Diagrams", "Tab4"])
+                    //.block(Block::bordered().title("Tabs"))
+                    .style(Style::default().bg(Color::Gray))
+                    .highlight_style(Style::default().bg(Color::LightBlue))
+                    .select(2)
+                    .divider(symbols::DOT)
+                    .padding("->", "<-");
+            f.render_widget(tab_widget, pane[1]);
 
             // ------------------------------- work pane
             let work_layout = Layout::default()
                 .direction(Direction::Horizontal)
                 .constraints(vec![Constraint::Percentage(25), Constraint::Percentage(75)])
-                .split(pane[1]);
+                .split(pane[2]);
 
             // ......... Selector pane - left side
             let items = ["Item 1", "Item 2", "Item 3", "Item 4"];
@@ -81,17 +94,25 @@ fn main() -> color_eyre::Result<()> {
             f.render_stateful_widget(list, work_layout[0], &mut list_state);
             // ......... information pane - right side
             // TODO it seems the text color is set per text line
-            let static_lines = ["ID: 1", "Name: something", "Summary: just something I read the other day.", "Purpose: to test the editor"];
-            let editing = Paragraph::new("This is where you edit the text.")
-                .style(Color::Black)
-                .block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .style(Style::default().bg(Color::Blue)),
-                );
-                // It seems the .fh sets the color of the border, so maybe I can use this to indicate which pane is active
+            let static_lines = [
+                "ID: 1",
+                "Name: something",
+                "Summary: just something I read the other day.",
+                "Purpose: to test the editor",
+            ];
+            let mut textarea = TextArea::default();
+            textarea.set_cursor_line_style(Style::default());
+            textarea.set_placeholder_text("Enter a valid float (e.g. 1.56)");
+            //let editing = Paragraph::new("This is where you edit the text.")
+            textarea.set_style(Style::default().fg(Color::LightRed));
+            textarea.set_block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .style(Style::default().bg(Color::Blue)),
+            );
+            // It seems the .fh sets the color of the border, so maybe I can use this to indicate which pane is active
 
-            f.render_widget(editing, work_layout[1]);
+            f.render_widget(&textarea, work_layout[1]);
 
             // ------------------------------- Status pane
             let line = Line::from(vec![
@@ -105,7 +126,7 @@ fn main() -> color_eyre::Result<()> {
                     .borders(Borders::ALL)
                     .style(Style::default().bg(Color::Gray)),
             );
-            f.render_widget(status_widget, pane[2]);
+            f.render_widget(status_widget, pane[3]);
         })?;
 
         if let Event::Key(key) = event::read()? {

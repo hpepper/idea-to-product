@@ -1,6 +1,11 @@
 # TUI Editor
 
-* TODO
+## TODO
+
+* Create tab
+  * highlight the selected tab
+* Design the key handling so only the parts that are active can handle inputs
+  * if the selector pane, then that get its key handler called, and the detail/edit pane does not handle keys
 * Manually create the list
   * ViewPackets
   * Components
