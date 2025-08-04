@@ -4,21 +4,29 @@ use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
-    style::{Color, Modifier, Style},
-    symbols,
+    style::{Color, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListState, Paragraph, Tabs},
+    widgets::{Block, Borders, Paragraph},
     Terminal,
 };
 use std::io::stdout;
-use tui_textarea::{Input, Key, TextArea};
+
+
+mod menu;
+use menu::{handle_menu_key, render_menu, MenuState};
+
+mod work;
+use work::{handle_work_key, render_work, WorkState};
+
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
     let backend = CrosstermBackend::new(stdout());
     let mut terminal = Terminal::new(backend)?;
 
     // TODO understand what this is do
-    let mut list_state = ListState::default().with_selected(Some(0));
+    //let mut list_state = ListState::default().with_selected(Some(0));
+    let mut menu_state = MenuState::new();
+    let mut work_state = WorkState::new();
 
     loop {
         terminal.draw(|f| {
@@ -26,7 +34,7 @@ fn main() -> color_eyre::Result<()> {
             //  - Menu pane
             //  - Work pane
             //  - Status pane
-            let pane = Layout::default()
+            let panes = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints(vec![
                     Constraint::Length(3),
@@ -35,84 +43,18 @@ fn main() -> color_eyre::Result<()> {
                     Constraint::Length(3),
                 ])
                 .split(f.area());
+            let menu_pane = panes[0];
+            let tab_pane = panes[1];
+            let work_pane = panes[2];
+            let status_pane = panes[3];
 
             let version = env!("CARGO_PKG_VERSION");
 
             // ------------------------------- Menu pane
-            // let line = Line::from(Span::styled(
-            //     "File Edit Options Help",
-            //     Style::default().fg(Color::Black).bg(Color::Gray),
-            // ));
-            let line = Line::from(vec![
-                Span::styled("F", Style::default().fg(Color::Red).bg(Color::Gray)),
-                Span::styled("ile ", Style::default().fg(Color::Black).bg(Color::Gray)),
-                Span::styled("E", Style::default().fg(Color::Red).bg(Color::Gray)),
-                Span::styled("dit ", Style::default().fg(Color::Black).bg(Color::Gray)),
-                Span::styled("O", Style::default().fg(Color::Red).bg(Color::Gray)),
-                Span::styled("ptions ", Style::default().fg(Color::Black).bg(Color::Gray)),
-                Span::styled("H", Style::default().fg(Color::Red).bg(Color::Gray)),
-                Span::styled("elp", Style::default().fg(Color::Black).bg(Color::Gray)),
-            ]);
+            render_menu(f, menu_pane, &menu_state);
 
-            let menu_widget = Paragraph::new(line).block(
-                Block::default()
-                    .title("Chase Game : q - quit")
-                    .borders(Borders::ALL)
-                    .style(Style::default().bg(Color::Gray)),
-            );
-            f.render_widget(menu_widget, pane[0]);
-
-            // ------------------------------- tab pane
-            // TODO add the tab bar here: Components | Viewpackets | Diagrams
-            let tab_widget = 
-                Tabs::new(vec!["1 Components", "2 Viewpackets", "3 Diagrams", "Tab4"])
-                    //.block(Block::bordered().title("Tabs"))
-                    .style(Style::default().bg(Color::Gray))
-                    .highlight_style(Style::default().bg(Color::LightBlue))
-                    .select(2)
-                    .divider(symbols::DOT)
-                    .padding("->", "<-");
-            f.render_widget(tab_widget, pane[1]);
-
-            // ------------------------------- work pane
-            let work_layout = Layout::default()
-                .direction(Direction::Horizontal)
-                .constraints(vec![Constraint::Percentage(25), Constraint::Percentage(75)])
-                .split(pane[2]);
-
-            // ......... Selector pane - left side
-            let items = ["Item 1", "Item 2", "Item 3", "Item 4"];
-            let list = List::new(items)
-                .style(Color::White)
-                .highlight_style(Modifier::REVERSED)
-                .highlight_symbol("> ")
-                .block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .style(Style::default().bg(Color::Blue)),
-                );
-            f.render_stateful_widget(list, work_layout[0], &mut list_state);
-            // ......... information pane - right side
-            // TODO it seems the text color is set per text line
-            let static_lines = [
-                "ID: 1",
-                "Name: something",
-                "Summary: just something I read the other day.",
-                "Purpose: to test the editor",
-            ];
-            let mut textarea = TextArea::default();
-            textarea.set_cursor_line_style(Style::default());
-            textarea.set_placeholder_text("Enter a valid float (e.g. 1.56)");
-            //let editing = Paragraph::new("This is where you edit the text.")
-            textarea.set_style(Style::default().fg(Color::LightRed));
-            textarea.set_block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .style(Style::default().bg(Color::Blue)),
-            );
-            // It seems the .fh sets the color of the border, so maybe I can use this to indicate which pane is active
-
-            f.render_widget(&textarea, work_layout[1]);
+            // ------------------------------- Menu pane
+            render_work(f, tab_pane,work_pane, &mut work_state);
 
             // ------------------------------- Status pane
             let line = Line::from(vec![
@@ -126,12 +68,19 @@ fn main() -> color_eyre::Result<()> {
                     .borders(Borders::ALL)
                     .style(Style::default().bg(Color::Gray)),
             );
-            f.render_widget(status_widget, pane[3]);
+            f.render_widget(status_widget, status_pane);
         })?;
 
         if let Event::Key(key) = event::read()? {
             match event::read()? {
                 Event::Key(key) if key.kind == KeyEventKind::Press => {
+                    if handle_menu_key(&mut menu_state, key.modifiers, key.code) {
+                        continue; // Menu handled the key, continue to next iteration
+                    }
+                    // Try work pane key handling
+                    if handle_work_key(&mut work_state, key.modifiers, key.code) {
+                        continue; // Work pane handled the key, continue to next iteration
+                    }
                     match (key.modifiers, key.code) {
                         (_, KeyCode::Esc | KeyCode::Char('q'))
                         | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => {
