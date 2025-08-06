@@ -3,6 +3,7 @@
 ## TODO
 
 * Remember which index entry each tab list is at.
+* In the view packet, support filter by: component_id, type, style
 * In the component view Be able to see which views it is in.
 * Should the ID be able to be changed?
 * put the vertical panes in named variables instead of in a list.

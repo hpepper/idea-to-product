@@ -136,6 +136,30 @@ pub fn get_vector_of_viewpacket_by_component_id_except_component_id(
     Ok(viewpacket_vector)
 }
 
+
+pub fn get_viewpacket_by_title(
+    db_conn: &Connection,
+    title: &str,
+) -> Result<ViewPacket> {
+        let mut stmt = db_conn.prepare(        "SELECT component_id, context_model_key, primary_display_key, introduction, sort_order, title, view_style, view_type, viewpacket_id FROM view_packet  WHERE title = ?1")?;
+        let viewpacket = stmt
+            .query_row([title], |row| {
+                Ok(ViewPacket {
+                    component_id: row.get(0)?,
+                    context_model_key: row.get(1)?,
+                    primary_display_key: row.get(2)?,
+                    introduction: row.get(3)?,
+                    sort_order: row.get(4)?,
+                    title: row.get(5)?,
+                    view_style: row.get(6)?,
+                    view_type: row.get(7)?,
+                    viewpacket_id: row.get(8)?,
+                })
+            })?;
+            
+    Ok(viewpacket)
+}
+
 /**
  * Get all components that uses the given component id and has the style.
  */

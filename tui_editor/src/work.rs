@@ -4,13 +4,13 @@ use ratatui::{
     style::{Color, Modifier, Style},
     symbols,
     text::{Line, Span, Text},
-    widgets::{Block, Borders, List, ListState, Paragraph,Tabs},
+    widgets::{Block, Borders, List, ListState, Paragraph, Tabs},
     Frame,
 };
 use rusqlite::Connection;
 use sad_xml_sql::{
     get_component_by_name, get_vector_of_component_names_sorted,
-    get_vector_of_viewpacket_titles_sorted,
+    get_vector_of_viewpacket_titles_sorted, get_viewpacket_by_title,
 };
 use tui_textarea::{Input, Key, TextArea};
 
@@ -205,14 +205,14 @@ fn render_component_details_pane(
 
     let text = if let Ok(component) = component {
         let line_id = Line::from(vec![
-            Span::styled("id: ", Style::default().fg(Color::Black).bg(Color::Gray)),
+            Span::styled("id.....: ", Style::default().fg(Color::Black).bg(Color::Gray)),
             Span::styled(
                 format!("{} ", component.id),
                 Style::default().fg(Color::Black).bg(Color::Gray),
             ),
         ]);
         let line_name = Line::from(vec![
-            Span::styled("name: ", Style::default().fg(Color::Black).bg(Color::Gray)),
+            Span::styled("name...: ", Style::default().fg(Color::Black).bg(Color::Gray)),
             Span::styled(
                 format!("{} ", component.name),
                 Style::default().fg(Color::Black).bg(Color::Gray),
@@ -243,13 +243,12 @@ fn render_component_details_pane(
         Text::from("no data available for this component")
     };
 
-    let paragraph = Paragraph::new(text)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title("Component")
-                .style(Style::default().bg(Color::DarkGray)),
-        );
+    let paragraph = Paragraph::new(text).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title("Component")
+            .style(Style::default().bg(Color::DarkGray)),
+    );
     frame.render_widget(paragraph, area);
 }
 
@@ -277,14 +276,93 @@ fn render_viewpacket_details_pane(
     area: Rect,
     selected_item: String,
 ) {
-    work_state.textarea.set_block(
+    let viewpacket = get_viewpacket_by_title(db_conn, &selected_item);
+
+    let text = if let Ok(viewpacket) = viewpacket {
+        let line_id = Line::from(vec![
+            Span::styled("id.................: ", Style::default().fg(Color::Black).bg(Color::Gray)),
+            Span::styled(
+                format!("{} ", viewpacket.viewpacket_id),
+                Style::default().fg(Color::Black).bg(Color::Gray),
+            ),
+        ]);
+        let line_title = Line::from(vec![
+            Span::styled("title..............: ", Style::default().fg(Color::Black).bg(Color::Gray)),
+            Span::styled(
+                format!("{} ", viewpacket.title),
+                Style::default().fg(Color::Black).bg(Color::Gray),
+            ),
+        ]);
+        let line_introduction = Line::from(vec![
+            Span::styled(
+                "introduction.......: ",
+                Style::default().fg(Color::Black).bg(Color::Gray),
+            ),
+            Span::styled(
+                format!("{} ", viewpacket.introduction),
+                Style::default().fg(Color::Black).bg(Color::Gray),
+            ),
+        ]);
+        let line_view_style = Line::from(vec![
+            Span::styled(
+                "view_style.........: ",
+                Style::default().fg(Color::Black).bg(Color::Gray),
+            ),
+            Span::styled(
+                format!("{} ", viewpacket.view_style),
+                Style::default().fg(Color::Black).bg(Color::Gray),
+            ),
+        ]);
+        let line_view_type = Line::from(vec![
+            Span::styled(
+                "view_type..........: ",
+                Style::default().fg(Color::Black).bg(Color::Gray),
+            ),
+            Span::styled(
+                format!("{} ", viewpacket.view_type),
+                Style::default().fg(Color::Black).bg(Color::Gray),
+            ),
+        ]);
+        let line_primary_display_key = Line::from(vec![
+            Span::styled(
+                "primary_display_key: ",
+                Style::default().fg(Color::Black).bg(Color::Gray),
+            ),
+            Span::styled(
+                format!("{} ", viewpacket.primary_display_key),
+                Style::default().fg(Color::Black).bg(Color::Gray),
+            ),
+        ]);
+        let line_context_model_key = Line::from(vec![
+            Span::styled(
+                "context_model_key..: ",
+                Style::default().fg(Color::Black).bg(Color::Gray),
+            ),
+            Span::styled(
+                format!("{} ", viewpacket.context_model_key),
+                Style::default().fg(Color::Black).bg(Color::Gray),
+            ),
+        ]);
+        Text::from(vec![
+            line_id,
+            line_title,
+            line_introduction,
+            line_view_type,
+            line_view_style,
+            line_primary_display_key,
+            line_context_model_key,
+        ])
+    } else {
+        Text::from("no data available for this viewpacket")
+    };
+
+    let paragraph = Paragraph::new(text).block(
         Block::default()
             .borders(Borders::ALL)
-            .title("Viewpacket")
+            .title("Component")
             .style(Style::default().bg(Color::DarkGray)),
     );
-
-    frame.render_widget(&work_state.textarea, area);
+    frame.render_widget(paragraph, area);
 }
 
 pub fn handle_work_key(
