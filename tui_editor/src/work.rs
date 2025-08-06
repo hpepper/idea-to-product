@@ -6,13 +6,16 @@ use ratatui::{
     widgets::{Block, Borders, List, ListState, Tabs},
     Frame,
 };
+use rusqlite::Connection;
+use sad_xml_sql::{get_component_by_id, get_vector_of_component_names_sorted};
 use tui_textarea::{Input, Key, TextArea};
 
 pub struct WorkState {
     pub list_state: ListState,
     pub active_pane: WorkPane,
     pub textarea: TextArea<'static>,
-    selected_tab: usize,
+    selected_tab: TabSubjects,
+    pub tab_counts: TabCounts,
 }
 
 #[derive(PartialEq)]
@@ -21,52 +24,114 @@ pub enum WorkPane {
     Editor,
 }
 
+pub struct TabCounts {
+    pub components: usize,
+    pub view_packets: usize,
+    pub diagrams: usize,
+}
+
+impl TabCounts {
+    pub fn new() -> Self {
+        Self {
+            components: 0,
+            view_packets: 0,
+            diagrams: 0,
+        }
+    }
+
+    pub fn get_count(&self, tab: &TabSubjects) -> usize {
+        match tab {
+            TabSubjects::Components => self.components,
+            TabSubjects::ViewPackets => self.view_packets,
+            TabSubjects::Diagrams => self.diagrams,
+        }
+    }
+
+    pub fn set_count(&mut self, tab: &TabSubjects, length: usize) {
+        match tab {
+            TabSubjects::Components => self.components = length,
+            TabSubjects::ViewPackets => self.view_packets = length,
+            TabSubjects::Diagrams => self.diagrams = length,
+        }
+    }
+}
+enum TabSubjects {
+    Components,
+    ViewPackets,
+    Diagrams,
+}
+
+impl TabSubjects {
+    fn as_index(&self) -> usize {
+        match self {
+            TabSubjects::Components => 0,
+            TabSubjects::ViewPackets => 1,
+            TabSubjects::Diagrams => 2,
+        }
+    }
+}
+
 impl WorkState {
     pub fn new() -> Self {
         let mut textarea = TextArea::default();
         textarea.set_cursor_line_style(Style::default());
         textarea.set_placeholder_text("Enter a valid float (e.g. 1.56)");
         textarea.set_style(Style::default().fg(Color::LightRed));
-        
+
         Self {
             list_state: ListState::default().with_selected(Some(0)),
             active_pane: WorkPane::Selector,
             textarea,
-            selected_tab: 0,
+            selected_tab: TabSubjects::Components,
+            tab_counts: TabCounts::new(),
         }
     }
 }
 
-pub fn render_work(frame: &mut Frame, tab_pane: Rect, work_pane: Rect, work_state: &mut WorkState) {
+pub fn render_work(
+    db_conn: &Connection,
+    frame: &mut Frame,
+    tab_pane: Rect,
+    work_pane: Rect,
+    work_state: &mut WorkState,
+) {
     let work_layout = Layout::default()
         .direction(Direction::Horizontal)
         .constraints(vec![Constraint::Percentage(25), Constraint::Percentage(75)])
         .split(work_pane);
 
-    let tab_widget = 
-                Tabs::new(vec!["1 Components", "2 Viewpackets", "3 Diagrams", "Tab4"])
-                    //.block(Block::bordered().title("Tabs"))
-                    .style(Style::default().bg(Color::Gray))
-                    .highlight_style(Style::default().bg(Color::LightBlue))
-                    .select(work_state.selected_tab)
-                    .divider(symbols::DOT)
-                    .padding("->", "<-");
-            frame.render_widget(tab_widget, tab_pane);
+    let tab_widget = Tabs::new(vec!["1 Components", "2 Viewpackets", "3 Diagrams", "Tab4"])
+        //.block(Block::bordered().title("Tabs"))
+        .style(Style::default().bg(Color::Gray))
+        .highlight_style(Style::default().bg(Color::LightBlue))
+        .select(work_state.selected_tab.as_index())
+        .divider(symbols::DOT)
+        .padding("->", "<-");
+    frame.render_widget(tab_widget, tab_pane);
 
     // ......... Selector pane - left side
     let items = match work_state.selected_tab {
-        0 => ["Component 1", "Component 2", "Component 3", "Component 4"],
-        1 => ["Viewpacket 1", "Viewpacket 2", "Viewpacket 3", "Viewpacket 4"],
-        2 => ["Diagram 1", "Diagram 2", "Diagram 3", "Diagram 4"],
-        3 => ["Tab4 Item 1", "Tab4 Item 2", "Tab4 Item 3", "Tab4 Item 4"],
-        _ => ["Item 1", "Item 2", "Item 3", "Item 4"],
+        TabSubjects::Components => get_list_of_component_names(work_state,db_conn),
+        TabSubjects::ViewPackets => vec![
+            "Viewpacket 1",
+            "Viewpacket 2",
+            "Viewpacket 3",
+            "Viewpacket 4",
+        ]
+        .into_iter()
+        .map(String::from)
+        .collect(),
+        TabSubjects::Diagrams => vec!["Diagram 1", "Diagram 2", "Diagram 3", "Diagram 4"]
+            .into_iter()
+            .map(String::from)
+            .collect(),
     };
     let selector_bg = if work_state.active_pane == WorkPane::Selector {
         Color::Blue
     } else {
         Color::DarkGray
     };
-    
+
     let list = List::new(items)
         .style(Style::default().fg(Color::White))
         .highlight_style(Modifier::REVERSED)
@@ -101,22 +166,21 @@ pub fn handle_work_key(
     modifiers: KeyModifiers,
     key_code: KeyCode,
 ) -> bool {
+    let max_elements = work_state
+                .tab_counts
+                .get_count(&work_state.selected_tab);
     match (modifiers, key_code) {
         // Alt+1, Alt+2, Alt+3, Alt+4 to switch tabs
         (KeyModifiers::ALT, KeyCode::Char('1')) => {
-            work_state.selected_tab = 0;
+            work_state.selected_tab = TabSubjects::Components;
             true
         }
         (KeyModifiers::ALT, KeyCode::Char('2')) => {
-            work_state.selected_tab = 1;
+            work_state.selected_tab = TabSubjects::ViewPackets;
             true
         }
         (KeyModifiers::ALT, KeyCode::Char('3')) => {
-            work_state.selected_tab = 2;
-            true
-        }
-        (KeyModifiers::ALT, KeyCode::Char('4')) => {
-            work_state.selected_tab = 3;
+            work_state.selected_tab = TabSubjects::Diagrams;
             true
         }
         // Tab to switch between panes
@@ -139,13 +203,14 @@ pub fn handle_work_key(
         // Handle selector pane navigation
         (_, KeyCode::Up) if work_state.active_pane == WorkPane::Selector => {
             let selected = work_state.list_state.selected().unwrap_or(0);
-            let new_selected = if selected == 0 { 3 } else { selected - 1 };
+            
+            let new_selected = if selected == 0 { max_elements - 1 } else { selected - 1 };
             work_state.list_state.select(Some(new_selected));
             true
         }
         (_, KeyCode::Down) if work_state.active_pane == WorkPane::Selector => {
             let selected = work_state.list_state.selected().unwrap_or(0);
-            let new_selected = (selected + 1) % 4;
+            let new_selected = (selected + 1) % max_elements;
             work_state.list_state.select(Some(new_selected));
             true
         }
@@ -159,4 +224,14 @@ pub fn handle_work_key(
     }
     // TODO maybe this handles the tabs entries and the switch between the work panes.
     // TODO then call handle_key function for the correct pane.
+}
+
+fn get_list_of_component_names(work_state: &mut WorkState,db_conn: &Connection) -> Vec<String> {
+    // This function should return the actual list of component names from your data source.
+    match get_vector_of_component_names_sorted(db_conn) {
+        Ok(names) => {
+            work_state.tab_counts.set_count(&TabSubjects::Components, names.len());
+            names},
+        Err(_) => vec![],
+    }
 }

@@ -11,6 +11,11 @@ use ratatui::{
 };
 use std::io::stdout;
 
+use sad_xml_sql::db_population::{populate_db};
+use sad_xml_sql::db_retrieval;
+use sad_xml_sql::models;
+
+use rusqlite::Connection;
 
 mod menu;
 use menu::{handle_menu_key, render_menu, MenuState};
@@ -28,6 +33,11 @@ fn main() -> color_eyre::Result<()> {
     //let mut list_state = ListState::default().with_selected(Some(0));
     let mut menu_state = MenuState::new();
     let mut work_state = WorkState::new();
+
+    let filename: String = "../sad_xml_sql/test/test_sad.xml".to_string();
+    let db_conn = Connection::open_in_memory().expect("Connecting to the SQLite database failed.");
+
+    populate_db(&db_conn, &filename);
 
     loop {
         terminal.draw(|f| {
@@ -51,7 +61,7 @@ fn main() -> color_eyre::Result<()> {
             render_menu(f, menu_pane, &menu_state);
 
             // ------------------------------- Menu pane
-            render_work(f, tab_pane,work_pane, &mut work_state);
+            render_work(&db_conn, f, tab_pane,work_pane, &mut work_state);
 
             // ------------------------------- Status pane
             let line = Line::from(vec![

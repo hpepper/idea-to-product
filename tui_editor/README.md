@@ -25,6 +25,16 @@
 * enable add
 * save back to XML
 * enable customizing the color scheme.
+* Add a Vocabulary tab, and enable selecting words for each viewpacket.
+  * is it just two lists and the transfer it from the full list to the viewpacket list?
+* Add a tab for the document introduction section
+* Fix this issue when there are no entries in the selector pane
+
+```text
+thread 'main' panicked at src/work.rs:213:32:
+attempt to calculate the remainder with a divisor of zero
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+```
 
 ## Design
 

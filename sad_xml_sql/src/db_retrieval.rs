@@ -12,6 +12,17 @@ pub fn get_component_name_by_id(db_conn: &Connection, component_id: i32) -> Stri
     component_name
 }
 
+pub fn get_vector_of_component_names_sorted(db_conn: &Connection) -> Result<Vec<String>> {
+    let mut stmt = db_conn
+        .prepare("SELECT name FROM component ORDER BY name COLLATE NOCASE ASC")
+        .unwrap();
+    let component_names = stmt
+        .query_map([], |row| Ok(row.get(0)?))
+        .unwrap();
+    component_names
+        .collect::<Result<Vec<String>, _>>()
+}
+
 pub fn get_vector_of_context_model_by_key(
     db_conn: &Connection,
     key: &str,
