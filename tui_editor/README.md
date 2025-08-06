@@ -2,7 +2,8 @@
 
 ## TODO
 
-* Create a library for loading and saving the .xml into SqlLite.
+* Populate the detail pane with component details.
+* Remember which index entry each tab list is at.
 * put the vertical panes in named variables instead of in a list.
 * Put the various entities in its own .rs file and have render and key handling in each file.
 * Have a global key handeling that will hanlde: Menu, tabs, status

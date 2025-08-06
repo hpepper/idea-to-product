@@ -17,11 +17,16 @@ use sad_xml_sql::models;
 
 use rusqlite::Connection;
 
+mod app_state;
+use app_state::AppState;
+
 mod menu;
 use menu::{handle_menu_key, render_menu, MenuState};
 
 mod work;
 use work::{handle_work_key, render_work, WorkState};
+
+
 
 fn main() -> color_eyre::Result<()> {
     // color_eyre::install()?;
@@ -31,6 +36,7 @@ fn main() -> color_eyre::Result<()> {
 
     // TODO understand what this is do
     //let mut list_state = ListState::default().with_selected(Some(0));
+    let mut app_state = AppState::new();
     let mut menu_state = MenuState::new();
     let mut work_state = WorkState::new();
 
@@ -61,15 +67,14 @@ fn main() -> color_eyre::Result<()> {
             render_menu(f, menu_pane, &menu_state);
 
             // ------------------------------- Menu pane
-            render_work(&db_conn, f, tab_pane,work_pane, &mut work_state);
+            render_work(&db_conn, f, tab_pane,work_pane, &mut work_state, &mut app_state);
 
             // ------------------------------- Status pane
-            let line = Line::from(vec![
-                Span::styled("F1", Style::default().fg(Color::Red).bg(Color::Gray)),
-                Span::styled(" Help", Style::default().fg(Color::Black).bg(Color::Gray)),
+            let status_line = Line::from(vec![
+                Span::styled(&app_state.status_message, Style::default().fg(Color::Red).bg(Color::Gray)),
             ]);
 
-            let status_widget = Paragraph::new(line).block(
+            let status_widget = Paragraph::new(status_line).block(
                 Block::default()
                     .title_bottom(format!("v{}", version))
                     .borders(Borders::ALL)
