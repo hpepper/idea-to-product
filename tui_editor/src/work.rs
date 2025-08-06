@@ -3,12 +3,13 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     symbols,
-    widgets::{Block, Borders, List, ListState, Tabs},
+    text::{Line, Span, Text},
+    widgets::{Block, Borders, List, ListState, Paragraph,Tabs},
     Frame,
 };
 use rusqlite::Connection;
 use sad_xml_sql::{
-    get_component_by_id, get_vector_of_component_names_sorted,
+    get_component_by_name, get_vector_of_component_names_sorted,
     get_vector_of_viewpacket_titles_sorted,
 };
 use tui_textarea::{Input, Key, TextArea};
@@ -18,7 +19,7 @@ use super::app_state::AppState;
 pub struct WorkState {
     pub list_state: ListState,
     pub active_pane: WorkPane,
-    pub textarea: TextArea<'static>,
+    pub textarea: TextArea<'static>, // TODO delete this, I don't think we need it here
     pub tab_counts: TabCounts,
     selected_tab: TabSubjects,
     pub current_selection_list: Vec<String>,
@@ -176,14 +177,114 @@ pub fn render_work(
         Color::DarkGray
     };
 
+    match work_state.selected_tab {
+        TabSubjects::Components => {
+            render_component_details_pane(frame, work_state, db_conn, work_layout[1], selected_item)
+        }
+        TabSubjects::ViewPackets => render_viewpacket_details_pane(
+            frame,
+            work_state,
+            db_conn,
+            work_layout[1],
+            selected_item,
+        ),
+        TabSubjects::Diagrams => {
+            render_diagram_details_pane(frame, work_state, db_conn, work_layout[1], selected_item)
+        }
+    }
+}
+
+fn render_component_details_pane(
+    frame: &mut Frame,
+    work_state: &mut WorkState,
+    db_conn: &Connection,
+    area: Rect,
+    selected_item: String,
+) {
+    let component = get_component_by_name(db_conn, selected_item);
+
+    let text = if let Ok(component) = component {
+        let line_id = Line::from(vec![
+            Span::styled("id: ", Style::default().fg(Color::Black).bg(Color::Gray)),
+            Span::styled(
+                format!("{} ", component.id),
+                Style::default().fg(Color::Black).bg(Color::Gray),
+            ),
+        ]);
+        let line_name = Line::from(vec![
+            Span::styled("name: ", Style::default().fg(Color::Black).bg(Color::Gray)),
+            Span::styled(
+                format!("{} ", component.name),
+                Style::default().fg(Color::Black).bg(Color::Gray),
+            ),
+        ]);
+        let line_purpose = Line::from(vec![
+            Span::styled(
+                "purpose: ",
+                Style::default().fg(Color::Black).bg(Color::Gray),
+            ),
+            Span::styled(
+                format!("{} ", component.purpose),
+                Style::default().fg(Color::Black).bg(Color::Gray),
+            ),
+        ]);
+        let line_summary = Line::from(vec![
+            Span::styled(
+                "summary: ",
+                Style::default().fg(Color::Black).bg(Color::Gray),
+            ),
+            Span::styled(
+                format!("{} ", component.summary),
+                Style::default().fg(Color::Black).bg(Color::Gray),
+            ),
+        ]);
+        Text::from(vec![line_id, line_name, line_purpose, line_summary])
+    } else {
+        Text::from("no data available for this component")
+    };
+
+    let paragraph = Paragraph::new(text)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Component")
+                .style(Style::default().bg(Color::DarkGray)),
+        );
+    frame.render_widget(paragraph, area);
+}
+
+fn render_diagram_details_pane(
+    frame: &mut Frame,
+    work_state: &mut WorkState,
+    db_conn: &Connection,
+    area: Rect,
+    selected_item: String,
+) {
     work_state.textarea.set_block(
         Block::default()
             .borders(Borders::ALL)
-            .title("Editor")
-            .style(Style::default().bg(editor_bg)),
+            .title("Diagram")
+            .style(Style::default().bg(Color::DarkGray)),
     );
 
-    frame.render_widget(&work_state.textarea, work_layout[1]);
+    frame.render_widget(&work_state.textarea, area);
+}
+
+fn render_viewpacket_details_pane(
+    frame: &mut Frame,
+    work_state: &mut WorkState,
+    db_conn: &Connection,
+    area: Rect,
+    selected_item: String,
+) {
+    work_state.textarea.set_block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title("Viewpacket")
+            .style(Style::default().bg(Color::DarkGray)),
+    );
+
+    frame.render_widget(&work_state.textarea, area);
 }
 
 pub fn handle_work_key(

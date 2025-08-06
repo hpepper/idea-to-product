@@ -2,8 +2,9 @@
 
 ## TODO
 
-* Populate the detail pane with component details.
 * Remember which index entry each tab list is at.
+* In the component view Be able to see which views it is in.
+* Should the ID be able to be changed?
 * put the vertical panes in named variables instead of in a list.
 * Put the various entities in its own .rs file and have render and key handling in each file.
 * Have a global key handeling that will hanlde: Menu, tabs, status

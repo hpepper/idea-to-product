@@ -265,6 +265,20 @@ pub fn get_component_by_id(db_conn: &Connection, component_id: i32) -> Result<Co
     Ok(component)
 }
 
+pub fn get_component_by_name(db_conn: &Connection, name: String) -> Result<Component> {
+    let mut stmt =
+        db_conn.prepare("SELECT id, name, purpose, summary FROM component WHERE name = ?1")?;
+    let component = stmt.query_row([name], |row| {
+        Ok(Component {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            purpose: row.get(2)?,
+            summary: row.get(3)?,
+        })
+    })?;
+    Ok(component)
+}
+
 /**
  * get component_relation.component_a_id where component_relation.component_b_id is component_id
  * get viewpackets where view_packet.component_id is component_relation.component_a_id and view_packet.ViewStyle is style
