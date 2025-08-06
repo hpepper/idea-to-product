@@ -23,6 +23,17 @@ pub fn get_vector_of_component_names_sorted(db_conn: &Connection) -> Result<Vec<
         .collect::<Result<Vec<String>, _>>()
 }
 
+pub fn get_vector_of_viewpacket_titles_sorted(db_conn: &Connection) -> Result<Vec<String>> {
+    let mut stmt = db_conn
+        .prepare("SELECT title FROM view_packet ORDER BY title COLLATE NOCASE ASC")
+        .unwrap();
+    let viewpacket_titles = stmt
+        .query_map([], |row| Ok(row.get(0)?))
+        .unwrap();
+    viewpacket_titles
+        .collect::<Result<Vec<String>, _>>()
+}
+
 pub fn get_vector_of_context_model_by_key(
     db_conn: &Connection,
     key: &str,

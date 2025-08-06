@@ -27,3 +27,7 @@ use rusqlite::Connection;
 
     populate_db(&db_conn, filename);
 ```
+
+## TODO
+
+* Make name of components unique so I can use it for reference in the component selector list.

@@ -7,7 +7,7 @@ use ratatui::{
     Frame,
 };
 use rusqlite::Connection;
-use sad_xml_sql::{get_component_by_id, get_vector_of_component_names_sorted};
+use sad_xml_sql::{get_component_by_id, get_vector_of_component_names_sorted, get_vector_of_viewpacket_titles_sorted};
 use tui_textarea::{Input, Key, TextArea};
 
 pub struct WorkState {
@@ -112,15 +112,7 @@ pub fn render_work(
     // ......... Selector pane - left side
     let items = match work_state.selected_tab {
         TabSubjects::Components => get_list_of_component_names(work_state,db_conn),
-        TabSubjects::ViewPackets => vec![
-            "Viewpacket 1",
-            "Viewpacket 2",
-            "Viewpacket 3",
-            "Viewpacket 4",
-        ]
-        .into_iter()
-        .map(String::from)
-        .collect(),
+        TabSubjects::ViewPackets => get_list_of_viewpacket_names(work_state,db_conn),
         TabSubjects::Diagrams => vec!["Diagram 1", "Diagram 2", "Diagram 3", "Diagram 4"]
             .into_iter()
             .map(String::from)
@@ -232,6 +224,18 @@ fn get_list_of_component_names(work_state: &mut WorkState,db_conn: &Connection) 
         Ok(names) => {
             work_state.tab_counts.set_count(&TabSubjects::Components, names.len());
             names},
+        Err(_) => vec![],
+    }
+}
+
+
+fn get_list_of_viewpacket_names(work_state: &mut WorkState,db_conn: &Connection) -> Vec<String> {
+    // This function should return the actual list of component names from your data source.
+    match get_vector_of_viewpacket_titles_sorted(db_conn) {
+        Ok(names) => {
+            work_state.tab_counts.set_count(&TabSubjects::ViewPackets, names.len());
+            names
+        },
         Err(_) => vec![],
     }
 }
