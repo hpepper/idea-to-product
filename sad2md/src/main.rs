@@ -3,9 +3,9 @@
 //! Testing it out:
 //! `cargo run test/test_sad.xml && cat sad.md`
 
-mod db_population;
-mod db_retrieval;
-mod models;
+use sad_xml_sql::db_population;
+use sad_xml_sql::db_retrieval;
+use sad_xml_sql::models;
 
 use db_population::{insert_into_context_model_ignore_duplicates, populate_db};
 use db_retrieval::{
