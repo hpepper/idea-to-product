@@ -2,6 +2,12 @@
 
 ## TODO
 
+* Ctrl-N - new (whatever tab I am on)
+* Be able to switch from a selected component in the component list, to the list of viepackets with this component_id as the core id.
+* If you switch tab, then switch back to WorkPane::Selector
+* When in the Detail pane, then F2 edit the selected line?
+* Maybe make dropdowns using pop-up, enter will select and save, lead the text with triangle pointing down.
+* change the background color to blue in the details pane, when the details pane is active
 * Remember which index entry each tab list is at.
 * In the view packet, support filter by: component_id, type, style
 * In the component view Be able to see which views it is in.
@@ -31,6 +37,8 @@
 * Add a Vocabulary tab, and enable selecting words for each viewpacket.
   * is it just two lists and the transfer it from the full list to the viewpacket list?
 * Add a tab for the document introduction section
+* Add File -> Export -> MarkDown
+  * Include the sad2md in this code and then have two binaries: sad2md and tui_editor
 * Fix this issue when there are no entries in the selector pane
 
 ```text
@@ -38,6 +46,28 @@ thread 'main' panicked at src/work.rs:213:32:
 attempt to calculate the remainder with a divisor of zero
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 ```
+
+* F1 - help
+  * shft-f1 - preferences
+  * alt-f1 -
+  * ctrl-f1 - next pane
+  * ctrl-shift-f1 - next pane
+* F2 - rename/edit
+* F3 - search/find next
+  * alt-f3 - replace
+  * shift-f3 - search next
+  * shift-alt-f3 - search previous
+* F4 - edit/open
+* F5 - refresh/reload
+* F6 - switch panes/focus
+* F7 - Save (Close)
+  * shift-f7 - save as
+  * alt-f7 - export
+* F8 - selection/mark
+* F9 - menu/compile
+* F10 - menu bar
+* F11 - fullscreen
+* F12 - Save as
 
 ## Design
 
@@ -48,3 +78,13 @@ note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 * Read the data from .xml and put it in the mem-sqlite.
 * Save every x seconds 30/60 when things have been changed.
   * save to .xml
+
+## Expansion
+
+### Adding new entries to existing entities
+
+* Add field to .dtd
+* Add entry to xml, as required(if it is a required field it needs to be added to the .xml file)
+* Add it to the models.rs
+* Add it to the db_population.rs
+* Add it to the db_retrieval.rs

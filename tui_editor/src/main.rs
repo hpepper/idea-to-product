@@ -1,6 +1,10 @@
 use std::default;
 
 use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
+use crossterm::terminal::{
+    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+};
+
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
@@ -9,7 +13,8 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
     Terminal,
 };
-use std::io::stdout;
+
+use std::io;
 
 use sad_xml_sql::db_population::{populate_db};
 use sad_xml_sql::db_retrieval;
@@ -29,10 +34,15 @@ use work::{handle_work_key, render_work, WorkState};
 
 
 fn main() -> color_eyre::Result<()> {
-    // color_eyre::install()?;
-    // let backend = CrosstermBackend::new(stdout());
-    // let mut terminal = Terminal::new(backend)?;
-    let mut terminal = ratatui::init();
+    color_eyre::install()?;
+
+    let stdout = io::stdout(); // Get a handle to standard output
+    let mut stdout = stdout.lock(); // Lock stdout for exclusive access (needed for terminal UI)
+    enable_raw_mode()?; // Enable raw mode so we can read input directly from the terminal
+    crossterm::execute!(stdout, EnterAlternateScreen)?; // Switch to the alternate screen
+    // TODO later add EnableMouseCapture
+    let backend = CrosstermBackend::new(stdout); // Create a backend for ratatui using Crossterm
+    let mut terminal = Terminal::new(backend)?; // Create a Terminal object to manage drawing
 
     // TODO understand what this is do
     //let mut list_state = ListState::default().with_selected(Some(0));
@@ -93,7 +103,7 @@ fn main() -> color_eyre::Result<()> {
                     continue; // Work pane handled the key, continue to next iteration
                 }
                 match (key.modifiers, key.code) {
-                    (_, KeyCode::Esc | KeyCode::Char('q'))
+                    (_, KeyCode::Char('q'))
                     | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => {
                         break;
                     }
@@ -110,6 +120,11 @@ fn main() -> color_eyre::Result<()> {
             _ => {}
         }
     } // end loop
-    ratatui::restore();
+    disable_raw_mode()?; // Restore terminal to normal mode
+    crossterm::execute!(
+        terminal.backend_mut(), // Get the backend for cleanup
+        LeaveAlternateScreen // Leave the alternate screen
+    )?;
+    terminal.show_cursor()?; // Show the cursor again
     Ok(())
 }
