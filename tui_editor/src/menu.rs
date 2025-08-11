@@ -17,7 +17,7 @@ impl MenuState {
     }
 }
 
-pub fn render_menu(frame: &mut Frame, area: Rect, menu_state: &MenuState) {
+pub fn render_menu(frame: &mut Frame, area: Rect, _menu_state: &MenuState) {
     let line = Line::from(vec![
         Span::styled("F", Style::default().fg(Color::Red).bg(Color::Gray)),
         Span::styled("ile ", Style::default().fg(Color::Black).bg(Color::Gray)),
@@ -38,12 +38,18 @@ pub fn render_menu(frame: &mut Frame, area: Rect, menu_state: &MenuState) {
     frame.render_widget(menu_widget, area);
 }
 
-pub fn handle_menu_key(
+// TODO figure out what this turned into after copilot changes
+pub fn handle_menu_input(
     menu_state: &mut MenuState,
-    modifiers: KeyModifiers,
-    key_code: KeyCode,
+    input: crossterm::event::KeyEvent,
 ) -> bool {
-    match (modifiers, key_code) {
+match input {
+    crossterm::event::KeyEvent {
+        modifiers,
+        code,
+        kind: crossterm::event::KeyEventKind::Press,
+        state: _,
+    } => match (modifiers, code) {
         (KeyModifiers::ALT, KeyCode::Char('f') | KeyCode::Char('F')) => {
             menu_state.active_menu = Some(0); // File menu
             true
@@ -65,5 +71,13 @@ pub fn handle_menu_key(
             true
         }
         _ => false, // Key not handled by menu
-    }
-}
+    },
+    crossterm::event::KeyEvent {
+        kind: crossterm::event::KeyEventKind::Repeat,
+        ..
+    } => false,
+    crossterm::event::KeyEvent {
+        kind: crossterm::event::KeyEventKind::Release,
+        ..
+    } => false,
+}}

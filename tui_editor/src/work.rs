@@ -48,6 +48,7 @@ impl WorkState {
 #[derive(Debug, PartialEq)]
 pub enum WorkPane {
     Selector,
+    Details,
     Editor,
 }
 
@@ -135,6 +136,7 @@ pub fn render_work(
         Color::DarkGray
     };
 
+    // Generate the list of items for the selector pane.
     let list = List::new(items)
         .style(Style::default().fg(Color::White))
         .highlight_style(Modifier::REVERSED)
@@ -147,7 +149,7 @@ pub fn render_work(
         );
     frame.render_stateful_widget(list, work_layout[0], &mut work_state.list_state);
 
-    let mut selected_index: usize = 0;
+    let selected_index: usize;
     let selected_item: String;
     if work_state.list_state.selected().is_some() {
         selected_index = work_state.list_state.selected().unwrap();
@@ -160,8 +162,10 @@ pub fn render_work(
         selected_index = 0;
         selected_item = "NAN".to_string();
     } // TODO move this a more appropriate place?
-    app_state.status_message = format!(
-        "Tab: {}, Active Pane: {:?}, Selected Item: {} - {} - Total Items: {} - Cloned Objects: {}",
+
+    if work_state.active_pane == WorkPane::Selector {
+        app_state.status_message = format!(
+        "F4: Edit  - Tab: {}, Active Pane: {:?}, Selected Item: {} - {} - Total Items: {} - Cloned Objects: {}",
         work_state.selected_tab.as_index(),
         work_state.active_pane,
         selected_index,
@@ -169,9 +173,26 @@ pub fn render_work(
         work_state.current_selection_list.len(),
         work_state.number_of_cloned_objects
     );
+    } else if work_state.active_pane == WorkPane::Editor {
+        app_state.status_message = format!(
+            "ESC: Cancel  F7: Save - Tab: {}, Active Pane: {:?}, Selected Item: {} - {}",
+            work_state.selected_tab.as_index(),
+            work_state.active_pane,
+            selected_index,
+            selected_item
+        );
+    } else {
+        app_state.status_message = format!(
+            "XXX - Tab: {}, Active Pane: {:?}, Selected Item: {} - {}",
+            work_state.selected_tab.as_index(),
+            work_state.active_pane,
+            selected_index,
+            selected_item
+        );
+    }
 
     // ......... Editor pane - right side
-    let editor_bg = if work_state.active_pane == WorkPane::Editor {
+    let _editor_bg = if work_state.active_pane == WorkPane::Editor {
         Color::Blue
     } else {
         Color::DarkGray
@@ -179,7 +200,25 @@ pub fn render_work(
 
     match work_state.selected_tab {
         TabSubjects::Components => {
-            render_component_details_pane(frame, work_state, db_conn, work_layout[1], selected_item)
+            if work_state.active_pane == WorkPane::Selector
+                || work_state.active_pane == WorkPane::Details
+            {
+                render_component_details_pane(
+                    frame,
+                    work_state,
+                    db_conn,
+                    work_layout[1],
+                    selected_item,
+                );
+            } else {
+                render_component_editor_pane(
+                    frame,
+                    work_state,
+                    db_conn,
+                    work_layout[1],
+                    selected_item,
+                )
+            }
         }
         TabSubjects::ViewPackets => render_viewpacket_details_pane(
             frame,
@@ -196,7 +235,7 @@ pub fn render_work(
 
 fn render_component_details_pane(
     frame: &mut Frame,
-    work_state: &mut WorkState,
+    _work_state: &mut WorkState,
     db_conn: &Connection,
     area: Rect,
     selected_item: String,
@@ -205,14 +244,20 @@ fn render_component_details_pane(
 
     let text = if let Ok(component) = component {
         let line_id = Line::from(vec![
-            Span::styled("id.....: ", Style::default().fg(Color::Black).bg(Color::Gray)),
+            Span::styled(
+                "id.....: ",
+                Style::default().fg(Color::Black).bg(Color::Gray),
+            ),
             Span::styled(
                 format!("{} ", component.id),
                 Style::default().fg(Color::Black).bg(Color::Gray),
             ),
         ]);
         let line_name = Line::from(vec![
-            Span::styled("name...: ", Style::default().fg(Color::Black).bg(Color::Gray)),
+            Span::styled(
+                "name...: ",
+                Style::default().fg(Color::Black).bg(Color::Gray),
+            ),
             Span::styled(
                 format!("{} ", component.name),
                 Style::default().fg(Color::Black).bg(Color::Gray),
@@ -252,12 +297,65 @@ fn render_component_details_pane(
     frame.render_widget(paragraph, area);
 }
 
-fn render_diagram_details_pane(
+/*
+ Since TextArea can't be combined with anything else, then the label and input needs to be split
+ into separate panes.
+ So split the editor pane into two panes: one for the label and one for the input.
+ and then each input is in its own row.
+
+ First split the pane vertically into as many parts/rows as there are fields.
+ Then render each row, with a fixed left(label) and right(input) part
+*/
+// https://github.com/rhysd/tui-textarea
+fn render_component_editor_pane(
     frame: &mut Frame,
-    work_state: &mut WorkState,
+    _work_state: &mut WorkState,
     db_conn: &Connection,
     area: Rect,
     selected_item: String,
+) {
+    let component = get_component_by_name(db_conn, selected_item);
+
+    if let Ok(component) = component {
+        let rows = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(3), // id row
+                Constraint::Length(3), // name row
+                Constraint::Length(5), // purpose row
+                Constraint::Length(5), // summary row
+            ])
+            .split(area);
+
+        //render_component_detail_row(frame, rows[0], "id.....:", component.id);
+        render_component_detail_row(frame, rows[1], "name...:", component.name);
+        //render_component_detail_row(frame, rows[2], "purpose:", component.purpose);
+        //render_component_detail_row(frame, rows[3], "summary:", component.summary);
+    }
+}
+
+fn render_component_detail_row(frame: &mut Frame, area: Rect, label: &str, value: impl ToString) {
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Length(10), // label column
+            Constraint::Min(10),    // textarea column
+        ])
+        .split(area);
+
+    let label_widget = Paragraph::new(label).style(Style::default().fg(Color::Yellow));
+    frame.render_widget(label_widget, chunks[0]);
+
+    let textarea = TextArea::new(vec![value.to_string()]);
+    frame.render_widget(&textarea, chunks[1]);
+}
+
+fn render_diagram_details_pane(
+    frame: &mut Frame,
+    work_state: &mut WorkState,
+    _db_conn: &Connection,
+    area: Rect,
+    _selected_item: String,
 ) {
     work_state.textarea.set_block(
         Block::default()
@@ -271,7 +369,7 @@ fn render_diagram_details_pane(
 
 fn render_viewpacket_details_pane(
     frame: &mut Frame,
-    work_state: &mut WorkState,
+    _work_state: &mut WorkState,
     db_conn: &Connection,
     area: Rect,
     selected_item: String,
@@ -280,14 +378,20 @@ fn render_viewpacket_details_pane(
 
     let text = if let Ok(viewpacket) = viewpacket {
         let line_id = Line::from(vec![
-            Span::styled("id.................: ", Style::default().fg(Color::Black).bg(Color::Gray)),
+            Span::styled(
+                "id.................: ",
+                Style::default().fg(Color::Black).bg(Color::Gray),
+            ),
             Span::styled(
                 format!("{} ", viewpacket.viewpacket_id),
                 Style::default().fg(Color::Black).bg(Color::Gray),
             ),
         ]);
         let line_title = Line::from(vec![
-            Span::styled("title..............: ", Style::default().fg(Color::Black).bg(Color::Gray)),
+            Span::styled(
+                "title..............: ",
+                Style::default().fg(Color::Black).bg(Color::Gray),
+            ),
             Span::styled(
                 format!("{} ", viewpacket.title),
                 Style::default().fg(Color::Black).bg(Color::Gray),
@@ -359,19 +463,48 @@ fn render_viewpacket_details_pane(
     let paragraph = Paragraph::new(text).block(
         Block::default()
             .borders(Borders::ALL)
-            .title("Component")
+            .title("View Packet")
             .style(Style::default().bg(Color::DarkGray)),
     );
     frame.render_widget(paragraph, area);
 }
 
-pub fn handle_work_key(
+fn get_list_of_component_names(work_state: &mut WorkState, db_conn: &Connection) -> Vec<String> {
+    // This function should return the actual list of component names from your data source.
+    match get_vector_of_component_names_sorted(db_conn) {
+        Ok(names) => {
+            work_state.current_selection_list = names.clone();
+            work_state.number_of_cloned_objects = work_state.current_selection_list.len();
+            work_state
+                .tab_counts
+                .set_count(&TabSubjects::Components, names.len());
+            names
+        }
+        Err(_) => vec![],
+    }
+}
+
+fn get_list_of_viewpacket_names(work_state: &mut WorkState, db_conn: &Connection) -> Vec<String> {
+    // This function should return the actual list of component names from your data source.
+    match get_vector_of_viewpacket_titles_sorted(db_conn) {
+        Ok(names) => {
+            work_state.current_selection_list = names.clone();
+            work_state.number_of_cloned_objects = work_state.current_selection_list.len();
+            work_state
+                .tab_counts
+                .set_count(&TabSubjects::ViewPackets, names.len());
+            names
+        }
+        Err(_) => vec![],
+    }
+}
+
+pub fn handle_work_input(
     work_state: &mut WorkState,
-    modifiers: KeyModifiers,
-    key_code: KeyCode,
+    event: crossterm::event::KeyEvent,
 ) -> bool {
     let max_elements = work_state.tab_counts.get_count(&work_state.selected_tab);
-    match (modifiers, key_code) {
+    match (event.modifiers, event.code) {
         // Alt+1, Alt+2, Alt+3, Alt+4 to switch tabs
         (KeyModifiers::ALT, KeyCode::Char('1')) => {
             work_state.selected_tab = TabSubjects::Components;
@@ -385,20 +518,17 @@ pub fn handle_work_key(
             work_state.selected_tab = TabSubjects::Diagrams;
             true
         }
-        // Tab to switch between panes
-        (_, KeyCode::Tab) => {
-            work_state.active_pane = match work_state.active_pane {
-                WorkPane::Selector => WorkPane::Editor,
-                WorkPane::Editor => WorkPane::Selector,
-            };
-            true
-        }
         // Ctrl+Left/Right to switch panes
         (KeyModifiers::CONTROL, KeyCode::Left) => {
             work_state.active_pane = WorkPane::Selector;
             true
         }
         (KeyModifiers::CONTROL, KeyCode::Right) => {
+            work_state.active_pane = WorkPane::Details;
+            true
+        }
+        // TODO F4: Implement edit functionality
+        (_, KeyCode::F(4)) if work_state.active_pane == WorkPane::Selector => {
             work_state.active_pane = WorkPane::Editor;
             true
         }
@@ -430,34 +560,4 @@ pub fn handle_work_key(
     }
     // TODO maybe this handles the tabs entries and the switch between the work panes.
     // TODO then call handle_key function for the correct pane.
-}
-
-fn get_list_of_component_names(work_state: &mut WorkState, db_conn: &Connection) -> Vec<String> {
-    // This function should return the actual list of component names from your data source.
-    match get_vector_of_component_names_sorted(db_conn) {
-        Ok(names) => {
-            work_state.current_selection_list = names.clone();
-            work_state.number_of_cloned_objects = work_state.current_selection_list.len();
-            work_state
-                .tab_counts
-                .set_count(&TabSubjects::Components, names.len());
-            names
-        }
-        Err(_) => vec![],
-    }
-}
-
-fn get_list_of_viewpacket_names(work_state: &mut WorkState, db_conn: &Connection) -> Vec<String> {
-    // This function should return the actual list of component names from your data source.
-    match get_vector_of_viewpacket_titles_sorted(db_conn) {
-        Ok(names) => {
-            work_state.current_selection_list = names.clone();
-            work_state.number_of_cloned_objects = work_state.current_selection_list.len();
-            work_state
-                .tab_counts
-                .set_count(&TabSubjects::ViewPackets, names.len());
-            names
-        }
-        Err(_) => vec![],
-    }
 }

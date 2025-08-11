@@ -1,6 +1,4 @@
-use std::default;
-
-use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
+use crossterm::event::{Event, KeyCode, KeyModifiers};
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
 };
@@ -16,9 +14,7 @@ use ratatui::{
 
 use std::io;
 
-use sad_xml_sql::db_population::{populate_db};
-use sad_xml_sql::db_retrieval;
-use sad_xml_sql::models;
+use sad_xml_sql::db_population::populate_db;
 
 use rusqlite::Connection;
 
@@ -26,12 +22,10 @@ mod app_state;
 use app_state::AppState;
 
 mod menu;
-use menu::{handle_menu_key, render_menu, MenuState};
+use menu::{handle_menu_input, render_menu, MenuState};
 
 mod work;
-use work::{handle_work_key, render_work, WorkState};
-
-
+use work::{handle_work_input, render_work, WorkState};
 
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
@@ -40,7 +34,7 @@ fn main() -> color_eyre::Result<()> {
     let mut stdout = stdout.lock(); // Lock stdout for exclusive access (needed for terminal UI)
     enable_raw_mode()?; // Enable raw mode so we can read input directly from the terminal
     crossterm::execute!(stdout, EnterAlternateScreen)?; // Switch to the alternate screen
-    // TODO later add EnableMouseCapture
+                                                        // TODO later add EnableMouseCapture
     let backend = CrosstermBackend::new(stdout); // Create a backend for ratatui using Crossterm
     let mut terminal = Terminal::new(backend)?; // Create a Terminal object to manage drawing
 
@@ -77,12 +71,20 @@ fn main() -> color_eyre::Result<()> {
             render_menu(f, menu_pane, &menu_state);
 
             // ------------------------------- Menu pane
-            render_work(&db_conn, f, tab_pane,work_pane, &mut work_state, &mut app_state);
+            render_work(
+                &db_conn,
+                f,
+                tab_pane,
+                work_pane,
+                &mut work_state,
+                &mut app_state,
+            );
 
             // ------------------------------- Status pane
-            let status_line = Line::from(vec![
-                Span::styled(&app_state.status_message, Style::default().fg(Color::Red).bg(Color::Gray)),
-            ]);
+            let status_line = Line::from(vec![Span::styled(
+                &app_state.status_message,
+                Style::default().fg(Color::Red).bg(Color::Gray),
+            )]);
 
             let status_widget = Paragraph::new(status_line).block(
                 Block::default()
@@ -93,37 +95,39 @@ fn main() -> color_eyre::Result<()> {
             f.render_widget(status_widget, status_pane);
         })?;
 
-        match event::read()? {
-            Event::Key(key) if key.kind == KeyEventKind::Press => {
-                if handle_menu_key(&mut menu_state, key.modifiers, key.code) {
-                    continue; // Menu handled the key, continue to next iteration
-                }
-                // Try work pane key handling
-                if handle_work_key(&mut work_state, key.modifiers, key.code) {
+        match crossterm::event::read()? {
+            // input => {
+            //     let modified = self.textarea.input(input);
+            //     modified.then(|| self.textarea.lines()[0].as_str())
+            // }
+            Event::Key(event) => {
+                // Put the work handling first since it might have an active textarea.
+                if handle_work_input(&mut work_state, event) {
                     continue; // Work pane handled the key, continue to next iteration
                 }
-                match (key.modifiers, key.code) {
-                    (_, KeyCode::Char('q'))
-                    | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => {
+                if handle_menu_input(&mut menu_state, event) {
+                    continue; // Menu handled the key, continue to next iteration
+                }
+                // TODO convert from input to key.
+                match (event.modifiers, event.code) {
+                    (KeyModifiers::CONTROL, KeyCode::Char('q') | KeyCode::Char('Q')) => {
                         break;
-                    }
-                    // Add other key handlers here.
+                    } //     // Add other key handlers here.
                     _ => {}
                 }
             }
-            Event::Mouse(_) => {
-                // Handle mouse events
-            }
-            Event::Resize(_, _) => {
-                // Handle resize events
-            }
-            _ => {}
+            Event::FocusGained => println!("FocusGained"),
+            Event::FocusLost => println!("FocusLost"),
+            Event::Mouse(event) => println!("{:?}", event),
+            // TODO what does this do? #[cfg(feature = "bracketed-paste")]
+            Event::Paste(data) => println!("{:?}", data),
+            Event::Resize(width, height) => println!("New size {}x{}", width, height),
         }
     } // end loop
     disable_raw_mode()?; // Restore terminal to normal mode
     crossterm::execute!(
         terminal.backend_mut(), // Get the backend for cleanup
-        LeaveAlternateScreen // Leave the alternate screen
+        LeaveAlternateScreen    // Leave the alternate screen
     )?;
     terminal.show_cursor()?; // Show the cursor again
     Ok(())
