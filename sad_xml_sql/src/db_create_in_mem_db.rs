@@ -89,7 +89,8 @@ fn create_table_context_model(db_conn: &Connection) {
         entity TEXT,
         entity_type TEXT,
         description TEXT,
-        reference TEXT
+        reference TEXT,
+        UNIQUE (key)
     )",
             [],
         )
