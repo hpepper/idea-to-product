@@ -102,7 +102,7 @@ fn main() -> color_eyre::Result<()> {
             // }
             Event::Key(event) => {
                 // Put the work handling first since it might have an active textarea.
-                if handle_work_input(&mut work_state, event) {
+                if handle_work_input(&mut work_state, event, &db_conn) {
                     continue; // Work pane handled the key, continue to next iteration
                 }
                 if handle_menu_input(&mut menu_state, event) {

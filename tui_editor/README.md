@@ -2,6 +2,8 @@
 
 ## TODO
 
+* Handle save in editor mode, push the data to the db.
+* When in edit mode, then handle ctrl-q and have a pop-up confirmation on it.
 * Ctrl-N - new (whatever tab I am on)
 * Be able to switch from a selected component in the component list, to the list of viepackets with this component_id as the core id.
 * If you switch tab, then switch back to WorkPane::Selector

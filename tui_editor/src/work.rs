@@ -1,4 +1,4 @@
-use crossterm::event::{KeyCode, KeyModifiers};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
@@ -8,11 +8,14 @@ use ratatui::{
     Frame,
 };
 use rusqlite::Connection;
+use tui_textarea::{Input, Key, TextArea};
+
 use sad_xml_sql::{
     get_component_by_name, get_vector_of_component_names_sorted,
     get_vector_of_viewpacket_titles_sorted, get_viewpacket_by_title,
 };
-use tui_textarea::{Input, Key, TextArea};
+
+use sad_xml_sql::Component;
 
 use super::app_state::AppState;
 
@@ -24,6 +27,10 @@ pub struct WorkState {
     selected_tab: TabSubjects,
     pub current_selection_list: Vec<String>,
     pub number_of_cloned_objects: usize,
+    // Text area collections for each tab type
+    pub component_text_areas: ComponentTextAreas,
+    // pub viewpacket_text_areas: ViewPacketTextAreas, // Future
+    // pub diagram_text_areas: DiagramTextAreas,       // Future
 }
 
 impl WorkState {
@@ -41,6 +48,7 @@ impl WorkState {
             selected_tab: TabSubjects::Components,
             current_selection_list: vec![],
             number_of_cloned_objects: 0,
+            component_text_areas: ComponentTextAreas::new(),
         }
     }
 }
@@ -99,6 +107,9 @@ impl TabSubjects {
     }
 }
 
+/**
+ * The work pane is horizontally split into a selector pane and a details/edit pane.
+ */
 pub fn render_work(
     db_conn: &Connection,
     frame: &mut Frame,
@@ -163,6 +174,7 @@ pub fn render_work(
         selected_item = "NAN".to_string();
     } // TODO move this a more appropriate place?
 
+    // Update the status message based on the active pane and selected item.
     if work_state.active_pane == WorkPane::Selector {
         app_state.status_message = format!(
         "F4: Edit  - Tab: {}, Active Pane: {:?}, Selected Item: {} - {} - Total Items: {} - Cloned Objects: {}",
@@ -175,10 +187,10 @@ pub fn render_work(
     );
     } else if work_state.active_pane == WorkPane::Editor {
         app_state.status_message = format!(
-            "ESC: Cancel  F7: Save - Tab: {}, Active Pane: {:?}, Selected Item: {} - {}",
+            "ESC: Cancel  F7: Save - Tab: {}, Active Pane: {:?}, active field: {:?} - {}",
             work_state.selected_tab.as_index(),
             work_state.active_pane,
-            selected_index,
+            work_state.component_text_areas.active_field,
             selected_item
         );
     } else {
@@ -309,32 +321,55 @@ fn render_component_details_pane(
 // https://github.com/rhysd/tui-textarea
 fn render_component_editor_pane(
     frame: &mut Frame,
-    _work_state: &mut WorkState,
+    work_state: &mut WorkState,
     db_conn: &Connection,
     area: Rect,
     selected_item: String,
 ) {
-    let component = get_component_by_name(db_conn, selected_item);
+    // TODO fix this, it overwrites the
 
-    if let Ok(component) = component {
-        let rows = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Length(3), // id row
-                Constraint::Length(3), // name row
-                Constraint::Length(5), // purpose row
-                Constraint::Length(5), // summary row
-            ])
-            .split(area);
+    let rows = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3), // id row
+            Constraint::Length(3), // name row
+            Constraint::Length(5), // purpose row
+            Constraint::Length(5), // summary row
+        ])
+        .split(area);
 
-        //render_component_detail_row(frame, rows[0], "id.....:", component.id);
-        render_component_detail_row(frame, rows[1], "name...:", component.name);
-        //render_component_detail_row(frame, rows[2], "purpose:", component.purpose);
-        //render_component_detail_row(frame, rows[3], "summary:", component.summary);
-    }
+    render_component_detail_row(
+        frame,
+        rows[0],
+        ComponentField::Id.label(),
+        &work_state.component_text_areas.id,
+    );
+    render_component_detail_row(
+        frame,
+        rows[1],
+        ComponentField::Name.label(),
+        &work_state.component_text_areas.name,
+    );
+    render_component_detail_row(
+        frame,
+        rows[2],
+        ComponentField::Purpose.label(),
+        &work_state.component_text_areas.purpose,
+    );
+    render_component_detail_row(
+        frame,
+        rows[3],
+        ComponentField::Summary.label(),
+        &work_state.component_text_areas.summary,
+    );
 }
 
-fn render_component_detail_row(frame: &mut Frame, area: Rect, label: &str, value: impl ToString) {
+fn render_component_detail_row(
+    frame: &mut Frame,
+    area: Rect,
+    label: &str,
+    textarea: &TextArea<'_>,
+) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
@@ -346,8 +381,7 @@ fn render_component_detail_row(frame: &mut Frame, area: Rect, label: &str, value
     let label_widget = Paragraph::new(label).style(Style::default().fg(Color::Yellow));
     frame.render_widget(label_widget, chunks[0]);
 
-    let textarea = TextArea::new(vec![value.to_string()]);
-    frame.render_widget(&textarea, chunks[1]);
+    frame.render_widget(textarea, chunks[1]);
 }
 
 fn render_diagram_details_pane(
@@ -499,65 +533,404 @@ fn get_list_of_viewpacket_names(work_state: &mut WorkState, db_conn: &Connection
     }
 }
 
-pub fn handle_work_input(
-    work_state: &mut WorkState,
-    event: crossterm::event::KeyEvent,
-) -> bool {
+pub fn handle_work_input(work_state: &mut WorkState, event: crossterm::event::KeyEvent, db_conn: &Connection) -> bool {
     let max_elements = work_state.tab_counts.get_count(&work_state.selected_tab);
-    match (event.modifiers, event.code) {
-        // Alt+1, Alt+2, Alt+3, Alt+4 to switch tabs
-        (KeyModifiers::ALT, KeyCode::Char('1')) => {
-            work_state.selected_tab = TabSubjects::Components;
-            true
-        }
-        (KeyModifiers::ALT, KeyCode::Char('2')) => {
-            work_state.selected_tab = TabSubjects::ViewPackets;
-            true
-        }
-        (KeyModifiers::ALT, KeyCode::Char('3')) => {
-            work_state.selected_tab = TabSubjects::Diagrams;
-            true
-        }
-        // Ctrl+Left/Right to switch panes
-        (KeyModifiers::CONTROL, KeyCode::Left) => {
-            work_state.active_pane = WorkPane::Selector;
-            true
-        }
-        (KeyModifiers::CONTROL, KeyCode::Right) => {
-            work_state.active_pane = WorkPane::Details;
-            true
-        }
-        // TODO F4: Implement edit functionality
-        (_, KeyCode::F(4)) if work_state.active_pane == WorkPane::Selector => {
-            work_state.active_pane = WorkPane::Editor;
-            true
-        }
-        // Handle selector pane navigation
-        (_, KeyCode::Up) if work_state.active_pane == WorkPane::Selector => {
-            let selected = work_state.list_state.selected().unwrap_or(0);
 
-            let new_selected = if selected == 0 {
-                max_elements - 1
-            } else {
-                selected - 1
-            };
-            work_state.list_state.select(Some(new_selected));
-            true
+    // TODO if there is an active TextArea, then handle that first
+    /* when in edit mode
+       tab | shift+tab - move between fields.
+       esc - cancel change
+       f7 - save and exit edit mode.
+       F1 - help(for editing)
+    */
+
+    // TODO make this into a function common with the same call in the render_work()
+    let selected_index: usize;
+    let selected_item: String;
+    if work_state.list_state.selected().is_some() {
+        selected_index = work_state.list_state.selected().unwrap();
+        if work_state.current_selection_list.len() > selected_index {
+            selected_item = work_state.current_selection_list[selected_index].clone();
+        } else {
+            selected_item = "Selection out of index".to_string();
         }
-        (_, KeyCode::Down) if work_state.active_pane == WorkPane::Selector => {
-            let selected = work_state.list_state.selected().unwrap_or(0);
-            let new_selected = (selected + 1) % max_elements;
-            work_state.list_state.select(Some(new_selected));
-            true
+    } else {
+        selected_index = 0;
+        selected_item = "NAN".to_string();
+    } // TODO move this a more appropriate place?
+
+    let event_handled = if work_state.active_pane == WorkPane::Editor {
+        match (event.modifiers, event.code) {
+            (KeyModifiers::NONE, KeyCode::Tab) => {
+                match work_state.selected_tab {
+                    TabSubjects::Components => {
+                        work_state.component_text_areas.next_field();
+                        work_state.component_text_areas.update_styling();
+                    }
+                    // Handle other tabs...
+                    _ => {}
+                }
+                true
+            }
+            (KeyModifiers::SHIFT, KeyCode::BackTab) => {
+                match work_state.selected_tab {
+                    TabSubjects::Components => {
+                        work_state.component_text_areas.previous_field();
+                        work_state.component_text_areas.update_styling();
+                    }
+                    // Handle other tabs...
+                    _ => {}
+                }
+                true
+            }
+            (KeyModifiers::NONE, KeyCode::Esc) => {
+                work_state.active_pane = WorkPane::Details;
+                true
+            }
+            (KeyModifiers::NONE, KeyCode::F(7)) => {
+                // TODO Save logic here
+                work_state.active_pane = WorkPane::Details;
+                true
+            }
+            _ => {
+                // Pass input to active text area
+                match work_state.selected_tab {
+                    TabSubjects::Components => {
+                        work_state
+                            .component_text_areas
+                            .handle_input(keyevent_to_input(event))
+                        //work_state.component_text_areas.handle_input(Input::from(event))
+                    }
+                    // Handle other tabs...
+                    _ => false,
+                }
+            }
         }
-        // Handle textarea input when editor is active
-        // _ if work_state.active_pane == WorkPane::Editor => {
-        //     let input = crossterm::event::KeyEvent::new(key_code, modifiers);
-        //     work_state.textarea.input(tui_textarea::Input::from(input));
-        //     true
-        // }
-        _ => false, // Key not handled by work pane
-    }
+    } else {
+        match (event.modifiers, event.code) {
+            // Alt+1, Alt+2, Alt+3, Alt+4 to switch tabs
+            (KeyModifiers::ALT, KeyCode::Char('1')) => {
+                work_state.selected_tab = TabSubjects::Components;
+                true
+            }
+            (KeyModifiers::ALT, KeyCode::Char('2')) => {
+                work_state.selected_tab = TabSubjects::ViewPackets;
+                true
+            }
+            (KeyModifiers::ALT, KeyCode::Char('3')) => {
+                work_state.selected_tab = TabSubjects::Diagrams;
+                true
+            }
+            // Ctrl+Left/Right to switch panes
+            (KeyModifiers::CONTROL, KeyCode::Left) => {
+                work_state.active_pane = WorkPane::Selector;
+                true
+            }
+            (KeyModifiers::CONTROL, KeyCode::Right) => {
+                work_state.active_pane = WorkPane::Details;
+                true
+            }
+            // TODO F4: Implement edit functionality
+            // TODO also handle if the active pane is the WorkPane::Details.
+            (_, KeyCode::F(4)) => {
+                work_state.active_pane = WorkPane::Editor;
+                match work_state.selected_tab {
+                    TabSubjects::Components => {
+                        // Load the selected component into the text areas
+                        let selected_index = work_state.list_state.selected().unwrap_or(0);
+                        if selected_index < work_state.current_selection_list.len() {
+                            let selected_item = &work_state.current_selection_list[selected_index];
+                            let component = get_component_by_name(db_conn, selected_item.to_string());
+                            if let Ok(component) = component {
+                                work_state.component_text_areas.load_component(&component);
+                            }
+                        }
+                        true
+                    }
+                    _ => false, // No edit functionality for other tabs yet
+                }
+            }
+            // Handle selector pane navigation
+            (_, KeyCode::Up) if work_state.active_pane == WorkPane::Selector => {
+                let selected = work_state.list_state.selected().unwrap_or(0);
+
+                let new_selected = if selected == 0 {
+                    max_elements - 1
+                } else {
+                    selected - 1
+                };
+                work_state.list_state.select(Some(new_selected));
+                true
+            }
+            (_, KeyCode::Down) if work_state.active_pane == WorkPane::Selector => {
+                let selected = work_state.list_state.selected().unwrap_or(0);
+                let new_selected = (selected + 1) % max_elements;
+                work_state.list_state.select(Some(new_selected));
+                true
+            }
+            // Handle textarea input when editor is active
+            // _ if work_state.active_pane == WorkPane::Editor => {
+            //     let input = crossterm::event::KeyEvent::new(key_code, modifiers);
+            //     work_state.textarea.input(tui_textarea::Input::from(input));
+            //     true
+            // }
+            _ => false, // Key not handled by work pane
+        }
+    };
     // TODO maybe this handles the tabs entries and the switch between the work panes.
     // TODO then call handle_key function for the correct pane.
+    event_handled
+}
+
+// To convert the crossterm keycode to tui_textarea::Input(via ratatui Key)
+fn keyevent_to_input(key_event: KeyEvent) -> Input {
+    let key = match key_event.code {
+        KeyCode::Backspace => Key::Backspace,
+        KeyCode::Enter => Key::Enter,
+        KeyCode::Left => Key::Left,
+        KeyCode::Right => Key::Right,
+        KeyCode::Up => Key::Up,
+        KeyCode::Down => Key::Down,
+        KeyCode::Home => Key::Home,
+        KeyCode::End => Key::End,
+        KeyCode::PageUp => Key::PageUp,
+        KeyCode::PageDown => Key::PageDown,
+        KeyCode::Tab => Key::Tab,
+        // TODO Fix this KeyCode::BackTab => Key::BackTab,
+        KeyCode::Delete => Key::Delete,
+        // TODO Fix this KeyCode::Insert => Key::Insert,
+        KeyCode::Char(c) => Key::Char(c),
+        KeyCode::Esc => Key::Esc,
+        KeyCode::F(n) => Key::F(n),
+        _ => Key::Null, // fallback for unmapped codes
+    };
+
+    Input {
+        key,
+        ctrl: key_event.modifiers.contains(KeyModifiers::CONTROL),
+        alt: key_event.modifiers.contains(KeyModifiers::ALT),
+        shift: key_event.modifiers.contains(KeyModifiers::SHIFT),
+    }
+}
+
+// TODO I think I need to create all at the beginning, and then set and retrieve the values from it.
+// And I think I need to create a set for each tab, component, viewpacket etc.
+
+// ----------------------------------------------------------------- Component text areas
+// Originally generated by chatgpt
+#[derive(Debug, Clone)]
+pub struct ComponentTextAreas {
+    pub id: TextArea<'static>,
+    pub name: TextArea<'static>,
+    pub purpose: TextArea<'static>,
+    pub summary: TextArea<'static>,
+    active_field: ComponentField,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ComponentField {
+    Id,
+    Name,
+    Purpose,
+    Summary,
+}
+
+impl ComponentField {
+    pub fn next(self) -> Self {
+        match self {
+            ComponentField::Id => ComponentField::Name,
+            ComponentField::Name => ComponentField::Purpose,
+            ComponentField::Purpose => ComponentField::Summary,
+            ComponentField::Summary => ComponentField::Id,
+        }
+    }
+
+    pub fn previous(self) -> Self {
+        match self {
+            ComponentField::Id => ComponentField::Summary,
+            ComponentField::Name => ComponentField::Id,
+            ComponentField::Purpose => ComponentField::Name,
+            ComponentField::Summary => ComponentField::Purpose,
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            ComponentField::Id => "ID:",
+            ComponentField::Name => "Name:",
+            ComponentField::Purpose => "Purpose:",
+            ComponentField::Summary => "Summary:",
+        }
+    }
+}
+
+impl ComponentTextAreas {
+    pub fn new() -> Self {
+        let mut id = TextArea::default();
+        id.set_placeholder_text("Component ID (read-only)");
+        id.set_style(Style::default().fg(Color::Gray)); // Read-only styling
+
+        let mut name = TextArea::default();
+        name.set_placeholder_text("Enter component name");
+        name.set_style(Style::default().fg(Color::White));
+
+        let mut purpose = TextArea::default();
+        purpose.set_placeholder_text("Enter component purpose");
+        purpose.set_style(Style::default().fg(Color::White));
+
+        let mut summary = TextArea::default();
+        summary.set_placeholder_text("Enter component summary");
+        summary.set_style(Style::default().fg(Color::White));
+
+        Self {
+            id,
+            name,
+            purpose,
+            summary,
+            active_field: ComponentField::Name, // Start with name (skip read-only ID)
+        }
+    }
+
+    pub fn get_active_textarea(&mut self) -> &mut TextArea<'static> {
+        match self.active_field {
+            ComponentField::Id => &mut self.id,
+            ComponentField::Name => &mut self.name,
+            ComponentField::Purpose => &mut self.purpose,
+            ComponentField::Summary => &mut self.summary,
+        }
+    }
+
+    pub fn get_textarea(&mut self, field: ComponentField) -> &mut TextArea<'static> {
+        match field {
+            ComponentField::Id => &mut self.id,
+            ComponentField::Name => &mut self.name,
+            ComponentField::Purpose => &mut self.purpose,
+            ComponentField::Summary => &mut self.summary,
+        }
+    }
+
+    pub fn active_field(&self) -> ComponentField {
+        self.active_field
+    }
+
+    pub fn next_field(&mut self) {
+        self.active_field = self.active_field.next();
+        // Skip ID field in forward direction (it's read-only)
+        if self.active_field == ComponentField::Id {
+            self.active_field = ComponentField::Name;
+        }
+    }
+
+    pub fn previous_field(&mut self) {
+        self.active_field = self.active_field.previous();
+        // Skip ID field in backward direction (it's read-only)
+        if self.active_field == ComponentField::Id {
+            self.active_field = ComponentField::Summary;
+        }
+    }
+
+    pub fn set_field(&mut self, field: ComponentField) {
+        // Don't allow setting focus to read-only ID field
+        if field != ComponentField::Id {
+            self.active_field = field;
+        }
+    }
+
+    // Load component data into text areas
+    pub fn load_component(&mut self, component: &Component) {
+        self.id.delete_line_by_head();
+        self.id.insert_str(component.id.to_string());
+
+        self.name.delete_line_by_head();
+        self.name.insert_str(&component.name);
+
+        self.purpose.delete_line_by_head();
+        self.purpose.insert_str(&component.purpose);
+
+        self.summary.delete_line_by_head();
+        self.summary.insert_str(&component.summary);
+    }
+
+    // Extract component data from text areas
+    pub fn extract_component(&self, original_id: i32) -> Component {
+        Component {
+            id: original_id, // Keep original ID
+            name: self.name.lines().join("\n"),
+            purpose: self.purpose.lines().join("\n"),
+            summary: self.summary.lines().join("\n"),
+        }
+    }
+
+    // Handle input for the active text area
+    pub fn handle_input(&mut self, input: tui_textarea::Input) -> bool {
+        // Don't allow editing the ID field
+        if self.active_field == ComponentField::Id {
+            return false;
+        }
+
+        let field_modified = self.get_active_textarea().input(input);
+        field_modified
+    }
+
+    // Update visual styling based on active field
+    pub fn update_styling(&mut self) {
+        // Reset all to inactive style
+        let inactive_style = Style::default().fg(Color::White);
+        let active_style = Style::default()
+            .fg(Color::Yellow)
+            .add_modifier(Modifier::BOLD);
+        let readonly_style = Style::default().fg(Color::Gray);
+
+        self.id.set_style(readonly_style);
+        self.name
+            .set_style(if self.active_field == ComponentField::Name {
+                active_style
+            } else {
+                inactive_style
+            });
+        self.purpose
+            .set_style(if self.active_field == ComponentField::Purpose {
+                active_style
+            } else {
+                inactive_style
+            });
+        self.summary
+            .set_style(if self.active_field == ComponentField::Summary {
+                active_style
+            } else {
+                inactive_style
+            });
+
+        // Update block borders
+        let active_block = Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Blue));
+        let inactive_block = Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Gray));
+        let readonly_block = Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::DarkGray));
+
+        self.id
+            .set_block(readonly_block.clone().title("ID (read-only)"));
+        self.name
+            .set_block(if self.active_field == ComponentField::Name {
+                active_block.clone().title("Name")
+            } else {
+                inactive_block.clone().title("Name")
+            });
+        self.purpose
+            .set_block(if self.active_field == ComponentField::Purpose {
+                active_block.clone().title("Purpose")
+            } else {
+                inactive_block.clone().title("Purpose")
+            });
+        self.summary
+            .set_block(if self.active_field == ComponentField::Summary {
+                active_block.clone().title("Summary")
+            } else {
+                inactive_block.clone().title("Summary")
+            });
+    }
 }
