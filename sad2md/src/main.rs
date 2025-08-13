@@ -3,11 +3,12 @@
 //! Testing it out:
 //! `cargo run test/test_sad.xml && cat sad.md`
 
-use sad_xml_sql::db_population;
+use sad_xml_sql::db_create_in_mem_db;
 use sad_xml_sql::db_retrieval;
 use sad_xml_sql::models;
+use sad_xml_sql::db_populate_from_xml;
+use sad_xml_sql::db_update::insert_into_context_model_ignore_duplicates;
 
-use db_population::{insert_into_context_model_ignore_duplicates, populate_db};
 use db_retrieval::{
     get_component_by_id, get_component_name_by_id, get_vector_of_behaviors_for_viewpacket_id,
     get_vector_of_context_model_by_key, get_vector_of_related_components_by_id_and_key,
@@ -128,7 +129,8 @@ fn main() {
 
     let db_conn = Connection::open_in_memory().expect("Connecting to the SQLite database failed.");
 
-    populate_db(&db_conn, filename);
+    db_create_in_mem_db(&db_conn);
+    db_populate_from_xml(&db_conn, filename);
 
     let markdown_filname = "draft_architecture.md";
     let mut markdown_file = File::create(markdown_filname).expect("Unable to create file");

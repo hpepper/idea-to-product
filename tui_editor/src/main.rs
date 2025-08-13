@@ -14,7 +14,8 @@ use ratatui::{
 
 use std::io;
 
-use sad_xml_sql::db_population::populate_db;
+use sad_xml_sql::db_create_in_mem_db;
+use sad_xml_sql::db_populate_from_xml;
 
 use rusqlite::Connection;
 
@@ -47,7 +48,9 @@ fn main() -> color_eyre::Result<()> {
     let filename: String = "../sad_xml_sql/test/test_sad.xml".to_string();
     let db_conn = Connection::open_in_memory().expect("Connecting to the SQLite database failed.");
 
-    populate_db(&db_conn, &filename);
+    db_create_in_mem_db(&db_conn);
+
+    db_populate_from_xml(&db_conn, &filename);
 
     loop {
         terminal.draw(|f| {

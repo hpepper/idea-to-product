@@ -17,7 +17,7 @@
 
 ### Build
 
-* cargo run test/test_sad.xml && cat draft_architecture.md
+* cargo run ../sad_xml_sql/test/test_sad.xml && cat draft_architecture.md
 * xmllint --valid  test_sad.xml  > t 2>u; head u
 
 ### Overview

@@ -1,9 +1,10 @@
-use rusqlite::{Connection};
 use std::fs::File;
 use std::io::BufReader;
 use xmltree::{Element, XMLNode};
+use rusqlite::Connection;
 
-pub fn populate_db(db_conn: &Connection, filename: &String) {
+// Requires create_database() to have been called.
+pub fn db_populate_from_xml(db_conn: &Connection, filename: &String) {
     // Parse the XML file
     let xml_root = load_xml_file(filename);
 
@@ -11,28 +12,6 @@ pub fn populate_db(db_conn: &Connection, filename: &String) {
     populate_db_with_components(db_conn, &xml_root);
     populate_db_with_componentrelations(db_conn, &xml_root);
     populate_db_with_behaviors(db_conn, &xml_root);
-    create_db_with_context_model(db_conn);
-}
-
-/// TODO be able to detect duplicates and do not insert them,
-pub fn insert_into_context_model_ignore_duplicates(
-    db_conn: &Connection,
-    key: &str,
-    entity: &str,
-    entity_type: &str,
-    description: &str,
-    reference: &str,
-) {
-    if !entity.is_empty() {
-        // Insert into context_model table, ignoring duplicates
-        db_conn
-        .execute(
-            "INSERT OR IGNORE INTO context_model (key, entity, entity_type, description, reference)
-             VALUES (?1, ?2, ?3, ?4, ?5)",
-            (key, entity, entity_type, description, reference),
-        )
-        .expect("Failed to insert into context_model");
-    }
 }
 
 fn load_xml_file(filename: &str) -> Element {
@@ -50,20 +29,6 @@ fn load_xml_file(filename: &str) -> Element {
 }
 
 fn populate_db_with_behaviors(db_conn: &Connection, xml_root: &Element) {
-    // Create the table
-    db_conn
-        .execute(
-            "CREATE TABLE behavior (
-            id INTEGER PRIMARY KEY,
-            sort_order INTEGER,
-            view_packet_id INTEGER,
-            description TEXT,
-            diagram_key TEXT NOT NULL
-        )",
-            [],
-        )
-        .expect("Unable to create table");
-
     // Insert the data
     for child in &xml_root.children {
         match child {
@@ -127,19 +92,6 @@ fn populate_db_with_behaviors(db_conn: &Connection, xml_root: &Element) {
 }
 
 fn populate_db_with_components(db_conn: &Connection, xml_root: &Element) {
-    // Create the tables
-    db_conn
-        .execute(
-            "CREATE TABLE component (
-            id INTEGER PRIMARY KEY,
-            name TEXT NOT NULL,
-            purpose TEXT,
-            summary TEXT
-        )",
-            [],
-        )
-        .expect("Unable to create table");
-
     // Insert the data
     for child in &xml_root.children {
         match child {
@@ -172,7 +124,12 @@ fn populate_db_with_components(db_conn: &Connection, xml_root: &Element) {
                         .execute(
                             "INSERT INTO component (id, name, purpose, summary)
                             VALUES (?1, ?2, ?3, ?4)",
-                            (id, &name.to_string(), &purpose.to_string(), &summary.to_string()),
+                            (
+                                id,
+                                &name.to_string(),
+                                &purpose.to_string(),
+                                &summary.to_string(),
+                            ),
                         )
                         .expect("Unable to insert data");
                 }
@@ -183,25 +140,6 @@ fn populate_db_with_components(db_conn: &Connection, xml_root: &Element) {
 }
 
 fn populate_db_with_componentrelations(db_conn: &Connection, xml_root: &Element) {
-    // Create the tables
-    db_conn
-        .execute(
-            "CREATE TABLE component_relation (
-            id INTEGER NOT NULL,
-            sort_order INTEGER NOT NULL,
-            component_a_id INTEGER NOT NULL,
-            component_b_id INTEGER NOT NULL,
-            connection_type TEXT,
-            key TEXT,
-            property_of_relation TEXT,
-            relation_text TEXT,
-            relation_description TEXT,
-            style TEXT
-        )",
-            [],
-        )
-        .expect("Unable to create table");
-
     // Insert the data
     for child in &xml_root.children {
         match child {
@@ -287,24 +225,6 @@ fn populate_db_with_componentrelations(db_conn: &Connection, xml_root: &Element)
 }
 
 fn populate_db_with_viewpackets(db_conn: &Connection, xml_root: &Element) {
-    // Create the tables
-    db_conn
-        .execute(
-            "CREATE TABLE view_packet (
-            component_id INTEGER NOT NULL,
-            context_model_key TEXT,
-            primary_display_key TEXT,
-            introduction TEXT,
-            sort_order INTEGER NOT NULL,
-            title TEXT,
-            view_style TEXT NOT NULL,
-            view_type TEXT NOT NULL,
-            viewpacket_id INTEGER PRIMARY KEY
-        )",
-            [],
-        )
-        .expect("Unable to create table");
-
     // Insert the data
     for child in &xml_root.children {
         match child {
@@ -395,20 +315,4 @@ fn populate_db_with_viewpackets(db_conn: &Connection, xml_root: &Element) {
             _ => {}
         }
     }
-}
-
-fn create_db_with_context_model(db_conn: &Connection) {
-    // Create the tables
-    db_conn
-        .execute(
-            "CREATE TABLE IF NOT EXISTS context_model (
-        key TEXT,
-        entity TEXT,
-        entity_type TEXT,
-        description TEXT,
-        reference TEXT
-    )",
-            [],
-        )
-        .expect("Failed to create context_model table");
 }
