@@ -11,7 +11,7 @@ use rusqlite::Connection;
 use tui_textarea::{Input, Key, TextArea};
 
 use sad_xml_sql::{
-    get_component_by_name, get_vector_of_component_names_sorted,
+    dump_db_to_xml, get_component_by_name, get_vector_of_component_names_sorted,
     get_vector_of_viewpacket_titles_sorted, get_viewpacket_by_title, update_component_by_id
 };
 
@@ -605,6 +605,7 @@ pub fn handle_work_input(
                             db_conn,
                             &component,
                         );
+                        dump_db_to_xml(&db_conn, "tui_out.xml");
                         true
                     }
                     _ => false, // No edit functionality for other tabs yet
