@@ -23,6 +23,24 @@ pub fn get_vector_of_component_names_sorted(db_conn: &Connection) -> Result<Vec<
         .collect::<Result<Vec<String>, _>>()
 }
 
+pub fn get_vector_of_components_sorted_by_name(db_conn: &Connection) -> Result<Vec<Component>> {
+    let mut stmt = db_conn
+        .prepare("SELECT id, name, purpose, summary FROM component ORDER BY name COLLATE NOCASE ASC")
+        .unwrap();
+    let component_names = stmt
+        .query_map([], |row| {
+            Ok(Component {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                purpose: row.get(2)?,
+                summary: row.get(3)?,
+            })
+        })
+        .unwrap();
+    component_names
+        .collect::<Result<Vec<Component>, _>>()
+}
+
 pub fn get_vector_of_viewpacket_titles_sorted(db_conn: &Connection) -> Result<Vec<String>> {
     let mut stmt = db_conn
         .prepare("SELECT title FROM view_packet ORDER BY title COLLATE NOCASE ASC")
@@ -88,7 +106,7 @@ pub fn get_vector_of_viewpacket_by_component_id_except_component_id(
     exclude_viewpacket_id: i32,
 ) -> Result<Vec<ViewPacket>> {
     let viewpacket_vector = if search_component_id == 0 {
-        let mut stmt = db_conn.prepare(        "SELECT component_id, context_model_key, primary_display_key, introduction, sort_order, title, view_style, view_type, viewpacket_id FROM view_packet  WHERE view_type = ?1 AND view_style = ?2 ORDER BY sort_order")?;
+        let mut stmt = db_conn.prepare("SELECT component_id, context_model_key, primary_display_key, introduction, sort_order, title, view_style, view_type, viewpacket_id FROM view_packet  WHERE view_type = ?1 AND view_style = ?2 ORDER BY sort_order")?;
         // TODO how can I refactor the let viewpacket_vector_for_style so I could just ust the stmt without the temporary variable?
         let viewpacket_vector_for_style = stmt
             .query_map([view_type, style], |row| {
