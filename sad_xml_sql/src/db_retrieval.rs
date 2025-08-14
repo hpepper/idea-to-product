@@ -160,6 +160,30 @@ pub fn get_viewpacket_by_title(
     Ok(viewpacket)
 }
 
+pub fn get_viewpacket_vector_by_type_and_style_sorted_by_order(
+    db_conn: &Connection,
+    filter_view_type: &str,
+    filter_view_style: &str,
+) -> Result<Vec<ViewPacket>> {
+        let mut stmt = db_conn.prepare(        "SELECT component_id, context_model_key, primary_display_key, introduction, sort_order, title, view_style, view_type, viewpacket_id FROM view_packet  WHERE view_type = ?1 AND view_style = ?2")?;
+        let viewpacket_vector = stmt
+            .query_map([filter_view_type, filter_view_style], |row| {
+                Ok(ViewPacket {
+                    component_id: row.get(0)?,
+                    context_model_key: row.get(1)?,
+                    primary_display_key: row.get(2)?,
+                    introduction: row.get(3)?,
+                    sort_order: row.get(4)?,
+                    title: row.get(5)?,
+                    view_style: row.get(6)?,
+                    view_type: row.get(7)?,
+                    viewpacket_id: row.get(8)?,
+                })
+            })?.collect::<Result<Vec<_>, _>>()?;
+            
+    Ok(viewpacket_vector)
+}
+
 /**
  * Get all components that uses the given component id and has the style.
  */
@@ -342,59 +366,11 @@ pub fn get_vector_of_viewpacket_parents_by_component_id_and_style_and_key(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::db_create_in_mem_db;
 
     fn setup_test_db() -> Connection {
         let conn = Connection::open_in_memory().unwrap();
-
-        // Create tables
-        conn.execute_batch(
-            "
-            CREATE TABLE component (
-                id INTEGER PRIMARY KEY,
-                name TEXT NOT NULL,
-                purpose TEXT,
-                summary TEXT
-            );
-            CREATE TABLE context_model (
-                key TEXT,
-                entity TEXT,
-                entity_type TEXT,
-                description TEXT,
-                reference TEXT
-            );
-            CREATE TABLE behavior (
-                id INTEGER PRIMARY KEY,
-                sort_order INTEGER,
-                view_packet_id INTEGER,
-                description TEXT,
-                diagram_key TEXT
-            );
-            CREATE TABLE view_packet (
-                component_id INTEGER,
-                context_model_key TEXT,
-                primary_display_key TEXT,
-                introduction TEXT,
-                sort_order INTEGER,
-                title TEXT,
-                view_style TEXT,
-                view_type TEXT,
-                viewpacket_id INTEGER PRIMARY KEY
-            );
-            CREATE TABLE component_relation (
-                component_a_id INTEGER,
-                component_b_id INTEGER,
-                connection_type TEXT,
-                id INTEGER PRIMARY KEY,
-                key TEXT,
-                property_of_relation TEXT,
-                relation_text TEXT,
-                relation_description TEXT,
-                style TEXT,
-                sort_order INTEGER
-            );
-            ",
-        )
-        .unwrap();
+        db_create_in_mem_db(&conn);
 
         // Insert test data
         conn.execute(

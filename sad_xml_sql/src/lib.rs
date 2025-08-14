@@ -13,3 +13,6 @@ pub use db_update::*;
 
 pub mod db_populate_from_xml;
 pub use db_populate_from_xml::*;
+
+pub mod db_dump_to_xml;
+pub use db_dump_to_xml::*;

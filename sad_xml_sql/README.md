@@ -28,6 +28,17 @@ use rusqlite::Connection;
     populate_db(&db_conn, filename);
 ```
 
+## Created
+
+* cargo lib sad_xml_sql ?
+* cargo add simple_xml_builder
+* cargo add xmltree
+* cargo add rusqlite
+
+## Testing
+
+* cargo test --test test_xml_load_and_dump -- --nocapture
+
 ## TODO
 
 * Make name of components unique so I can use it for reference in the component selector list.

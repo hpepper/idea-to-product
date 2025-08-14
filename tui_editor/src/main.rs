@@ -45,7 +45,7 @@ fn main() -> color_eyre::Result<()> {
     let mut menu_state = MenuState::new();
     let mut work_state = WorkState::new();
 
-    let filename: String = "../sad_xml_sql/test/test_sad.xml".to_string();
+    let filename: String = "../sad_xml_sql/tests/test_sad.xml".to_string();
     let db_conn = Connection::open_in_memory().expect("Connecting to the SQLite database failed.");
 
     db_create_in_mem_db(&db_conn);
