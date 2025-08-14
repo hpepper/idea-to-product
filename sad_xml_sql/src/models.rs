@@ -27,6 +27,7 @@ pub struct ComponentRelation {
     pub property_of_relation: String,
     pub relation_text: String,
     pub relation_description: String,
+    pub sort_order: i32,
     pub style: String,
 }
 

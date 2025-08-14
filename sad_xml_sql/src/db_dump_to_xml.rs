@@ -2,7 +2,7 @@ use rusqlite::Connection;
 use simple_xml_builder::XMLElement;
 use std::fs::File;
 
-use crate::db_retrieval::{get_viewpacket_vector_by_type_and_style_sorted_by_order,get_vector_of_components_sorted_by_name};
+use crate::db_retrieval::{get_viewpacket_vector_by_type_and_style_sorted_by_order,get_vector_of_components_sorted_by_name, get_vector_of_related_components_sorted_by_key_and_order};
 
 pub fn dump_db_to_xml(db_conn: &Connection, output_file: &str) -> Result<(), std::io::Error> {
     let file = File::create(output_file)?;
@@ -14,7 +14,7 @@ pub fn dump_db_to_xml(db_conn: &Connection, output_file: &str) -> Result<(), std
     // TODO dump the top architecture
     dump_table_viewpacket_to_xml(&mut xml_root, db_conn);
     dump_table_component_to_xml(&mut xml_root, db_conn);
-    // TODO dump_table_componentrelation_to_xml(&mut xml_root, db_conn)?;
+    dump_table_componentrelation_to_xml(&mut xml_root, db_conn);
     // TODO dump_table_behavior_to_xml(&mut xml_root, db_conn)?;
     // TODO dump_table_requirement_to_xml(&mut xml_root, db_conn)?;
     xml_root.write(file)?;
@@ -37,6 +37,51 @@ fn dump_table_component_to_xml(xml_root: &mut XMLElement, db_conn: &Connection) 
         summary_element.add_text(component.summary.clone());
         component_element.add_child(summary_element);
         xml_root.add_child(component_element);
+    }
+    Ok(())
+}
+
+fn dump_table_componentrelation_to_xml(xml_root: &mut XMLElement, db_conn: &Connection) -> Result<(), rusqlite::Error> {
+    let component_relation_vector = get_vector_of_related_components_sorted_by_key_and_order(db_conn)?;
+
+    for component_relation in component_relation_vector {
+        let mut component_relation_element = XMLElement::new("ComponentRelation");
+        component_relation_element.add_attribute("Id", component_relation.id.to_string());
+        component_relation_element.add_attribute("SortOrder", &component_relation.sort_order.to_string());
+
+        let mut component_a_id = XMLElement::new("ComponentAId");
+        component_a_id.add_text(component_relation.component_a_id.to_string());
+        component_relation_element.add_child(component_a_id);
+
+        let mut component_b_id = XMLElement::new("ComponentBId");
+        component_b_id.add_text(component_relation.component_b_id.to_string());
+        component_relation_element.add_child(component_b_id);
+
+        let mut key = XMLElement::new("Key");
+        key.add_text(component_relation.key.clone());
+        component_relation_element.add_child(key);
+
+        let mut property_of_relation = XMLElement::new("PropertyOfRelation");
+        property_of_relation.add_text(component_relation.property_of_relation.clone());
+        component_relation_element.add_child(property_of_relation);
+
+        let mut connection_type = XMLElement::new("ConnectionType");
+        connection_type.add_text(component_relation.connection_type.clone());
+        component_relation_element.add_child(connection_type);
+
+        let mut relation_text = XMLElement::new("RelationText");
+        relation_text.add_text(component_relation.relation_text.clone());
+        component_relation_element.add_child(relation_text);
+
+        let mut relation_description = XMLElement::new("RelationDescription");
+        relation_description.add_text(component_relation.relation_description.clone());
+        component_relation_element.add_child(relation_description);
+
+        let mut style = XMLElement::new("Style");
+        style.add_text(component_relation.style.clone());
+        component_relation_element.add_child(style);
+
+        xml_root.add_child(component_relation_element);
     }
     Ok(())
 }
