@@ -2,6 +2,35 @@ use crate::models::{Behavior, Component, ComponentRelation, ContextModel, ViewPa
 
 use rusqlite::{Connection, Result};
 
+
+pub fn get_component_by_id(db_conn: &Connection, component_id: i32) -> Result<Component> {
+    let mut stmt =
+        db_conn.prepare("SELECT id, name, purpose, summary FROM component WHERE id = ?1")?;
+    let component = stmt.query_row([component_id], |row| {
+        Ok(Component {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            purpose: row.get(2)?,
+            summary: row.get(3)?,
+        })
+    })?;
+    Ok(component)
+}
+
+pub fn get_component_by_name(db_conn: &Connection, name: String) -> Result<Component> {
+    let mut stmt =
+        db_conn.prepare("SELECT id, name, purpose, summary FROM component WHERE name = ?1")?;
+    let component = stmt.query_row([name], |row| {
+        Ok(Component {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            purpose: row.get(2)?,
+            summary: row.get(3)?,
+        })
+    })?;
+    Ok(component)
+}
+
 pub fn get_component_name_by_id(db_conn: &Connection, component_id: i32) -> String {
     let mut stmt = db_conn
         .prepare("SELECT name FROM component WHERE id = ?1")
@@ -39,17 +68,6 @@ pub fn get_vector_of_components_sorted_by_name(db_conn: &Connection) -> Result<V
         .unwrap();
     component_names
         .collect::<Result<Vec<Component>, _>>()
-}
-
-pub fn get_vector_of_viewpacket_titles_sorted(db_conn: &Connection) -> Result<Vec<String>> {
-    let mut stmt = db_conn
-        .prepare("SELECT title FROM view_packet ORDER BY title COLLATE NOCASE ASC")
-        .unwrap();
-    let viewpacket_titles = stmt
-        .query_map([], |row| Ok(row.get(0)?))
-        .unwrap();
-    viewpacket_titles
-        .collect::<Result<Vec<String>, _>>()
 }
 
 pub fn get_vector_of_context_model_by_key(
@@ -94,11 +112,157 @@ pub fn get_vector_of_behaviors_for_viewpacket_id(
     Ok(behavior)
 }
 
+pub fn get_vector_of_behaviors_sorted_by_key_and_order(
+    db_conn: &Connection,
+) -> Result<Vec<Behavior>> {
+    let mut stmt = db_conn.prepare(
+        "SELECT id, description, diagram_key, sort_order, view_packet_id FROM behavior  ORDER BY diagram_key, sort_order"
+    )?;
+    let behavior = stmt
+        .query_map(rusqlite::params![], |row| {
+            Ok(Behavior {
+                id: row.get(0)?,
+                description: row.get(1)?,
+                diagram_key: row.get(2)?,
+                sort_order: row.get(3)?,
+                view_packet_id: row.get(4)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(behavior)
+}
+
+pub fn get_vector_of_component_relations_by_id_and_key(
+    db_conn: &Connection,
+    component_id: i32,
+    primary_display_key: String,
+) -> Result<Vec<ComponentRelation>> {
+    let mut stmt = db_conn.prepare(
+        "SELECT component_a_id, component_b_id, connection_type, id, key, property_of_relation, relation_text, relation_description, sort_order, style FROM component_relation WHERE component_a_id = ?1 AND key = ?2 ORDER BY id"
+    )?;
+    let component_relations = stmt
+        .query_map(
+            rusqlite::params![component_id, primary_display_key],
+            |row| {
+                Ok(ComponentRelation {
+                    component_a_id: row.get(0)?,
+                    component_b_id: row.get(1)?,
+                    connection_type: row.get(2)?,
+                    id: row.get(3)?,
+                    key: row.get(4)?,
+                    property_of_relation: row.get(5)?,
+                    relation_text: row.get(6)?,
+                    relation_description: row.get(7)?,
+                    sort_order: row.get(8)?,
+                    style: row.get(9)?,
+                })
+            },
+        )?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(component_relations)
+}
+
+// get a list of related components by component id and key, both up and down.
+pub fn get_vector_of_component_relations_by_id_and_key_both_directions(
+    db_conn: &Connection,
+    component_id: i32,
+    primary_display_key: String,
+) -> Result<Vec<ComponentRelation>> {
+    let mut stmt = db_conn.prepare(
+        "SELECT component_a_id, component_b_id, connection_type, id, key, property_of_relation, relation_text, relation_description, sort_order, style FROM component_relation WHERE (component_a_id = ?1 OR component_b_id = ?1) AND key = ?2 ORDER BY id"
+    )?;
+    let component_relations = stmt
+        .query_map(
+            rusqlite::params![component_id, primary_display_key],
+            |row| {
+                Ok(ComponentRelation {
+                    component_a_id: row.get(0)?,
+                    component_b_id: row.get(1)?,
+                    connection_type: row.get(2)?,
+                    id: row.get(3)?,
+                    key: row.get(4)?,
+                    property_of_relation: row.get(5)?,
+                    relation_text: row.get(6)?,
+                    relation_description: row.get(7)?,
+                    sort_order: row.get(8)?,
+                    style: row.get(9)?,
+                })
+            },
+        )?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(component_relations)
+}
+
+/// Filter only by key, return vector sorted by sort_order.
+pub fn get_vector_of_component_relations_by_key(
+    db_conn: &Connection,
+    key: String,
+) -> Result<Vec<ComponentRelation>> {
+    // TODO probably remove 'id'
+    let mut stmt = db_conn.prepare(
+        "SELECT component_a_id, component_b_id, connection_type, id, key, property_of_relation, relation_text, relation_description, sort_order, style FROM component_relation WHERE key = ?1 ORDER BY sort_order"
+    )?;
+    let component_relations = stmt
+        .query_map(rusqlite::params![key], |row| {
+            Ok(ComponentRelation {
+                component_a_id: row.get(0)?,
+                component_b_id: row.get(1)?,
+                connection_type: row.get(2)?,
+                id: row.get(3)?,
+                key: row.get(4)?,
+                property_of_relation: row.get(5)?,
+                relation_text: row.get(6)?,
+                relation_description: row.get(7)?,
+                sort_order: row.get(8)?,
+                style: row.get(9)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(component_relations)
+}
+
+pub fn get_vector_of_component_relations_sorted_by_key_and_order(
+    db_conn: &Connection,
+) -> Result<Vec<ComponentRelation>> {
+    // TODO probably remove 'id'
+    let mut stmt = db_conn.prepare(
+        "SELECT component_a_id, component_b_id, connection_type, id, key, property_of_relation, relation_text, relation_description, sort_order, style FROM component_relation ORDER BY key,sort_order"
+    )?;
+    let component_relations = stmt
+        .query_map(rusqlite::params![], |row| {
+            Ok(ComponentRelation {
+                component_a_id: row.get(0)?,
+                component_b_id: row.get(1)?,
+                connection_type: row.get(2)?,
+                id: row.get(3)?,
+                key: row.get(4)?,
+                property_of_relation: row.get(5)?,
+                relation_text: row.get(6)?,
+                relation_description: row.get(7)?,
+                sort_order: row.get(8)?,
+                style: row.get(9)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(component_relations)
+}
+
+pub fn get_vector_of_viewpacket_titles_sorted(db_conn: &Connection) -> Result<Vec<String>> {
+    let mut stmt = db_conn
+        .prepare("SELECT title FROM view_packet ORDER BY title COLLATE NOCASE ASC")
+        .unwrap();
+    let viewpacket_titles = stmt
+        .query_map([], |row| Ok(row.get(0)?))
+        .unwrap();
+    viewpacket_titles
+        .collect::<Result<Vec<String>, _>>()
+}
+
 /**
  * if search_component_id == 0, then return all view packets for the given view_type and style
  * if search_component_id != 0, then return all view packets for the given component_id except for the given viewpacket_id
  */
-pub fn get_vector_of_viewpacket_by_component_id_except_component_id(
+ pub fn get_vector_of_viewpacket_by_component_id_except_component_id(
     db_conn: &Connection,
     search_component_id: i32,
     view_type: &str,
@@ -232,148 +396,6 @@ pub fn get_vector_of_usedby_components_by_id_and_key(
     Ok(component_relations)
 }
 
-pub fn get_vector_of_related_components_by_id_and_key(
-    db_conn: &Connection,
-    component_id: i32,
-    primary_display_key: String,
-) -> Result<Vec<ComponentRelation>> {
-    let mut stmt = db_conn.prepare(
-        "SELECT component_a_id, component_b_id, connection_type, id, key, property_of_relation, relation_text, relation_description, sort_order, style FROM component_relation WHERE component_a_id = ?1 AND key = ?2 ORDER BY id"
-    )?;
-    let component_relations = stmt
-        .query_map(
-            rusqlite::params![component_id, primary_display_key],
-            |row| {
-                Ok(ComponentRelation {
-                    component_a_id: row.get(0)?,
-                    component_b_id: row.get(1)?,
-                    connection_type: row.get(2)?,
-                    id: row.get(3)?,
-                    key: row.get(4)?,
-                    property_of_relation: row.get(5)?,
-                    relation_text: row.get(6)?,
-                    relation_description: row.get(7)?,
-                    sort_order: row.get(8)?,
-                    style: row.get(9)?,
-                })
-            },
-        )?
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(component_relations)
-}
-
-// get a list of related components by component id and key, both up and down.
-pub fn get_vector_of_related_components_by_id_and_key_both_directions(
-    db_conn: &Connection,
-    component_id: i32,
-    primary_display_key: String,
-) -> Result<Vec<ComponentRelation>> {
-    let mut stmt = db_conn.prepare(
-        "SELECT component_a_id, component_b_id, connection_type, id, key, property_of_relation, relation_text, relation_description, sort_order, style FROM component_relation WHERE (component_a_id = ?1 OR component_b_id = ?1) AND key = ?2 ORDER BY id"
-    )?;
-    let component_relations = stmt
-        .query_map(
-            rusqlite::params![component_id, primary_display_key],
-            |row| {
-                Ok(ComponentRelation {
-                    component_a_id: row.get(0)?,
-                    component_b_id: row.get(1)?,
-                    connection_type: row.get(2)?,
-                    id: row.get(3)?,
-                    key: row.get(4)?,
-                    property_of_relation: row.get(5)?,
-                    relation_text: row.get(6)?,
-                    relation_description: row.get(7)?,
-                    sort_order: row.get(8)?,
-                    style: row.get(9)?,
-                })
-            },
-        )?
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(component_relations)
-}
-
-/// Filter only by key, return vector sorted by sort_order.
-pub fn get_vector_of_related_components_by_key(
-    db_conn: &Connection,
-    key: String,
-) -> Result<Vec<ComponentRelation>> {
-    // TODO probably remove 'id'
-    let mut stmt = db_conn.prepare(
-        "SELECT component_a_id, component_b_id, connection_type, id, key, property_of_relation, relation_text, relation_description, sort_order, style FROM component_relation WHERE key = ?1 ORDER BY sort_order"
-    )?;
-    let component_relations = stmt
-        .query_map(rusqlite::params![key], |row| {
-            Ok(ComponentRelation {
-                component_a_id: row.get(0)?,
-                component_b_id: row.get(1)?,
-                connection_type: row.get(2)?,
-                id: row.get(3)?,
-                key: row.get(4)?,
-                property_of_relation: row.get(5)?,
-                relation_text: row.get(6)?,
-                relation_description: row.get(7)?,
-                sort_order: row.get(8)?,
-                style: row.get(9)?,
-            })
-        })?
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(component_relations)
-}
-
-pub fn get_vector_of_related_components_sorted_by_key_and_order(
-    db_conn: &Connection,
-) -> Result<Vec<ComponentRelation>> {
-    // TODO probably remove 'id'
-    let mut stmt = db_conn.prepare(
-        "SELECT component_a_id, component_b_id, connection_type, id, key, property_of_relation, relation_text, relation_description, sort_order, style FROM component_relation ORDER BY key,sort_order"
-    )?;
-    let component_relations = stmt
-        .query_map(rusqlite::params![], |row| {
-            Ok(ComponentRelation {
-                component_a_id: row.get(0)?,
-                component_b_id: row.get(1)?,
-                connection_type: row.get(2)?,
-                id: row.get(3)?,
-                key: row.get(4)?,
-                property_of_relation: row.get(5)?,
-                relation_text: row.get(6)?,
-                relation_description: row.get(7)?,
-                sort_order: row.get(8)?,
-                style: row.get(9)?,
-            })
-        })?
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(component_relations)
-}
-
-pub fn get_component_by_id(db_conn: &Connection, component_id: i32) -> Result<Component> {
-    let mut stmt =
-        db_conn.prepare("SELECT id, name, purpose, summary FROM component WHERE id = ?1")?;
-    let component = stmt.query_row([component_id], |row| {
-        Ok(Component {
-            id: row.get(0)?,
-            name: row.get(1)?,
-            purpose: row.get(2)?,
-            summary: row.get(3)?,
-        })
-    })?;
-    Ok(component)
-}
-
-pub fn get_component_by_name(db_conn: &Connection, name: String) -> Result<Component> {
-    let mut stmt =
-        db_conn.prepare("SELECT id, name, purpose, summary FROM component WHERE name = ?1")?;
-    let component = stmt.query_row([name], |row| {
-        Ok(Component {
-            id: row.get(0)?,
-            name: row.get(1)?,
-            purpose: row.get(2)?,
-            summary: row.get(3)?,
-        })
-    })?;
-    Ok(component)
-}
 
 /**
  * get component_relation.component_a_id where component_relation.component_b_id is component_id
@@ -511,25 +533,25 @@ mod tests {
     }
 
     #[test]
-    fn test_get_vector_of_related_components_by_id_and_key() {
+    fn test_get_vector_of_component_relations_by_id_and_key() {
         let conn = setup_test_db();
-        let result = get_vector_of_related_components_by_id_and_key(&conn, 1, "display1".to_string()).unwrap();
+        let result = get_vector_of_component_relations_by_id_and_key(&conn, 1, "display1".to_string()).unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].component_b_id, 2);
     }
 
     #[test]
-    fn test_get_vector_of_related_components_by_id_and_key_both_directions() {
+    fn test_get_vector_of_component_relations_by_id_and_key_both_directions() {
         let conn = setup_test_db();
-        let result = get_vector_of_related_components_by_id_and_key_both_directions(&conn, 2, "display1".to_string()).unwrap();
+        let result = get_vector_of_component_relations_by_id_and_key_both_directions(&conn, 2, "display1".to_string()).unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].component_a_id, 1);
     }
 
     #[test]
-    fn test_get_vector_of_related_components_by_key() {
+    fn test_get_vector_of_component_relations_by_key() {
         let conn = setup_test_db();
-        let result = get_vector_of_related_components_by_key(&conn, "display1".to_string()).unwrap();
+        let result = get_vector_of_component_relations_by_key(&conn, "display1".to_string()).unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].component_a_id, 1);
     }

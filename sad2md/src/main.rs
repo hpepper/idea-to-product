@@ -11,9 +11,9 @@ use sad_xml_sql::db_update::insert_into_context_model_ignore_duplicates;
 
 use db_retrieval::{
     get_component_by_id, get_component_name_by_id, get_vector_of_behaviors_for_viewpacket_id,
-    get_vector_of_context_model_by_key, get_vector_of_related_components_by_id_and_key,
-    get_vector_of_related_components_by_id_and_key_both_directions,
-    get_vector_of_related_components_by_key, get_vector_of_usedby_components_by_id_and_key,
+    get_vector_of_context_model_by_key, get_vector_of_component_relations_by_id_and_key,
+    get_vector_of_component_relations_by_id_and_key_both_directions,
+    get_vector_of_component_relations_by_key, get_vector_of_usedby_components_by_id_and_key,
     get_vector_of_viewpacket_by_component_id_except_component_id,
     get_vector_of_viewpacket_parents_by_component_id_and_style_and_key,
 };
@@ -476,7 +476,7 @@ fn render_child_relationship(
     primary_display_key: String,
 ) {
     if style == MODULE_VIEW_TYPE_STYLE_DECOMPOSITION || style == MODULE_VIEW_TYPE_STYLE_USES {
-        let component_relations_vector = get_vector_of_related_components_by_id_and_key(
+        let component_relations_vector = get_vector_of_component_relations_by_id_and_key(
             db_conn,
             component_id,
             primary_display_key,
@@ -701,14 +701,14 @@ fn render_graphical_primary_display(
                     MODULE_VIEW_TYPE_STYLE_USES.to_string(),
                 )
             } else {
-                get_vector_of_related_components_by_id_and_key_both_directions(
+                get_vector_of_component_relations_by_id_and_key_both_directions(
                     db_conn,
                     component_id,
                     primary_display_key.clone(),
                 )
             }
         } else {
-            get_vector_of_related_components_by_id_and_key(
+            get_vector_of_component_relations_by_id_and_key(
                 db_conn,
                 component_id,
                 primary_display_key.clone(),
@@ -829,7 +829,7 @@ fn render_graphical_layered_display(
 
     // TODO print the current layer, if this is firt layer, before looking for lated layer.
     if let Some(_top_component) = top_component {
-        let component_relations_vector = get_vector_of_related_components_by_id_and_key(
+        let component_relations_vector = get_vector_of_component_relations_by_id_and_key(
             db_conn,
             component_id,
             primary_display_key.clone(),
@@ -976,7 +976,7 @@ fn render_graphical_context_diagram(
     };
 
     if let Some(_top_component) = top_component {
-        let component_relations_vector = get_vector_of_related_components_by_id_and_key(
+        let component_relations_vector = get_vector_of_component_relations_by_id_and_key(
             db_conn,
             component_id,
             context_model_key.clone(),
@@ -1124,13 +1124,13 @@ fn render_textual_primary_display(
     if let Some(_top_component) = top_component {
         let _indent_spaces = " ".repeat(indent_level * 2);
         let component_relations_vector = if first_layer {
-            get_vector_of_related_components_by_id_and_key_both_directions(
+            get_vector_of_component_relations_by_id_and_key_both_directions(
                 db_conn,
                 component_id,
                 primary_display_key.clone(),
             )
         } else {
-            get_vector_of_related_components_by_id_and_key(
+            get_vector_of_component_relations_by_id_and_key(
                 db_conn,
                 component_id,
                 primary_display_key.clone(),
@@ -1267,7 +1267,7 @@ fn render_graphical_all_behaviors_for_viewpacket(
                 //
 
                 let component_relations_vector =
-                    get_vector_of_related_components_by_key(db_conn, behavior.diagram_key.clone());
+                    get_vector_of_component_relations_by_key(db_conn, behavior.diagram_key.clone());
 
                 match component_relations_vector {
                     Ok(component_relations_vector) => {

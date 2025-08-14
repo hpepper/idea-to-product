@@ -2,7 +2,7 @@ use rusqlite::Connection;
 use simple_xml_builder::XMLElement;
 use std::fs::File;
 
-use crate::db_retrieval::{get_viewpacket_vector_by_type_and_style_sorted_by_order,get_vector_of_components_sorted_by_name, get_vector_of_related_components_sorted_by_key_and_order};
+use crate::db_retrieval::{get_viewpacket_vector_by_type_and_style_sorted_by_order,get_vector_of_components_sorted_by_name, get_vector_of_component_relations_sorted_by_key_and_order, get_vector_of_behaviors_sorted_by_key_and_order};
 
 pub fn dump_db_to_xml(db_conn: &Connection, output_file: &str) -> Result<(), std::io::Error> {
     let file = File::create(output_file)?;
@@ -15,9 +15,35 @@ pub fn dump_db_to_xml(db_conn: &Connection, output_file: &str) -> Result<(), std
     dump_table_viewpacket_to_xml(&mut xml_root, db_conn);
     dump_table_component_to_xml(&mut xml_root, db_conn);
     dump_table_componentrelation_to_xml(&mut xml_root, db_conn);
-    // TODO dump_table_behavior_to_xml(&mut xml_root, db_conn)?;
+    dump_table_behavior_to_xml(&mut xml_root, db_conn);
     // TODO dump_table_requirement_to_xml(&mut xml_root, db_conn)?;
     xml_root.write(file)?;
+    Ok(())
+}
+
+
+fn dump_table_behavior_to_xml(xml_root: &mut XMLElement, db_conn: &Connection) -> Result<(), rusqlite::Error> {
+    let behavior_vector = get_vector_of_behaviors_sorted_by_key_and_order(db_conn)?;
+
+    for behavior in behavior_vector {
+        let mut behavior_element = XMLElement::new("Behavior");
+        behavior_element.add_attribute("Id", behavior.id.to_string());
+        behavior_element.add_attribute("SortOrder", &behavior.sort_order.to_string());
+
+        let mut view_packet_id = XMLElement::new("ViewPacketId");
+        view_packet_id.add_text(behavior.view_packet_id.to_string());
+        behavior_element.add_child(view_packet_id);
+
+        let mut description = XMLElement::new("Description");
+        description.add_text(behavior.description.clone());
+        behavior_element.add_child(description);
+
+        let mut diagram_key = XMLElement::new("DiagramKey");
+        diagram_key.add_text(behavior.diagram_key.clone());
+        behavior_element.add_child(diagram_key);
+
+        xml_root.add_child(behavior_element);
+    }
     Ok(())
 }
 
@@ -42,7 +68,7 @@ fn dump_table_component_to_xml(xml_root: &mut XMLElement, db_conn: &Connection) 
 }
 
 fn dump_table_componentrelation_to_xml(xml_root: &mut XMLElement, db_conn: &Connection) -> Result<(), rusqlite::Error> {
-    let component_relation_vector = get_vector_of_related_components_sorted_by_key_and_order(db_conn)?;
+    let component_relation_vector = get_vector_of_component_relations_sorted_by_key_and_order(db_conn)?;
 
     for component_relation in component_relation_vector {
         let mut component_relation_element = XMLElement::new("ComponentRelation");
