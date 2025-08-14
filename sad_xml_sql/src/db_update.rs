@@ -31,6 +31,7 @@ pub fn update_component_by_id(db_conn: &Connection, component: &Component) {
         )
         .expect("Failed to update component");
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;

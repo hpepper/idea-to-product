@@ -12,7 +12,7 @@ use tui_textarea::{Input, Key, TextArea};
 
 use sad_xml_sql::{
     get_component_by_name, get_vector_of_component_names_sorted,
-    get_vector_of_viewpacket_titles_sorted, get_viewpacket_by_title,
+    get_vector_of_viewpacket_titles_sorted, get_viewpacket_by_title, update_component_by_id
 };
 
 use sad_xml_sql::Component;
@@ -22,6 +22,7 @@ use super::app_state::AppState;
 pub struct WorkState {
     pub list_state: ListState,
     pub active_pane: WorkPane,
+    pub previous_active_pane: WorkPane,
     pub textarea: TextArea<'static>, // TODO delete this, I don't think we need it here
     pub tab_counts: TabCounts,
     selected_tab: TabSubjects,
@@ -43,6 +44,7 @@ impl WorkState {
         Self {
             list_state: ListState::default().with_selected(Some(0)),
             active_pane: WorkPane::Selector,
+            previous_active_pane: WorkPane::Selector,
             textarea,
             tab_counts: TabCounts::new(),
             selected_tab: TabSubjects::Components,
@@ -53,7 +55,7 @@ impl WorkState {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum WorkPane {
     Selector,
     Details,
@@ -533,7 +535,11 @@ fn get_list_of_viewpacket_names(work_state: &mut WorkState, db_conn: &Connection
     }
 }
 
-pub fn handle_work_input(work_state: &mut WorkState, event: crossterm::event::KeyEvent, db_conn: &Connection) -> bool {
+pub fn handle_work_input(
+    work_state: &mut WorkState,
+    event: crossterm::event::KeyEvent,
+    db_conn: &Connection,
+) -> bool {
     let max_elements = work_state.tab_counts.get_count(&work_state.selected_tab);
 
     // TODO if there is an active TextArea, then handle that first
@@ -584,13 +590,25 @@ pub fn handle_work_input(work_state: &mut WorkState, event: crossterm::event::Ke
                 true
             }
             (KeyModifiers::NONE, KeyCode::Esc) => {
-                work_state.active_pane = WorkPane::Details;
+                work_state.active_pane = work_state.previous_active_pane;
                 true
             }
             (KeyModifiers::NONE, KeyCode::F(7)) => {
-                // TODO Save logic here
-                work_state.active_pane = WorkPane::Details;
-                true
+                // TODO have a var that stores the previous active_pane, so we can return to that instead
+                work_state.active_pane = work_state.previous_active_pane;
+                match work_state.selected_tab {
+                    TabSubjects::Components => {
+                        let component = work_state
+                            .component_text_areas
+                            .extract_component();
+                        update_component_by_id(
+                            db_conn,
+                            &component,
+                        );
+                        true
+                    }
+                    _ => false, // No edit functionality for other tabs yet
+                }
             }
             _ => {
                 // Pass input to active text area
@@ -633,6 +651,7 @@ pub fn handle_work_input(work_state: &mut WorkState, event: crossterm::event::Ke
             // TODO F4: Implement edit functionality
             // TODO also handle if the active pane is the WorkPane::Details.
             (_, KeyCode::F(4)) => {
+                work_state.previous_active_pane = work_state.active_pane;
                 work_state.active_pane = WorkPane::Editor;
                 match work_state.selected_tab {
                     TabSubjects::Components => {
@@ -640,7 +659,8 @@ pub fn handle_work_input(work_state: &mut WorkState, event: crossterm::event::Ke
                         let selected_index = work_state.list_state.selected().unwrap_or(0);
                         if selected_index < work_state.current_selection_list.len() {
                             let selected_item = &work_state.current_selection_list[selected_index];
-                            let component = get_component_by_name(db_conn, selected_item.to_string());
+                            let component =
+                                get_component_by_name(db_conn, selected_item.to_string());
                             if let Ok(component) = component {
                                 work_state.component_text_areas.load_component(&component);
                             }
@@ -852,9 +872,9 @@ impl ComponentTextAreas {
     }
 
     // Extract component data from text areas
-    pub fn extract_component(&self, original_id: i32) -> Component {
+    pub fn extract_component(&self) -> Component {
         Component {
-            id: original_id, // Keep original ID
+            id: self.id.lines().join("").parse::<i32>().unwrap_or(0), // TODO panic if fail?
             name: self.name.lines().join("\n"),
             purpose: self.purpose.lines().join("\n"),
             summary: self.summary.lines().join("\n"),
