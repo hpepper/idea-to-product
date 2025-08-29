@@ -2,10 +2,11 @@ use rusqlite::Connection;
 
 pub fn db_create_in_mem_db(db_conn: &Connection) {
     create_table_behaviors(db_conn);
-    create_table_components(db_conn);
     create_table_componentrelations(db_conn);
-    create_table_viewpackets(db_conn);
+    create_table_components(db_conn);
     create_table_context_model(db_conn);
+    create_table_team(db_conn);
+    create_table_viewpackets(db_conn);
 }
 
 fn create_table_behaviors(db_conn: &Connection) {
@@ -32,7 +33,8 @@ fn create_table_components(db_conn: &Connection) {
             id INTEGER PRIMARY KEY,
             name TEXT NOT NULL,
             purpose TEXT,
-            summary TEXT
+            summary TEXT,
+            team_id INTEGER
         )",
             [],
         )
@@ -60,26 +62,6 @@ fn create_table_componentrelations(db_conn: &Connection) {
         .expect("Unable to create table");
 }
 
-fn create_table_viewpackets(db_conn: &Connection) {
-    // Create the tables
-    db_conn
-        .execute(
-            "CREATE TABLE view_packet (
-            component_id INTEGER NOT NULL,
-            context_model_key TEXT,
-            primary_display_key TEXT,
-            introduction TEXT,
-            sort_order INTEGER NOT NULL,
-            title TEXT,
-            view_style TEXT NOT NULL,
-            view_type TEXT NOT NULL,
-            viewpacket_id INTEGER PRIMARY KEY
-        )",
-            [],
-        )
-        .expect("Unable to create table");
-}
-
 fn create_table_context_model(db_conn: &Connection) {
     // Create the tables
     db_conn
@@ -95,4 +77,53 @@ fn create_table_context_model(db_conn: &Connection) {
             [],
         )
         .expect("Failed to create context_model table");
+}
+
+fn create_table_team(db_conn: &Connection) {
+    // Create the tables
+    db_conn
+        .execute(
+            "CREATE TABLE IF NOT EXISTS team (
+        description TEXT,
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL
+    )",
+            [],
+        )
+        .expect("Failed to create team table");
+}
+
+fn create_table_team_member(db_conn: &Connection) {
+    // Create the tables
+    db_conn
+        .execute(
+            "CREATE TABLE IF NOT EXISTS team_member (
+        name TEXT NOT NULL,
+        role TEXT,
+        team_id INTEGER
+    )",
+            [],
+        )
+        .expect("Failed to create team_member table");
+}
+
+fn create_table_viewpackets(db_conn: &Connection) {
+    // Create the tables
+    db_conn
+        .execute(
+            "CREATE TABLE view_packet (
+            component_id INTEGER NOT NULL,
+            context_model_key TEXT,
+            primary_display_key TEXT,
+            introduction TEXT,
+            sort_order INTEGER NOT NULL,
+            team_id INTEGER,
+            title TEXT,
+            view_style TEXT NOT NULL,
+            view_type TEXT NOT NULL,
+            viewpacket_id INTEGER PRIMARY KEY
+        )",
+            [],
+        )
+        .expect("Unable to create table");
 }

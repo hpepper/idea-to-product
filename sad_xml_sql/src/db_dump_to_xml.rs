@@ -2,7 +2,12 @@ use rusqlite::Connection;
 use simple_xml_builder::XMLElement;
 use std::fs::File;
 
-use crate::db_retrieval::{get_viewpacket_vector_by_type_and_style_sorted_by_order,get_vector_of_components_sorted_by_name, get_vector_of_component_relations_sorted_by_key_and_order, get_vector_of_behaviors_sorted_by_key_and_order};
+use crate::db_retrieval::{
+    get_vector_of_behaviors_sorted_by_key_and_order,
+    get_vector_of_component_relations_sorted_by_key_and_order,
+    get_vector_of_components_sorted_by_name,
+    get_viewpacket_vector_by_type_and_style_sorted_by_order,
+};
 
 pub fn dump_db_to_xml(db_conn: &Connection, output_file: &str) -> Result<(), std::io::Error> {
     let file = File::create(output_file)?;
@@ -21,8 +26,10 @@ pub fn dump_db_to_xml(db_conn: &Connection, output_file: &str) -> Result<(), std
     Ok(())
 }
 
-
-fn dump_table_behavior_to_xml(xml_root: &mut XMLElement, db_conn: &Connection) -> Result<(), rusqlite::Error> {
+fn dump_table_behavior_to_xml(
+    xml_root: &mut XMLElement,
+    db_conn: &Connection,
+) -> Result<(), rusqlite::Error> {
     let behavior_vector = get_vector_of_behaviors_sorted_by_key_and_order(db_conn)?;
 
     for behavior in behavior_vector {
@@ -47,7 +54,10 @@ fn dump_table_behavior_to_xml(xml_root: &mut XMLElement, db_conn: &Connection) -
     Ok(())
 }
 
-fn dump_table_component_to_xml(xml_root: &mut XMLElement, db_conn: &Connection) -> Result<(), rusqlite::Error> {
+fn dump_table_component_to_xml(
+    xml_root: &mut XMLElement,
+    db_conn: &Connection,
+) -> Result<(), rusqlite::Error> {
     let component_vector = get_vector_of_components_sorted_by_name(db_conn)?;
 
     for component in component_vector {
@@ -63,17 +73,28 @@ fn dump_table_component_to_xml(xml_root: &mut XMLElement, db_conn: &Connection) 
         summary_element.add_text(component.summary.clone());
         component_element.add_child(summary_element);
         xml_root.add_child(component_element);
+
+        if component.team_id > 0 {
+            let mut team_id_element = XMLElement::new("TeamId");
+            team_id_element.add_text(component.team_id.to_string());
+            xml_root.add_child(team_id_element);
+        }
     }
     Ok(())
 }
 
-fn dump_table_componentrelation_to_xml(xml_root: &mut XMLElement, db_conn: &Connection) -> Result<(), rusqlite::Error> {
-    let component_relation_vector = get_vector_of_component_relations_sorted_by_key_and_order(db_conn)?;
+fn dump_table_componentrelation_to_xml(
+    xml_root: &mut XMLElement,
+    db_conn: &Connection,
+) -> Result<(), rusqlite::Error> {
+    let component_relation_vector =
+        get_vector_of_component_relations_sorted_by_key_and_order(db_conn)?;
 
     for component_relation in component_relation_vector {
         let mut component_relation_element = XMLElement::new("ComponentRelation");
         component_relation_element.add_attribute("Id", component_relation.id.to_string());
-        component_relation_element.add_attribute("SortOrder", &component_relation.sort_order.to_string());
+        component_relation_element
+            .add_attribute("SortOrder", &component_relation.sort_order.to_string());
 
         let mut component_a_id = XMLElement::new("ComponentAId");
         component_a_id.add_text(component_relation.component_a_id.to_string());
@@ -117,67 +138,63 @@ fn dump_table_viewpacket_to_xml(
     db_conn: &Connection,
 ) -> Result<(), rusqlite::Error> {
     for module_view_style in ["Decomposition", "Uses", "UsedBy", "Generalize", "Layered"] {
-        retrieve_from_db_and_put_in_xml(
-            db_conn,
-            xml_root,
-            "Module",
-            module_view_style,
-        )?;
+        retrieve_from_db_and_put_in_xml(db_conn, xml_root, "Module", module_view_style)?;
     }
-    for cnc_view_style in ["ClientServer", "PeerToPeer", "PublishSubscribe", "PipeAndFilter", "SharedData"] {
-        retrieve_from_db_and_put_in_xml(
-            db_conn,
-            xml_root,
-            "CnC",
-            cnc_view_style,
-        )?;
+    for cnc_view_style in [
+        "ClientServer",
+        "PeerToPeer",
+        "PublishSubscribe",
+        "PipeAndFilter",
+        "SharedData",
+    ] {
+        retrieve_from_db_and_put_in_xml(db_conn, xml_root, "CnC", cnc_view_style)?;
     }
     for allocation_view_style in ["Deployment", "Install", "Assignment", "Testing"] {
-        retrieve_from_db_and_put_in_xml(
-            db_conn,
-            xml_root,
-            "Allocation",
-            allocation_view_style,
-        )?;
+        retrieve_from_db_and_put_in_xml(db_conn, xml_root, "Allocation", allocation_view_style)?;
     }
     Ok(())
 }
 
-fn retrieve_from_db_and_put_in_xml(db_conn: &Connection, xml_root: &mut XMLElement, filter_view_type: &str, filter_view_style: &str) -> Result<(), rusqlite::Error> {
-        let viewpacket_vector = get_viewpacket_vector_by_type_and_style_sorted_by_order(
-            db_conn,
-            filter_view_type,
-            filter_view_style,
-        )?;
-        for viewpacket in viewpacket_vector {
-            let mut viewpacket_element = XMLElement::new("ViewPacket");
-            viewpacket_element.add_attribute("Id", viewpacket.viewpacket_id.to_string());
-            viewpacket_element.add_attribute("ViewType", &viewpacket.view_type);
-            viewpacket_element.add_attribute("ViewStyle", &viewpacket.view_style);
-            viewpacket_element.add_attribute("SortOrder", &viewpacket.sort_order.to_string());
+fn retrieve_from_db_and_put_in_xml(
+    db_conn: &Connection,
+    xml_root: &mut XMLElement,
+    filter_view_type: &str,
+    filter_view_style: &str,
+) -> Result<(), rusqlite::Error> {
+    let viewpacket_vector = get_viewpacket_vector_by_type_and_style_sorted_by_order(
+        db_conn,
+        filter_view_type,
+        filter_view_style,
+    )?;
+    for viewpacket in viewpacket_vector {
+        let mut viewpacket_element = XMLElement::new("ViewPacket");
+        viewpacket_element.add_attribute("Id", viewpacket.viewpacket_id.to_string());
+        viewpacket_element.add_attribute("ViewType", &viewpacket.view_type);
+        viewpacket_element.add_attribute("ViewStyle", &viewpacket.view_style);
+        viewpacket_element.add_attribute("SortOrder", &viewpacket.sort_order.to_string());
 
-            let mut title = XMLElement::new("Title");
-            title.add_text(viewpacket.title.clone());
-            viewpacket_element.add_child(title);
+        let mut title = XMLElement::new("Title");
+        title.add_text(viewpacket.title.clone());
+        viewpacket_element.add_child(title);
 
-            let mut introduction = XMLElement::new("Introduction");
-            introduction.add_text(viewpacket.introduction.clone());
-            viewpacket_element.add_child(introduction);
+        let mut introduction = XMLElement::new("Introduction");
+        introduction.add_text(viewpacket.introduction.clone());
+        viewpacket_element.add_child(introduction);
 
-            let mut component_id = XMLElement::new("ComponentId");
-            component_id.add_text(viewpacket.component_id.to_string());
-            viewpacket_element.add_child(component_id);
+        let mut component_id = XMLElement::new("ComponentId");
+        component_id.add_text(viewpacket.component_id.to_string());
+        viewpacket_element.add_child(component_id);
 
-            let mut primary_display_key = XMLElement::new("PrimaryDisplayKey");
-            primary_display_key.add_text(viewpacket.primary_display_key.clone());
-            viewpacket_element.add_child(primary_display_key);
+        let mut primary_display_key = XMLElement::new("PrimaryDisplayKey");
+        primary_display_key.add_text(viewpacket.primary_display_key.clone());
+        viewpacket_element.add_child(primary_display_key);
 
-            let mut context_model_key = XMLElement::new("ContextModelKey");
-            context_model_key.add_text(viewpacket.context_model_key.clone());
-            viewpacket_element.add_child(context_model_key);
+        let mut context_model_key = XMLElement::new("ContextModelKey");
+        context_model_key.add_text(viewpacket.context_model_key.clone());
+        viewpacket_element.add_child(context_model_key);
 
-            xml_root.add_child(viewpacket_element);
-        }
+        xml_root.add_child(viewpacket_element);
+    }
     Ok(())
 }
 

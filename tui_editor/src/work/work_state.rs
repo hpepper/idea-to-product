@@ -1,5 +1,6 @@
 use ratatui::{style::{Color, Style}, widgets::ListState};
 use crate::work::work_component_render::ComponentTextAreas;
+use crate::work::work_viewpacket_render::ViewPacketEditorFieldData;
 use tui_textarea::{Input, Key, TextArea};
 
 pub struct WorkState {
@@ -13,7 +14,7 @@ pub struct WorkState {
     pub number_of_cloned_objects: usize,
     // Text area collections for each tab type
     pub component_text_areas: ComponentTextAreas,
-    // pub viewpacket_text_areas: ViewPacketTextAreas, // Future
+    pub viewpacket_editor_fields: ViewPacketEditorFieldData,
     // pub diagram_text_areas: DiagramTextAreas,       // Future
 }
 
@@ -34,6 +35,7 @@ impl WorkState {
             current_selection_list: vec![],
             number_of_cloned_objects: 0,
             component_text_areas: ComponentTextAreas::new(),
+            viewpacket_editor_fields: ViewPacketEditorFieldData::new(),
         }
     }
 }

@@ -5,6 +5,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
+
 use rusqlite::Connection;
 use tui_textarea::{TextArea};
 
@@ -228,12 +229,7 @@ impl ComponentTextAreas {
     }
 
     pub fn get_active_textarea(&mut self) -> &mut TextArea<'static> {
-        match self.active_field {
-            ComponentField::Id => &mut self.id,
-            ComponentField::Name => &mut self.name,
-            ComponentField::Purpose => &mut self.purpose,
-            ComponentField::Summary => &mut self.summary,
-        }
+        self.get_textarea(self.active_field)
     }
 
     pub fn get_textarea(&mut self, field: ComponentField) -> &mut TextArea<'static> {

@@ -87,6 +87,15 @@
     <ContextModelKey>ContextDiagram002</ContextModelKey>
   </ViewPacket>
 
+  <ViewPacket Id="3301" ViewType="Allocation" ViewStyle="Assignment" SortOrder="1">
+    <Title>Frontender team</Title>
+    <Introduction></Introduction>
+    <ComponentId></ComponentId>
+    <PrimaryDisplayKey></PrimaryDisplayKey>
+    <ContextModelKey></ContextModelKey>
+    <TeamId>1</TeamId>
+  </ViewPacket>
+
   <!-- TODO how are the requiremnts linked to the componnent?
        a: Componnents list the requirements they implement.
        b: Requirements list the components that implement them.
@@ -120,6 +129,7 @@
   <Component Id="2" Name="Game client">
     <Purpose></Purpose>
     <Summary>Application running at the player end.</Summary>
+    <TeamId>1</TeamId>
   </Component>
   <Component Id="3" Name="Game server">
     <Purpose></Purpose>
@@ -489,4 +499,10 @@
     <ReqStatus></ReqStatus>
     <Description></Description>
   </Requirement>
+
+  <Team Id="1" Name="Frontender team">
+    <Description>Responsible for the client side development.</Description>
+    <Member Role="Lead">Alice</Member>
+    <Member Role="Developer">Bob</Member>
+  </Team>
 </SoftwareArchitectureDocumentation>

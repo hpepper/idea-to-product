@@ -14,7 +14,8 @@
   Component+,
   ComponentRelation*,
   Behavior*,
-  Requirement*
+  Requirement*,
+  Team*
 )>
 <!ATTLIST SoftwareArchitectureDocumentation Version CDATA #REQUIRED>
 
@@ -37,7 +38,8 @@
   DiagramKey*,
   ParentViewPacketId*,
   ChildViewPacketId*,
-  SiblingViewPacketId*
+  SiblingViewPacketId*,
+  TeamId?
 )>
 <!ATTLIST ViewPacket Id CDATA #REQUIRED>
 <!ATTLIST ViewPacket ViewType  CDATA #REQUIRED>
@@ -54,6 +56,7 @@
 <!ELEMENT  ChildViewPacketId (#PCDATA)>
 <!ELEMENT  PrimaryDisplayKey (#PCDATA)>
 <!ELEMENT  SiblingViewPacketId (#PCDATA)>
+<!ELEMENT  TeamId (#PCDATA)>
 
 <!ELEMENT Behavior (
   ViewPacketId,
@@ -89,7 +92,8 @@
   SourceRepository*,
   Summary,
   TestInformation?,
-  VisibilityOfInterfaces?
+  VisibilityOfInterfaces?,
+  TeamId?
 )>
 <!ATTLIST Component Id CDATA #REQUIRED>
 <!ATTLIST Component Name CDATA #REQUIRED>
@@ -115,6 +119,7 @@
 <!ELEMENT  Security (#PCDATA)>
 <!ELEMENT  SchedulerPriority (#PCDATA)>
 <!ELEMENT  ArchitectureDecisionId (#PCDATA)>
+<!ELEMENT  TeamId (#PCDATA)>
 
 <!ELEMENT ComponentRelation (
   ComponentAId,
@@ -235,3 +240,13 @@
   * Registration, User
   -->
 <!ELEMENT ReqStatus  (#PCDATA)>
+
+<!ELEMENT Team  (
+  Description?,
+  Member*
+)>
+<!ATTLIST Team Id CDATA #REQUIRED>
+<!ATTLIST Team Name CDATA #REQUIRED>
+
+<!ELEMENT Member  (#PCDATA)>
+<!ATTLIST Member Role CDATA #REQUIRED>

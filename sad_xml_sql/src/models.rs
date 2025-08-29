@@ -14,6 +14,7 @@ pub struct Component {
     pub name: String,
     pub summary: String,
     pub purpose: String,
+    pub team_id: i32,
 }
 
 // TODO Add Id from attribute
@@ -46,8 +47,23 @@ pub struct ViewPacket {
     pub primary_display_key: String,
     pub introduction: String,
     pub sort_order: i32,
+    pub team_id: i32,
     pub title: String,
     pub view_style: String,
     pub view_type: String,
     pub viewpacket_id: i32,
+}
+
+#[derive(Debug)]
+pub struct Team {
+    pub id: i32,
+    pub name: String,
+    pub description: String,
+}
+
+#[derive(Debug)]
+pub struct TeamMember {
+    pub team_id: i32,
+    pub member_name: String,
+    pub role: String,
 }

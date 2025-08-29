@@ -4,17 +4,18 @@
 //! `cargo run test/test_sad.xml && cat sad.md`
 
 use sad_xml_sql::db_create_in_mem_db;
-use sad_xml_sql::db_retrieval;
-use sad_xml_sql::models;
 use sad_xml_sql::db_populate_from_xml;
+use sad_xml_sql::db_retrieval;
 use sad_xml_sql::db_update::insert_into_context_model_ignore_duplicates;
+use sad_xml_sql::models;
 
 use db_retrieval::{
-    get_component_by_id, get_component_name_by_id, get_vector_of_behaviors_for_viewpacket_id,
-    get_vector_of_context_model_by_key, get_vector_of_component_relations_by_id_and_key,
+    get_component_by_id, get_component_name_by_id, get_components_vector_by_team_id_sorted_by_name,
+    get_vector_of_behaviors_for_viewpacket_id, get_vector_of_component_relations_by_id_and_key,
     get_vector_of_component_relations_by_id_and_key_both_directions,
-    get_vector_of_component_relations_by_key, get_vector_of_usedby_components_by_id_and_key,
-    get_vector_of_viewpacket_by_component_id_except_component_id,
+    get_vector_of_component_relations_by_key, get_vector_of_context_model_by_key,
+    get_vector_of_usedby_components_by_id_and_key,
+    get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id,
     get_vector_of_viewpacket_parents_by_component_id_and_style_and_key,
 };
 use models::{Behavior, Component, ComponentRelation, ViewPacket};
@@ -210,7 +211,7 @@ fn render_partone(
         if let Some(styles) = styles_map.get(view_type) {
             for style in styles {
                 let viewpacket_vector =
-                    get_vector_of_viewpacket_by_component_id_except_component_id(
+                    get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id(
                         db_conn, 0, view_type, style, 0,
                     );
 
@@ -242,7 +243,7 @@ fn render_partone(
                         }
                     }
                     Err(err) => {
-                        eprintln!("Error: {}", err);
+                        eprintln!("Error at {}:{}: {}", file!(), line!(), err);
                     }
                 } // end of match
             }
@@ -257,7 +258,7 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
     // TODO maybe call this in the parent function so it only gets called once.
     let type_and_style_to_section_number = create_hardcoded_map();
 
-    let viewpacket_vector = get_vector_of_viewpacket_by_component_id_except_component_id(
+    let viewpacket_vector = get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id(
         db_conn, 0, view_type, style, 0,
     );
 
@@ -271,14 +272,14 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
                     viewpacket.sort_order
                 );
 
-                let _top_component: Option<Component> =
-                    match get_component_by_id(db_conn, viewpacket.component_id) {
-                        Ok(top_component) => Some(top_component),
-                        Err(e) => {
-                            eprintln!("Error retrieving component: {}", e);
-                            None
-                        }
-                    };
+                // let _top_component: Option<Component> =
+                //     match get_component_by_id(db_conn, viewpacket.component_id) {
+                //         Ok(top_component) => Some(top_component),
+                //         Err(err) => {
+                //             eprintln!("Error retrieving component: at {}:{}: component_id={}: {}", file!(), line!(), viewpacket.component_id, err);
+                //             None
+                //         }
+                //     };
                 // TODO have a function that generates this header, so I can easily use the function to generate the links
                 markdown_file
                     .write(
@@ -306,44 +307,31 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
                     section_number.clone(),
                 );
 
-                let top_component: Option<Component> =
-                    match get_component_by_id(db_conn, viewpacket.component_id) {
-                        // TODO can the 'if let Some' code below be put into a code block here?
-                        Ok(top_component) => Some(top_component),
-                        Err(e) => {
-                            eprintln!("Error retrieving component: {}", e);
-                            None
-                        }
-                    };
-                if let Some(_top_component) = top_component {
-                    if !viewpacket.context_model_key.is_empty() {
-                        markdown_file
-                            .write(
-                                &format!("\n#### {section_number}: Context diagram\n\n").as_bytes(),
-                            )
-                            .expect("Unable to write to file");
+                if !viewpacket.context_model_key.is_empty() {
+                    markdown_file
+                        .write(&format!("\n#### {section_number}: Context diagram\n\n").as_bytes())
+                        .expect("Unable to write to file");
 
-                        // generate the mermaid diagram for context diagram
-                        mermaid_leadin(markdown_file, "graph TD;");
-                        // How do I populate a db_con context_model table with key, component, connection type, and description?
+                    // generate the mermaid diagram for context diagram
+                    mermaid_leadin(markdown_file, "graph TD;");
+                    // How do I populate a db_con context_model table with key, component, connection type, and description?
 
-                        render_graphical_context_diagram(
-                            markdown_file,
-                            db_conn,
-                            view_type,
-                            style,
-                            viewpacket.component_id,
-                            viewpacket.context_model_key.clone(),
-                            true,
-                        );
-                        mermaid_leadout(markdown_file);
+                    render_graphical_context_diagram(
+                        markdown_file,
+                        db_conn,
+                        view_type,
+                        style,
+                        viewpacket.component_id,
+                        viewpacket.context_model_key.clone(),
+                        true,
+                    );
+                    mermaid_leadout(markdown_file);
 
-                        render_context_table(
-                            markdown_file,
-                            db_conn,
-                            viewpacket.context_model_key.clone(),
-                        );
-                    }
+                    render_context_table(
+                        markdown_file,
+                        db_conn,
+                        viewpacket.context_model_key.clone(),
+                    );
                 }
 
                 /*
@@ -425,7 +413,7 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
             }
         }
         Err(err) => {
-            eprintln!("Error: {}", err);
+            eprintln!("Error at {}:{}: {}", file!(), line!(), err);
         }
     }
 }
@@ -525,7 +513,7 @@ fn render_viewpacket_relationship(
 ) {
     let _type_and_style_to_section_number = create_hardcoded_map();
 
-    let viewpacket_vector = get_vector_of_viewpacket_by_component_id_except_component_id(
+    let viewpacket_vector = get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id(
         db_conn,
         component_id,
         "",
@@ -549,7 +537,7 @@ fn render_viewpacket_relationship(
             }
         }
         Err(err) => {
-            eprintln!("Error: {}", err);
+            eprintln!("Error at {}:{}: {}", file!(), line!(), err);
         }
     }
 }
@@ -566,38 +554,32 @@ fn render_viewpacket_section_primary_display(
         .write(&format!("#### {section_number}: Primary presentation\n\n").as_bytes())
         .expect("Unable to write to file");
 
-    // TODO find out what the leadin need to be for layers
-    let top_component: Option<Component> =
-        match get_component_by_id(db_conn, viewpacket.component_id) {
-            // TODO can the 'if let Some' code below be put into a code block here?
-            Ok(top_component) => Some(top_component),
-            Err(e) => {
-                eprintln!("Error retrieving component: {}", e);
-                None
-            }
-        };
+    // TODO put this in a subsection render_viewpacket_section_primary_display_layered()
     if view_type == MODULE_VIEW_TYPE && style == MODULE_VIEW_TYPE_STYLE_LAYERED {
         // generate a layered mermaid diagram
         mermaid_leadin(markdown_file, "block-beta\n    columns 1");
-        if let Some(_top_component) = top_component {
-            render_graphical_layered_display(
-                markdown_file,
-                db_conn,
-                view_type,
-                style,
-                viewpacket.component_id,
-                viewpacket.primary_display_key.clone(),
-                true,
-            );
-        }
+        render_graphical_layered_display(
+            markdown_file,
+            db_conn,
+            view_type,
+            style,
+            viewpacket.component_id,
+            viewpacket.primary_display_key.clone(),
+            true,
+        );
         mermaid_leadout(markdown_file);
 
         let top_component: Option<Component> =
             match get_component_by_id(db_conn, viewpacket.component_id) {
                 // TODO can the 'if let Some' code below be put into a code block here?
                 Ok(top_component) => Some(top_component),
-                Err(e) => {
-                    eprintln!("Error retrieving component: {}", e);
+                Err(err) => {
+                    eprintln!(
+                        "Error retrieving component: at {}:{}: {}",
+                        file!(),
+                        line!(),
+                        err
+                    );
                     None
                 }
             };
@@ -624,27 +606,60 @@ fn render_viewpacket_section_primary_display(
                 .write("\n".as_bytes())
                 .expect("Unable to write to file");
         }
+    } else if view_type == ALLOCATION_VIEW_TYPE && style == ALLOCATION_VIEW_TYPE_STYLE_ASSIGNMENT {
+        // TODO Get list of components with the team_id
+        markdown_file
+            .write("| Component Name | Summary |\n".as_bytes())
+            .expect("Unable to write to file");
+        markdown_file
+            .write("|----------------|---------|\n".as_bytes())
+            .expect("Unable to write to file");
+        let team_id = viewpacket.team_id;
+        let component_list = match get_components_vector_by_team_id_sorted_by_name(db_conn, team_id)
+        {
+            Ok(components) => components,
+            Err(err) => {
+                eprintln!(
+                    "Error retrieving components: at {}:{}: {}",
+                    file!(),
+                    line!(),
+                    err
+                );
+                Vec::new()
+            }
+        };
+        for component in component_list {
+            markdown_file
+                .write(&format!("| {} | {} |\n", component.name, component.summary).as_bytes())
+                .expect("Unable to write to file");
+        }
+        markdown_file
+            .write("\n".as_bytes())
+            .expect("Unable to write to file");
     } else {
         // generate the primary presentation mermaid diagram
         mermaid_leadin(markdown_file, "graph LR;");
-        if let Some(_top_component) = top_component {
-            render_graphical_primary_display(
-                markdown_file,
-                db_conn,
-                view_type,
-                style,
-                viewpacket.component_id,
-                viewpacket.primary_display_key.clone(),
-                true,
-            );
-        }
+        render_graphical_primary_display(
+            markdown_file,
+            db_conn,
+            view_type,
+            style,
+            viewpacket.component_id,
+            viewpacket.primary_display_key.clone(),
+            true,
+        );
         mermaid_leadout(markdown_file);
         let top_component: Option<Component> =
             match get_component_by_id(db_conn, viewpacket.component_id) {
                 // TODO can the 'if let Some' code below be put into a code block here?
                 Ok(top_component) => Some(top_component),
-                Err(e) => {
-                    eprintln!("Error retrieving component: {}", e);
+                Err(err) => {
+                    eprintln!(
+                        "Error retrieving component: at {}:{}: {}",
+                        file!(),
+                        line!(),
+                        err
+                    );
                     None
                 }
             };
@@ -686,8 +701,13 @@ fn render_graphical_primary_display(
     // TODO do I need this?
     let top_component: Option<Component> = match get_component_by_id(db_conn, component_id) {
         Ok(top_component) => Some(top_component),
-        Err(e) => {
-            eprintln!("Error retrieving component: {}", e);
+        Err(err) => {
+            eprintln!(
+                "Error retrieving component: at {}:{}: {}",
+                file!(),
+                line!(),
+                err
+            );
             None
         }
     };
@@ -821,8 +841,13 @@ fn render_graphical_layered_display(
     // TODO do I need this?
     let top_component: Option<Component> = match get_component_by_id(db_conn, component_id) {
         Ok(top_component) => Some(top_component),
-        Err(e) => {
-            eprintln!("Error retrieving component: {}", e);
+        Err(err) => {
+            eprintln!(
+                "Error retrieving component: at {}:{}: {}",
+                file!(),
+                line!(),
+                err
+            );
             None
         }
     };
@@ -912,36 +937,31 @@ fn render_viewpacket_section_purpose(
     viewpacket: &ViewPacket,
     section_number: String,
 ) {
-    // TODO find out what the leadin need to be for layers
-    let top_component: Option<Component> =
+    let purpose = if viewpacket.view_style == ALLOCATION_VIEW_TYPE_STYLE_ASSIGNMENT {
+        // The purpose is not relevant for the allocation assignment view.
+        "".to_string()
+    } else {
         match get_component_by_id(db_conn, viewpacket.component_id) {
             // TODO can the 'if let Some' code below be put into a code block here?
-            Ok(top_component) => Some(top_component),
-            Err(e) => {
-                eprintln!("Error retrieving component: {}", e);
-                None
-            }
-        };
-    if let Some(_top_component) = top_component {
-        let top_component: Option<Component> =
-            match get_component_by_id(db_conn, viewpacket.component_id) {
-                // TODO can the 'if let Some' code below be put into a code block here?
-                Ok(top_component) => Some(top_component),
-                Err(e) => {
-                    eprintln!("Error retrieving component: {}", e);
-                    None
-                }
-            };
-        if let Some(top_component) = top_component {
-            if !top_component.purpose.is_empty() {
-                markdown_file
-                    .write(&format!("#### {}: Purpose\n\n", section_number).as_bytes())
-                    .expect("Unable to write to file");
-                markdown_file
-                    .write(&format!("{}\n\n", top_component.purpose).as_bytes())
-                    .expect("Unable to write to file");
+            Ok(component) => component.purpose,
+            Err(err) => {
+                eprintln!(
+                    "Error retrieving component: at {}:{}: {}",
+                    file!(),
+                    line!(),
+                    err
+                );
+                "".to_string()
             }
         }
+    };
+    if !purpose.is_empty() {
+        markdown_file
+            .write(&format!("#### {}: Purpose\n\n", section_number).as_bytes())
+            .expect("Unable to write to file");
+        markdown_file
+            .write(&format!("{}\n\n", purpose).as_bytes())
+            .expect("Unable to write to file");
     }
 }
 
@@ -969,8 +989,13 @@ fn render_graphical_context_diagram(
             };
             Some(top_component)
         }
-        Err(e) => {
-            eprintln!("Error retrieving component: {}", e);
+        Err(err) => {
+            eprintln!(
+                "Error retrieving component: at {}:{}: {}",
+                file!(),
+                line!(),
+                err
+            );
             None
         }
     };
@@ -1092,7 +1117,7 @@ fn render_context_table(markdown_file: &mut File, db_conn: &Connection, context_
                 .expect("Unable to write to file");
         }
         Err(err) => {
-            eprintln!("Error: {}", err);
+            eprintln!("Error at {}:{}: {}", file!(), line!(), err);
         }
     }
 }
@@ -1115,8 +1140,13 @@ fn render_textual_primary_display(
     // TODO do I need this?
     let top_component: Option<Component> = match get_component_by_id(db_conn, component_id) {
         Ok(top_component) => Some(top_component),
-        Err(e) => {
-            eprintln!("Error retrieving component: {}", e);
+        Err(err) => {
+            eprintln!(
+                "Error retrieving component: at {}:{}: {}",
+                file!(),
+                line!(),
+                err
+            );
             None
         }
     };

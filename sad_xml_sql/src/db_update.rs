@@ -100,7 +100,7 @@ mod tests {
     fn test_update_component_by_id_updates_row() {
         let conn = setup_db();
         conn.execute(
-            "INSERT INTO component (id, name, summary, purpose) VALUES (1, 'OldName', 'OldSummary', 'OldPurpose')",
+            "INSERT INTO component (id, name, summary, purpose, team_id) VALUES (1, 'OldName', 'OldSummary', 'OldPurpose', 0)",
             (),
         ).unwrap();
         let component = Component {
@@ -108,16 +108,18 @@ mod tests {
             name: "NewName".to_string(),
             summary: "NewSummary".to_string(),
             purpose: "NewPurpose".to_string(),
+            team_id: 0,
         };
         update_component_by_id(&conn, &component);
-        let (name, summary, purpose): (String, String, String) = conn.query_row(
-            "SELECT name, summary, purpose FROM component WHERE id = 1",
+        let (name, summary, purpose, team_id): (String, String, String, i32) = conn.query_row(
+            "SELECT name, summary, purpose, team_id FROM component WHERE id = 1",
             (),
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
         ).unwrap();
         assert_eq!(name, "NewName");
         assert_eq!(summary, "NewSummary");
         assert_eq!(purpose, "NewPurpose");
+        assert_eq!(team_id, 0);
     }
 
     #[test]
@@ -128,6 +130,7 @@ mod tests {
             name: "Name".to_string(),
             summary: "Summary".to_string(),
             purpose: "Purpose".to_string(),
+            team_id: 0,
         };
         update_component_by_id(&conn, &component);
         let count: i64 = conn.query_row(

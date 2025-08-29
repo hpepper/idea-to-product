@@ -1,7 +1,7 @@
+use rusqlite::Connection;
 use std::fs::File;
 use std::io::BufReader;
 use xmltree::{Element, XMLNode};
-use rusqlite::Connection;
 
 // Requires create_database() to have been called.
 pub fn db_populate_from_xml(db_conn: &Connection, filename: &String) {
@@ -12,6 +12,7 @@ pub fn db_populate_from_xml(db_conn: &Connection, filename: &String) {
     populate_db_with_components(db_conn, &xml_root);
     populate_db_with_componentrelations(db_conn, &xml_root);
     populate_db_with_behaviors(db_conn, &xml_root);
+    populate_db_with_teams(db_conn, &xml_root);
 }
 
 fn load_xml_file(filename: &str) -> Element {
@@ -119,16 +120,26 @@ fn populate_db_with_components(db_conn: &Connection, xml_root: &Element) {
                         })
                         .get_text()
                         .unwrap_or_else(|| "".to_string().into());
+                    let team_id: i32 = match component.get_child("TeamId") {
+                        Some(team_id_elem) => {
+                            let team_id_text = team_id_elem.get_text().unwrap_or_else(|| {
+                                panic!("<TeamId> element has no data in Component id= {}", id)
+                            });
+                            team_id_text.parse().unwrap()
+                        }
+                        None => 0,
+                    };
 
                     db_conn
                         .execute(
-                            "INSERT INTO component (id, name, purpose, summary)
-                            VALUES (?1, ?2, ?3, ?4)",
+                            "INSERT INTO component (id, name, purpose, summary, team_id)
+                            VALUES (?1, ?2, ?3, ?4, ?5)",
                             (
                                 id,
                                 &name.to_string(),
                                 &purpose.to_string(),
                                 &summary.to_string(),
+                                team_id,
                             ),
                         )
                         .expect("Unable to insert data");
@@ -224,6 +235,41 @@ fn populate_db_with_componentrelations(db_conn: &Connection, xml_root: &Element)
     }
 }
 
+fn populate_db_with_teams(db_conn: &Connection, xml_root: &Element) {
+    // Insert the data
+    for child in &xml_root.children {
+        match child {
+            XMLNode::Element(team) => {
+                if team.name == "Team" {
+                    let id: i32 = team
+                        .attributes
+                        .get("Id")
+                        .expect("Missing 'Id' attribute for team")
+                        .parse()
+                        .unwrap();
+                    let name = team.attributes.get("Name").unwrap();
+                    let description = team
+                        .get_child("Description")
+                        .unwrap_or_else(|| {
+                            panic!("<Description> element missing in team id= {}", id)
+                        })
+                        .get_text()
+                        .unwrap_or_else(|| "".to_string().into());
+                    // TODO also read the members and their roles and put in the member table.
+                    db_conn
+                        .execute(
+                            "INSERT INTO team (id, name, description)
+                            VALUES (?1, ?2, ?3)",
+                            (id, &name.to_string(), &description.to_string()),
+                        )
+                        .expect("Unable to insert data into team");
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
 fn populate_db_with_viewpackets(db_conn: &Connection, xml_root: &Element) {
     // Insert the data
     for child in &xml_root.children {
@@ -285,24 +331,50 @@ fn populate_db_with_viewpackets(db_conn: &Connection, xml_root: &Element) {
                         })
                         .get_text()
                         .unwrap_or_else(|| "".to_string().into());
-                    let component_id: i32 = viewpacket
-                        .get_child("ComponentId")
-                        .unwrap()
-                        .get_text()
-                        .unwrap()
-                        .parse()
-                        .unwrap();
+                    let component_id: i32 = match viewpacket.get_child("ComponentId") {
+                        Some(component_id_elem) => {
+                            let component_id_text =
+                                component_id_elem.get_text().unwrap_or("0".into());
+                            component_id_text.parse().unwrap()
+                        }
+                        None => 0,
+                    };
+
+                    let team_id: i32 = match viewpacket.get_child("TeamId") {
+                        Some(team_id_elem) => {
+                            let team_id_text = team_id_elem.get_text().unwrap_or("0".into());
+                            team_id_text.parse().unwrap()
+                        }
+                        None => 0,
+                    };
+
+                    if view_style == "Assignment" {
+                        if team_id == 0 {
+                            eprintln!(
+                                "!!! Warning: ViewPacket id= {} has viewStyle 'Assignment' but no TeamId assigned.",
+                                viewpacket_id
+                            );
+                        }
+                    } else {
+                        if component_id == 0 {
+                            eprintln!(
+                                "!!! Warning: ViewPacket id= {} has no ComponentId assigned.",
+                                viewpacket_id
+                            );
+                        }
+                    }
 
                     db_conn
                         .execute(
-                            "INSERT INTO view_packet (component_id, context_model_key, primary_display_key, introduction, sort_order, title, view_style, view_type, viewpacket_id)
-                            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                            "INSERT INTO view_packet (component_id, context_model_key, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id)
+                            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
                             (
                                 component_id,
                                 &context_model_key.to_string(),
                                 &primary_display_key.to_string(),
                                 &introduction.to_string(),
                                 sort_order,
+                                team_id,
                                 &title.to_string(),
                                 view_style,
                                 view_type,
