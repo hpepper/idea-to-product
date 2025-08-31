@@ -709,18 +709,22 @@ fn render_viewpacket_section_primary_display(
             .write("|----------------|---------|\n".as_bytes())
             .expect("Unable to write to file");
         let team_id = viewpacket.team_id;
-        let component_list = match get_components_vector_by_team_id_sorted_by_name(db_conn, team_id)
-        {
-            Ok(components) => components,
-            Err(err) => {
-                eprintln!(
-                    "Error retrieving components: at {}:{}: {}",
-                    file!(),
-                    line!(),
-                    err
-                );
-                Vec::new()
+        // Only start looking for a component list if the team_id is not zero.
+        let component_list = if team_id > 0 {
+            match get_components_vector_by_team_id_sorted_by_name(db_conn, team_id) {
+                Ok(components) => components,
+                Err(err) => {
+                    eprintln!(
+                        "Error retrieving components: at {}:{}: {}",
+                        file!(),
+                        line!(),
+                        err
+                    );
+                    Vec::new()
+                }
             }
+        } else {
+            Vec::new()
         };
         for component in component_list {
             markdown_file

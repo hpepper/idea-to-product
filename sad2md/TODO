@@ -1,10 +1,13 @@
 # TODO
 
+* render the related views for Assignment style
+* have a cli parm to enable being able to include colapse option for all sections in the md file.
+* add support for deployment diagrams.
 * In mermaid diagrams the name of a node cannot start with 'o' like in 'oAuth' because then it becomes a dot as an arrow on the line. Perhaps upper case all the diagram references.
 * If a relationsB in componentrelation is 0, then just render the A and not the link.
 * Add install of edge connector
 * Add deployment of edge connector
-* Add prrotocol info on edge connector to CnC
+* Add protocol info on edge connector to CnC
 * For the Deployment viewpacket use 'Contains' to describe the subgraph thingy.
   * I guess I have to have some memory of the first Contains, so that I only creat the subgraph the first time I see this contains op.
 * Generate a link to the parent(prefereably automatically)

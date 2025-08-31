@@ -337,6 +337,9 @@ pub fn get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id(
 }
 
 pub fn get_viewpacket_by_team_id(db_conn: &Connection, search_team_id: i32) -> Option<ViewPacket> {
+    if search_team_id == 0 {
+        return None;
+    }
     let mut stmt = db_conn.prepare("SELECT component_id, context_model_key, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id FROM view_packet  WHERE team_id = ?1 ORDER BY sort_order").unwrap();
     let viewpacket = stmt.query_row([search_team_id], |row| {
         Ok(ViewPacket {
@@ -520,6 +523,11 @@ mod tests {
         )
         .unwrap();
         conn.execute(
+            "INSERT INTO view_packet (component_id, context_model_key, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id) VALUES (0, 'key1', 'display1', 'Intro1', 1, ?1, 'empty Team Assignment', 'Assignment', 'Type1', 12)",
+            [0],
+        )
+        .unwrap();
+        conn.execute(
             "INSERT INTO component_relation (component_a_id, component_b_id, connection_type, id, key, property_of_relation, relation_text, relation_description, style, sort_order) VALUES (1, 2, 'type', 1, 'display1', 'prop', 'rel_text', 'rel_desc', 'Style1', 1)",
             [],
         )
@@ -668,6 +676,13 @@ mod tests {
         assert!(result.is_some());
         let viewpacket = result.unwrap();
         assert_eq!(viewpacket.title, "Team Assignment");
+    }
+
+    #[test]
+    fn test_get_viewpacket_by_zero_team_id() {
+        let conn = setup_test_db();
+        let result = get_viewpacket_by_team_id(&conn, 0);
+        assert!(result.is_none());
     }
 
     #[test]

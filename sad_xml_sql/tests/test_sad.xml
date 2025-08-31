@@ -103,7 +103,14 @@
     <ContextModelKey></ContextModelKey>
     <TeamId>1</TeamId>
   </ViewPacket>
-
+  <ViewPacket Id="3302" ViewType="Allocation" ViewStyle="Assignment" SortOrder="2">
+    <Title>empty team, for error testing</Title>
+    <Introduction></Introduction>
+    <ComponentId></ComponentId>
+    <PrimaryDisplayKey></PrimaryDisplayKey>
+    <ContextModelKey></ContextModelKey>
+    <TeamId></TeamId>
+  </ViewPacket>
   <!-- TODO how are the requiremnts linked to the componnent?
        a: Componnents list the requirements they implement.
        b: Requirements list the components that implement them.
