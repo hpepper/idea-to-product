@@ -58,6 +58,14 @@
   * for e.g. MSCs
   * TODO is a Diagram lke a mini viewpacket?
 
+### Assignment
+
+#### Create links from Viewpackets to the assignment viewpacket for a given TeamID
+
+* In the non-assignment viewpacket get the ComponentID
+* get component with ID
+* Look up a viewpacket with component TeamID
+
 ## Implementation notes
 
 ### How viewpacket is being used for rendering

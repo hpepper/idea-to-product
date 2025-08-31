@@ -16,7 +16,7 @@ use db_retrieval::{
     get_vector_of_component_relations_by_key, get_vector_of_context_model_by_key,
     get_vector_of_usedby_components_by_id_and_key,
     get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id,
-    get_vector_of_viewpacket_parents_by_component_id_and_style_and_key,
+    get_vector_of_viewpacket_parents_by_component_id_and_style_and_key, get_viewpacket_by_team_id,
 };
 use models::{Behavior, Component, ComponentRelation, ViewPacket};
 
@@ -388,12 +388,20 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
                     .write(&format!("* Siblings:\n").as_bytes())
                     .expect("Unable to write to file");
 
-                render_viewpacket_relationship(
-                    markdown_file,
-                    db_conn,
-                    viewpacket.viewpacket_id,
-                    viewpacket.component_id,
-                );
+                if viewpacket.view_style == ALLOCATION_VIEW_TYPE_STYLE_ASSIGNMENT {
+                    render_viewpacket_relationship_for_team(
+                        markdown_file,
+                        db_conn,
+                        viewpacket.team_id,
+                    );
+                } else {
+                    render_viewpacket_relationship(
+                        markdown_file,
+                        db_conn,
+                        viewpacket.viewpacket_id,
+                        viewpacket.component_id,
+                    );
+                }
 
                 markdown_file
                     .write(&format!("* Children:\n").as_bytes())
@@ -460,10 +468,12 @@ fn render_child_relationship(
     db_conn: &Connection,
     viewpacket_id: i32,
     component_id: i32,
-    style: &str,
+    view_style: &str,
     primary_display_key: String,
 ) {
-    if style == MODULE_VIEW_TYPE_STYLE_DECOMPOSITION || style == MODULE_VIEW_TYPE_STYLE_USES {
+    if view_style == MODULE_VIEW_TYPE_STYLE_DECOMPOSITION
+        || view_style == MODULE_VIEW_TYPE_STYLE_USES
+    {
         let component_relations_vector = get_vector_of_component_relations_by_id_and_key(
             db_conn,
             component_id,
@@ -505,7 +515,34 @@ fn render_child_relationship(
     }
 }
 
+fn render_viewpacket_relationship_for_team(
+    markdown_file: &mut File,
+    db_conn: &Connection,
+    _team_id: i32,
+) {
+    // TODO look to create links preferably to Decomposition view packets
+    // TODO get list of components for the team_id.
+    // TODO for each component, get a decomposition view packet otherwise a Uses viepacket
+}
+
 fn render_viewpacket_relationship(
+    markdown_file: &mut File,
+    db_conn: &Connection,
+    viewpacket_id: i32,
+    component_id: i32,
+) {
+    // TODO look to create links preferably to Decomposition view packets
+    // TODO get list of components for the team_id.
+    render_viewpacket_relationship_by_component_id(
+        markdown_file,
+        db_conn,
+        viewpacket_id,
+        component_id,
+    );
+    render_viewpacket_relationship_by_team_id(markdown_file, db_conn, component_id);
+}
+
+fn render_viewpacket_relationship_by_component_id(
     markdown_file: &mut File,
     db_conn: &Connection,
     viewpacket_id: i32,
@@ -539,6 +576,63 @@ fn render_viewpacket_relationship(
         Err(err) => {
             eprintln!("Error at {}:{}: {}", file!(), line!(), err);
         }
+    }
+}
+
+fn render_viewpacket_relationship_by_team_id(
+    markdown_file: &mut File,
+    db_conn: &Connection,
+    component_id: i32,
+) {
+    // get the team_id from the component_id
+    let component_team_id: Option<i32> = match get_component_by_id(db_conn, component_id) {
+        Ok(component) => {
+            let team_id = component.team_id;
+            if team_id == 0 {
+                println!("Component ID {} has no team id", component_id);
+                None
+            } else {
+                println!("Component ID {} has team_id {}", component_id, team_id);
+                Some(team_id)
+            }
+        }
+        Err(err) => {
+            eprintln!(
+                "Error for component_id {} at {}:{}: {}",
+                component_id,
+                file!(),
+                line!(),
+                err
+            );
+            None
+        }
+    };
+
+    match component_team_id {
+        Some(team_id) => {
+            let viewpacket = get_viewpacket_by_team_id(db_conn, team_id);
+            match viewpacket {
+                Some(viewpacket) => {
+                    println!(
+                        "View packet found for team_id {}: {}",
+                        team_id, viewpacket.title
+                    );
+                    // This is how the target must look: #module-decomposition-view-packet-111-card-game
+                    let view_title = create_view_packet_title(
+                        viewpacket.view_type.as_str(),
+                        viewpacket.view_style.as_str(),
+                        viewpacket.title.as_str(),
+                        viewpacket.sort_order,
+                    );
+                    let linkable_view_title = make_markdown_linkable_text(view_title.clone());
+                    markdown_file
+                        .write(&format!("  * [{view_title}](#{linkable_view_title})\n").as_bytes())
+                        .expect("Unable to write to file");
+                }
+                None => {}
+            }
+        }
+        None => {}
     }
 }
 

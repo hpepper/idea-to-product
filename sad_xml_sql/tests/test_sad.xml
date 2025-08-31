@@ -19,7 +19,15 @@
     <ContextModelKey>ContextDiagram001</ContextModelKey>
   </ViewPacket>
 
-  <ViewPacket Id="1102" ViewType="Module" ViewStyle="Decomposition" SortOrder="2">
+  <ViewPacket Id="1110" ViewType="Module" ViewStyle="Decomposition" SortOrder="2">
+    <Title>Game Client</Title>
+    <Introduction></Introduction>
+    <ComponentId>2</ComponentId>
+    <PrimaryDisplayKey>DecompositionGameClient</PrimaryDisplayKey>
+    <ContextModelKey></ContextModelKey>
+  </ViewPacket>
+
+  <ViewPacket Id="1102" ViewType="Module" ViewStyle="Decomposition" SortOrder="3">
     <Title>Game server</Title>
     <Introduction></Introduction>
     <ComponentId>3</ComponentId>
@@ -27,7 +35,7 @@
     <ContextModelKey></ContextModelKey>
   </ViewPacket>
 
-  <ViewPacket Id="1103" ViewType="Module" ViewStyle="Decomposition" SortOrder="3">
+  <ViewPacket Id="1103" ViewType="Module" ViewStyle="Decomposition" SortOrder="4">
     <Title>Edge connector</Title>
     <Introduction></Introduction>
     <ComponentId>7</ComponentId>
@@ -35,7 +43,7 @@
     <ContextModelKey></ContextModelKey>
   </ViewPacket>
 
-  <ViewPacket Id="1106" ViewType="Module" ViewStyle="Decomposition" SortOrder="4">
+  <ViewPacket Id="1106" ViewType="Module" ViewStyle="Decomposition" SortOrder="5">
     <Title>Message broker</Title>
     <Introduction></Introduction>
     <ComponentId>19</ComponentId>

@@ -2,10 +2,9 @@ use crate::models::{Behavior, Component, ComponentRelation, ContextModel, ViewPa
 
 use rusqlite::{Connection, Result};
 
-
 pub fn get_component_by_id(db_conn: &Connection, component_id: i32) -> Result<Component> {
-    let mut stmt =
-        db_conn.prepare("SELECT id, name, purpose, summary, team_id FROM component WHERE id = ?1")?;
+    let mut stmt = db_conn
+        .prepare("SELECT id, name, purpose, summary, team_id FROM component WHERE id = ?1")?;
     let component = stmt.query_row([component_id], |row| {
         Ok(Component {
             id: row.get(0)?,
@@ -19,8 +18,8 @@ pub fn get_component_by_id(db_conn: &Connection, component_id: i32) -> Result<Co
 }
 
 pub fn get_component_by_name(db_conn: &Connection, name: String) -> Result<Component> {
-    let mut stmt =
-        db_conn.prepare("SELECT id, name, purpose, summary, team_id FROM component WHERE name = ?1")?;
+    let mut stmt = db_conn
+        .prepare("SELECT id, name, purpose, summary, team_id FROM component WHERE name = ?1")?;
     let component = stmt.query_row([name], |row| {
         Ok(Component {
             id: row.get(0)?,
@@ -47,11 +46,8 @@ pub fn get_vector_of_component_names_sorted(db_conn: &Connection) -> Result<Vec<
     let mut stmt = db_conn
         .prepare("SELECT name FROM component ORDER BY name COLLATE NOCASE ASC")
         .unwrap();
-    let component_names = stmt
-        .query_map([], |row| Ok(row.get(0)?))
-        .unwrap();
-    component_names
-        .collect::<Result<Vec<String>, _>>()
+    let component_names = stmt.query_map([], |row| Ok(row.get(0)?)).unwrap();
+    component_names.collect::<Result<Vec<String>, _>>()
 }
 
 pub fn get_vector_of_components_sorted_by_name(db_conn: &Connection) -> Result<Vec<Component>> {
@@ -69,12 +65,13 @@ pub fn get_vector_of_components_sorted_by_name(db_conn: &Connection) -> Result<V
             })
         })
         .unwrap();
-    component_names
-        .collect::<Result<Vec<Component>, _>>()
+    component_names.collect::<Result<Vec<Component>, _>>()
 }
 
-
-pub fn get_components_vector_by_team_id_sorted_by_name(db_conn: &Connection, requested_team_id: i32) -> Result<Vec<Component>> {
+pub fn get_components_vector_by_team_id_sorted_by_name(
+    db_conn: &Connection,
+    requested_team_id: i32,
+) -> Result<Vec<Component>> {
     let mut stmt = db_conn
         .prepare("SELECT id, name, purpose, summary, team_id FROM component WHERE team_id = ?1 ORDER BY name COLLATE NOCASE ASC")
         .unwrap();
@@ -89,10 +86,8 @@ pub fn get_components_vector_by_team_id_sorted_by_name(db_conn: &Connection, req
             })
         })
         .unwrap();
-    component_names
-        .collect::<Result<Vec<Component>, _>>()
+    component_names.collect::<Result<Vec<Component>, _>>()
 }
-
 
 pub fn get_vector_of_context_model_by_key(
     db_conn: &Connection,
@@ -275,18 +270,15 @@ pub fn get_vector_of_viewpacket_titles_sorted(db_conn: &Connection) -> Result<Ve
     let mut stmt = db_conn
         .prepare("SELECT title FROM view_packet ORDER BY title COLLATE NOCASE ASC")
         .unwrap();
-    let viewpacket_titles = stmt
-        .query_map([], |row| Ok(row.get(0)?))
-        .unwrap();
-    viewpacket_titles
-        .collect::<Result<Vec<String>, _>>()
+    let viewpacket_titles = stmt.query_map([], |row| Ok(row.get(0)?)).unwrap();
+    viewpacket_titles.collect::<Result<Vec<String>, _>>()
 }
 
 /**
  * if search_component_id == 0, then return all view packets for the given view_type and style
  * if search_component_id != 0, then return all view packets for the given component_id except for the given viewpacket_id
  */
- pub fn get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id(
+pub fn get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id(
     db_conn: &Connection,
     search_component_id: i32,
     view_type: &str,
@@ -344,28 +336,47 @@ pub fn get_vector_of_viewpacket_titles_sorted(db_conn: &Connection) -> Result<Ve
     Ok(viewpacket_vector)
 }
 
+pub fn get_viewpacket_by_team_id(db_conn: &Connection, search_team_id: i32) -> Option<ViewPacket> {
+    let mut stmt = db_conn.prepare("SELECT component_id, context_model_key, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id FROM view_packet  WHERE team_id = ?1 ORDER BY sort_order").unwrap();
+    let viewpacket = stmt.query_row([search_team_id], |row| {
+        Ok(ViewPacket {
+            component_id: row.get(0)?,
+            context_model_key: row.get(1)?,
+            primary_display_key: row.get(2)?,
+            introduction: row.get(3)?,
+            sort_order: row.get(4)?,
+            team_id: row.get(5)?,
+            title: row.get(6)?,
+            view_style: row.get(7)?,
+            view_type: row.get(8)?,
+            viewpacket_id: row.get(9)?,
+        })
+    });
 
-pub fn get_viewpacket_by_title(
-    db_conn: &Connection,
-    title: &str,
-) -> Result<ViewPacket> {
-        let mut stmt = db_conn.prepare(        "SELECT component_id, context_model_key, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id FROM view_packet  WHERE title = ?1")?;
-        let viewpacket = stmt
-            .query_row([title], |row| {
-                Ok(ViewPacket {
-                    component_id: row.get(0)?,
-                    context_model_key: row.get(1)?,
-                    primary_display_key: row.get(2)?,
-                    introduction: row.get(3)?,
-                    sort_order: row.get(4)?,
-                    team_id: row.get(5)?,
-                    title: row.get(6)?,
-                    view_style: row.get(7)?,
-                    view_type: row.get(8)?,
-                    viewpacket_id: row.get(9)?,
-                })
-            })?;
-            
+    if let Ok(viewpacket) = viewpacket {
+        Some(viewpacket)
+    } else {
+        None
+    }
+}
+
+pub fn get_viewpacket_by_title(db_conn: &Connection, title: &str) -> Result<ViewPacket> {
+    let mut stmt = db_conn.prepare(        "SELECT component_id, context_model_key, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id FROM view_packet  WHERE title = ?1")?;
+    let viewpacket = stmt.query_row([title], |row| {
+        Ok(ViewPacket {
+            component_id: row.get(0)?,
+            context_model_key: row.get(1)?,
+            primary_display_key: row.get(2)?,
+            introduction: row.get(3)?,
+            sort_order: row.get(4)?,
+            team_id: row.get(5)?,
+            title: row.get(6)?,
+            view_style: row.get(7)?,
+            view_type: row.get(8)?,
+            viewpacket_id: row.get(9)?,
+        })
+    })?;
+
     Ok(viewpacket)
 }
 
@@ -374,23 +385,24 @@ pub fn get_viewpacket_vector_by_type_and_style_sorted_by_order(
     filter_view_type: &str,
     filter_view_style: &str,
 ) -> Result<Vec<ViewPacket>> {
-        let mut stmt = db_conn.prepare(        "SELECT component_id, context_model_key, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id FROM view_packet  WHERE view_type = ?1 AND view_style = ?2")?;
-        let viewpacket_vector = stmt
-            .query_map([filter_view_type, filter_view_style], |row| {
-                Ok(ViewPacket {
-                    component_id: row.get(0)?,
-                    context_model_key: row.get(1)?,
-                    primary_display_key: row.get(2)?,
-                    introduction: row.get(3)?,
-                    sort_order: row.get(4)?,
-                    team_id: row.get(5)?,
-                    title: row.get(6)?,
-                    view_style: row.get(7)?,
-                    view_type: row.get(8)?,
-                    viewpacket_id: row.get(9)?,
-                })
-            })?.collect::<Result<Vec<_>, _>>()?;
-            
+    let mut stmt = db_conn.prepare(        "SELECT component_id, context_model_key, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id FROM view_packet  WHERE view_type = ?1 AND view_style = ?2")?;
+    let viewpacket_vector = stmt
+        .query_map([filter_view_type, filter_view_style], |row| {
+            Ok(ViewPacket {
+                component_id: row.get(0)?,
+                context_model_key: row.get(1)?,
+                primary_display_key: row.get(2)?,
+                introduction: row.get(3)?,
+                sort_order: row.get(4)?,
+                team_id: row.get(5)?,
+                title: row.get(6)?,
+                view_style: row.get(7)?,
+                view_type: row.get(8)?,
+                viewpacket_id: row.get(9)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
     Ok(viewpacket_vector)
 }
 
@@ -424,7 +436,6 @@ pub fn get_vector_of_usedby_components_by_id_and_key(
     Ok(component_relations)
 }
 
-
 /**
  * get component_relation.component_a_id where component_relation.component_b_id is component_id
  * get viewpackets where view_packet.component_id is component_relation.component_a_id and view_packet.ViewStyle is style
@@ -442,8 +453,10 @@ pub fn get_vector_of_viewpacket_parents_by_component_id_and_style_and_key(
     ORDER BY sort_order"
     )?;
     let viewpacket_vector_for_style = stmt
-        .query_map(rusqlite::params![component_id, primary_display_key, style], |row| {
-            Ok(ViewPacket {
+        .query_map(
+            rusqlite::params![component_id, primary_display_key, style],
+            |row| {
+                Ok(ViewPacket {
                     component_id: row.get(0)?,
                     context_model_key: row.get(1)?,
                     primary_display_key: row.get(2)?,
@@ -454,8 +467,9 @@ pub fn get_vector_of_viewpacket_parents_by_component_id_and_style_and_key(
                     view_style: row.get(7)?,
                     view_type: row.get(8)?,
                     viewpacket_id: row.get(9)?,
-            })
-        })?
+                })
+            },
+        )?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(viewpacket_vector_for_style)
 }
@@ -471,16 +485,18 @@ mod tests {
         let conn = Connection::open_in_memory().unwrap();
         db_create_in_mem_db(&conn);
 
+        let team_id = 1;
+
         // Insert test data
         conn.execute(
             "INSERT INTO component (id, name, purpose, summary, team_id) VALUES (1, 'ComponentA', 'PurposeA', 'SummaryA', 0)",[],
         ).unwrap();
         conn.execute(
-            "INSERT INTO component (id, name, purpose, summary, team_id) VALUES (2, 'ComponentB', 'PurposeB', 'SummaryB', 1)",[],
+            "INSERT INTO component (id, name, purpose, summary, team_id) VALUES (2, 'ComponentB', 'PurposeB', 'SummaryB', ?1)",[team_id],
         )
         .unwrap();
         conn.execute(
-            "INSERT INTO component (id, name, purpose, summary, team_id) VALUES (3, 'ComponentC', 'PurposeC', 'SummaryC', 1)",[],
+            "INSERT INTO component (id, name, purpose, summary, team_id) VALUES (3, 'ComponentC', 'PurposeC', 'SummaryC', ?1)",[team_id],
         )
         .unwrap();
         conn.execute(
@@ -496,6 +512,11 @@ mod tests {
         conn.execute(
             "INSERT INTO view_packet (component_id, context_model_key, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id) VALUES (1, 'key1', 'display1', 'Intro1', 1, 0, 'Title1', 'Style1', 'Type1', 10)",
             [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO view_packet (component_id, context_model_key, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id) VALUES (0, 'key1', 'display1', 'Intro1', 1, ?1, 'Team Assignment', 'Assignment', 'Type1', 11)",
+            [team_id],
         )
         .unwrap();
         conn.execute(
@@ -542,11 +563,7 @@ mod tests {
     fn test_get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id_zero() {
         let conn = setup_test_db();
         let result = get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id(
-            &conn,
-            0,
-            "Type1",
-            "Style1",
-            999,
+            &conn, 0, "Type1", "Style1", 999,
         )
         .unwrap();
         assert_eq!(result.len(), 1);
@@ -557,11 +574,7 @@ mod tests {
     fn test_get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id_nonzero() {
         let conn = setup_test_db();
         let result = get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id(
-            &conn,
-            1,
-            "Type1",
-            "Style1",
-            999,
+            &conn, 1, "Type1", "Style1", 999,
         )
         .unwrap();
         assert_eq!(result.len(), 1);
@@ -571,7 +584,8 @@ mod tests {
     #[test]
     fn test_get_vector_of_usedby_components_by_id_and_key() {
         let conn = setup_test_db();
-        let result = get_vector_of_usedby_components_by_id_and_key(&conn, 2, "Style1".to_string()).unwrap();
+        let result =
+            get_vector_of_usedby_components_by_id_and_key(&conn, 2, "Style1".to_string()).unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].component_a_id, 1);
     }
@@ -579,7 +593,9 @@ mod tests {
     #[test]
     fn test_get_vector_of_component_relations_by_id_and_key() {
         let conn = setup_test_db();
-        let result = get_vector_of_component_relations_by_id_and_key(&conn, 1, "display1".to_string()).unwrap();
+        let result =
+            get_vector_of_component_relations_by_id_and_key(&conn, 1, "display1".to_string())
+                .unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].component_b_id, 2);
     }
@@ -587,7 +603,12 @@ mod tests {
     #[test]
     fn test_get_vector_of_component_relations_by_id_and_key_both_directions() {
         let conn = setup_test_db();
-        let result = get_vector_of_component_relations_by_id_and_key_both_directions(&conn, 2, "display1".to_string()).unwrap();
+        let result = get_vector_of_component_relations_by_id_and_key_both_directions(
+            &conn,
+            2,
+            "display1".to_string(),
+        )
+        .unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].component_a_id, 1);
     }
@@ -595,7 +616,8 @@ mod tests {
     #[test]
     fn test_get_vector_of_component_relations_by_key() {
         let conn = setup_test_db();
-        let result = get_vector_of_component_relations_by_key(&conn, "display1".to_string()).unwrap();
+        let result =
+            get_vector_of_component_relations_by_key(&conn, "display1".to_string()).unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].component_a_id, 1);
     }
@@ -637,5 +659,21 @@ mod tests {
         assert_eq!(result.len(), 2);
         assert_eq!(result[0].title, "Title2");
         assert_eq!(result[1].title, "Title3");
+    }
+
+    #[test]
+    fn test_get_viewpacket_by_team_id() {
+        let conn = setup_test_db();
+        let result = get_viewpacket_by_team_id(&conn, 1);
+        assert!(result.is_some());
+        let viewpacket = result.unwrap();
+        assert_eq!(viewpacket.title, "Team Assignment");
+    }
+
+    #[test]
+    fn test_get_viewpacket_by_team_id_non_existing_id() {
+        let conn = setup_test_db();
+        let result = get_viewpacket_by_team_id(&conn, 999);
+        assert!(result.is_none());
     }
 }
