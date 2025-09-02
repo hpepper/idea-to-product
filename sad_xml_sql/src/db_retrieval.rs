@@ -383,6 +383,37 @@ pub fn get_viewpacket_by_title(db_conn: &Connection, title: &str) -> Result<View
     Ok(viewpacket)
 }
 
+/// Get the view packet for the given style and id, or None.
+pub fn get_viewpacket_by_style_and_component_id(
+    db_conn: &Connection,
+    style: &str,
+    search_component_id: i32,
+) -> Option<ViewPacket> {
+    let mut stmt = db_conn.prepare(
+        "SELECT component_id, context_model_key, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id FROM view_packet WHERE view_style = ?1 AND component_id = ?2",
+    ).unwrap();
+    let viewpacket = stmt.query_row((&style, search_component_id), |row| {
+        Ok(ViewPacket {
+            component_id: row.get(0)?,
+            context_model_key: row.get(1)?,
+            primary_display_key: row.get(2)?,
+            introduction: row.get(3)?,
+            sort_order: row.get(4)?,
+            team_id: row.get(5)?,
+            title: row.get(6)?,
+            view_style: row.get(7)?,
+            view_type: row.get(8)?,
+            viewpacket_id: row.get(9)?,
+        })
+    });
+
+    if let Ok(viewpacket) = viewpacket {
+        Some(viewpacket)
+    } else {
+        None
+    }
+}
+
 pub fn get_viewpacket_vector_by_type_and_style_sorted_by_order(
     db_conn: &Connection,
     filter_view_type: &str,
@@ -513,7 +544,7 @@ mod tests {
         )
         .unwrap();
         conn.execute(
-            "INSERT INTO view_packet (component_id, context_model_key, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id) VALUES (1, 'key1', 'display1', 'Intro1', 1, 0, 'Title1', 'Style1', 'Type1', 10)",
+            "INSERT INTO view_packet (component_id, context_model_key, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id) VALUES (1, 'key1', 'display1', 'Intro1', 1, 0, 'Title1', 'Decomposition', 'Type1', 10)",
             [],
         )
         .unwrap();
@@ -689,6 +720,21 @@ mod tests {
     fn test_get_viewpacket_by_team_id_non_existing_id() {
         let conn = setup_test_db();
         let result = get_viewpacket_by_team_id(&conn, 999);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_get_viewpacket_by_style_and_component_id() {
+        let conn = setup_test_db();
+        let result = get_viewpacket_by_style_and_component_id(&conn, "Decomposition", 1);
+        assert!(result.is_some());
+        let viewpacket = result.unwrap();
+        assert_eq!(viewpacket.title, "Title1");
+    }
+    #[test]
+    fn test_get_viewpacket_by_style_and_component_id_non_existing() {
+        let conn = setup_test_db();
+        let result = get_viewpacket_by_style_and_component_id(&conn, "Decomposition", 999);
         assert!(result.is_none());
     }
 }

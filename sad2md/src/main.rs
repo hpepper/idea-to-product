@@ -17,6 +17,7 @@ use db_retrieval::{
     get_vector_of_usedby_components_by_id_and_key,
     get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id,
     get_vector_of_viewpacket_parents_by_component_id_and_style_and_key, get_viewpacket_by_team_id,
+    get_viewpacket_by_style_and_component_id,
 };
 use models::{Behavior, Component, ComponentRelation, ViewPacket};
 
@@ -703,10 +704,10 @@ fn render_viewpacket_section_primary_display(
     } else if view_type == ALLOCATION_VIEW_TYPE && style == ALLOCATION_VIEW_TYPE_STYLE_ASSIGNMENT {
         // TODO Get list of components with the team_id
         markdown_file
-            .write("| Component Name | Summary |\n".as_bytes())
+            .write("| Component Name | Summary | Reference |\n".as_bytes())
             .expect("Unable to write to file");
         markdown_file
-            .write("|----------------|---------|\n".as_bytes())
+            .write("|----------------|---------|-----------|\n".as_bytes())
             .expect("Unable to write to file");
         let team_id = viewpacket.team_id;
         // Only start looking for a component list if the team_id is not zero.
@@ -727,9 +728,15 @@ fn render_viewpacket_section_primary_display(
             Vec::new()
         };
         for component in component_list {
-            markdown_file
-                .write(&format!("| {} | {} |\n", component.name, component.summary).as_bytes())
-                .expect("Unable to write to file");
+            let reference_for_viewpacket = get_viewpacket_reference_for_component_id(db_conn, component.id);
+            match reference_for_viewpacket {
+                Some(reference) => {markdown_file
+                .write(&format!("| {} | {} | {} |\n", component.name, component.summary, reference).as_bytes())
+                .expect("Unable to write to file");},
+                None => {},
+                
+            }
+            
         }
         markdown_file
             .write("\n".as_bytes())
@@ -785,6 +792,40 @@ fn render_viewpacket_section_primary_display(
             render_textural_connector_list(markdown_file, &connector_map);
         }
     }
+}
+
+fn get_viewpacket_reference_for_component_id(
+    db_conn: &Connection,
+    component_id: i32,
+) -> Option<String> {
+  let viewpacket = get_viewpacket_by_style_and_component_id(db_conn, MODULE_VIEW_TYPE_STYLE_DECOMPOSITION, component_id);
+  if viewpacket.is_some() {
+    let viewpacket = viewpacket.unwrap();
+    let view_title = create_view_packet_title(
+        viewpacket.view_type.as_str(),
+        viewpacket.view_style.as_str(),
+        viewpacket.title.as_str(),
+        viewpacket.sort_order,
+    );
+    let linkable_view_title = make_markdown_linkable_text(view_title.clone());
+    Some(format!("[{view_title}](#{linkable_view_title})"))
+  } else {
+    let viewpacket = get_viewpacket_by_style_and_component_id(db_conn, MODULE_VIEW_TYPE_STYLE_USES, component_id);
+    if viewpacket.is_some() {
+      let viewpacket = viewpacket.unwrap();
+      let view_title = create_view_packet_title(
+          viewpacket.view_type.as_str(),
+          viewpacket.view_style.as_str(),
+          viewpacket.title.as_str(),
+          viewpacket.sort_order,
+      );
+      let linkable_view_title = make_markdown_linkable_text(view_title.clone());
+      Some(format!("[{view_title}](#{linkable_view_title})"))
+    } else {
+      None
+    }
+  }
+  
 }
 
 fn render_graphical_primary_display(
