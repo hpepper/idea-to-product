@@ -26,6 +26,16 @@ pub fn dump_db_to_xml(db_conn: &Connection, output_file: &str) -> Result<(), std
     Ok(())
 }
 
+pub fn convert_id_to_address(id: u64) -> String {
+    let a = id / (256 * 256 * 256);
+    let mut temp_id = id - (a * 256 * 256 * 256);
+    let b = temp_id / (256 * 256);
+    temp_id = temp_id - (b * 256 * 256);
+    let c = temp_id / 256;
+    let d = temp_id - (c * 256);
+    format!("{}.{}.{}.{}", a, b, c, d)
+}
+
 fn dump_table_behavior_to_xml(
     xml_root: &mut XMLElement,
     db_conn: &Connection,
@@ -243,4 +253,11 @@ mod tests {
     //     assert_eq!(root.name, "SoftwareArchitectureDocumentation");
     //     fs::remove_file(output_file).unwrap();
     // }
+
+    #[test]
+    fn test_convert_id_to_address() {
+        let id = 16909060; // corresponds to 1.2.3.4
+        let address = convert_id_to_address(id);
+        assert_eq!(address, "1.2.3.4");
+    }
 }

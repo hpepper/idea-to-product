@@ -19,6 +19,8 @@ use db_retrieval::{
     get_vector_of_viewpacket_parents_by_component_id_and_style_and_key, get_viewpacket_by_team_id,
     get_viewpacket_by_style_and_component_id,
 };
+use sad_xml_sql::db_dump_to_xml::convert_id_to_address;
+
 use models::{Behavior, Component, ComponentRelation, ViewPacket};
 
 use rusqlite::Connection;
@@ -53,7 +55,7 @@ const ALLOCATION_VIEW_TYPE_STYLE_INSTALL: &str = "Install";
 const ALLOCATION_VIEW_TYPE_STYLE_ASSIGNMENT: &str = "Assignment";
 const ALLOCATION_VIEW_TYPE_STYLE_TESTING: &str = "Testing";
 
-fn create_hardcoded_map() -> HashMap<&'static str, i32> {
+fn create_hardcoded_map() -> HashMap<&'static str, u64> {
     let mut map = HashMap::new();
     map.insert(MODULE_VIEW_TYPE, 1);
     map.insert(CNC_VIEW_TYPE, 2);
@@ -144,7 +146,7 @@ fn create_view_packet_title(
     view_type: &str,
     view_style: &str,
     view_title: &str,
-    view_sort_order: i32,
+    view_sort_order: u64,
 ) -> String {
     let type_and_style_to_section_number = create_hardcoded_map();
     let section_number = format!(
@@ -430,7 +432,7 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
 fn render_parent_relationship(
     markdown_file: &mut File,
     db_conn: &Connection,
-    component_id: i32,
+    component_id: u64,
     style: &str,
     primary_display_key: String,
 ) {
@@ -467,8 +469,8 @@ fn render_parent_relationship(
 fn render_child_relationship(
     markdown_file: &mut File,
     db_conn: &Connection,
-    viewpacket_id: i32,
-    component_id: i32,
+    viewpacket_id: u64,
+    component_id: u64,
     view_style: &str,
     primary_display_key: String,
 ) {
@@ -519,7 +521,7 @@ fn render_child_relationship(
 fn render_viewpacket_relationship_for_team(
     markdown_file: &mut File,
     db_conn: &Connection,
-    _team_id: i32,
+    _team_id: u64,
 ) {
     // TODO look to create links preferably to Decomposition view packets
     // TODO get list of components for the team_id.
@@ -529,8 +531,8 @@ fn render_viewpacket_relationship_for_team(
 fn render_viewpacket_relationship(
     markdown_file: &mut File,
     db_conn: &Connection,
-    viewpacket_id: i32,
-    component_id: i32,
+    viewpacket_id: u64,
+    component_id: u64,
 ) {
     // TODO look to create links preferably to Decomposition view packets
     // TODO get list of components for the team_id.
@@ -546,8 +548,8 @@ fn render_viewpacket_relationship(
 fn render_viewpacket_relationship_by_component_id(
     markdown_file: &mut File,
     db_conn: &Connection,
-    viewpacket_id: i32,
-    component_id: i32,
+    viewpacket_id: u64,
+    component_id: u64,
 ) {
     let _type_and_style_to_section_number = create_hardcoded_map();
 
@@ -583,17 +585,17 @@ fn render_viewpacket_relationship_by_component_id(
 fn render_viewpacket_relationship_by_team_id(
     markdown_file: &mut File,
     db_conn: &Connection,
-    component_id: i32,
+    component_id: u64,
 ) {
     // get the team_id from the component_id
-    let component_team_id: Option<i32> = match get_component_by_id(db_conn, component_id) {
+    let component_team_id: Option<u64> = match get_component_by_id(db_conn, component_id) {
         Ok(component) => {
             let team_id = component.team_id;
             if team_id == 0 {
-                println!("Component ID {} has no team id", component_id);
+                // println!("Component ID {} has no team id", convert_id_to_address(component_id));
                 None
             } else {
-                println!("Component ID {} has team_id {}", component_id, team_id);
+                // println!("Component ID {} has team_id {}", convert_id_to_address(component_id), convert_id_to_address(team_id));
                 Some(team_id)
             }
         }
@@ -614,10 +616,7 @@ fn render_viewpacket_relationship_by_team_id(
             let viewpacket = get_viewpacket_by_team_id(db_conn, team_id);
             match viewpacket {
                 Some(viewpacket) => {
-                    println!(
-                        "View packet found for team_id {}: {}",
-                        team_id, viewpacket.title
-                    );
+                    // println!("View packet found for team_id {}: {}", convert_id_to_address(team_id), viewpacket.title);
                     // This is how the target must look: #module-decomposition-view-packet-111-card-game
                     let view_title = create_view_packet_title(
                         viewpacket.view_type.as_str(),
@@ -796,7 +795,7 @@ fn render_viewpacket_section_primary_display(
 
 fn get_viewpacket_reference_for_component_id(
     db_conn: &Connection,
-    component_id: i32,
+    component_id: u64,
 ) -> Option<String> {
   let viewpacket = get_viewpacket_by_style_and_component_id(db_conn, MODULE_VIEW_TYPE_STYLE_DECOMPOSITION, component_id);
   if viewpacket.is_some() {
@@ -833,7 +832,7 @@ fn render_graphical_primary_display(
     db_conn: &Connection,
     view_type: &str,
     style: &str,
-    component_id: i32,
+    component_id: u64,
     primary_display_key: String,
     first_layer: bool,
 ) {
@@ -954,13 +953,13 @@ fn render_graphical_layered_display(
     db_conn: &Connection,
     view_type: &str,
     style: &str,
-    component_id: i32,
+    component_id: u64,
     primary_display_key: String,
     first_layer: bool,
 ) {
     println!(
         "render_graphical_layered_display {} {} {}",
-        component_id, primary_display_key, first_layer
+        convert_id_to_address(component_id), primary_display_key, first_layer
     );
 
     if first_layer {
@@ -1109,7 +1108,7 @@ fn render_graphical_context_diagram(
     db_conn: &Connection,
     view_type: &str,
     style: &str,
-    component_id: i32,
+    component_id: u64,
     context_model_key: String,
     first_call: bool,
 ) {
@@ -1269,7 +1268,7 @@ fn render_textual_primary_display(
     db_conn: &Connection,
     view_type: &str,
     style: &str,
-    component_id: i32,
+    component_id: u64,
     primary_display_key: String,
     indent_level: usize,
     indent_increment: usize,
@@ -1426,7 +1425,7 @@ fn render_graphical_all_behaviors_for_viewpacket(
     db_conn: &Connection,
     _view_type: &str,
     _style: &str,
-    viewpacket_id: i32,
+    viewpacket_id: u64,
 ) {
     let behaviors_vector = get_vector_of_behaviors_for_viewpacket_id(db_conn, viewpacket_id);
     match behaviors_vector {

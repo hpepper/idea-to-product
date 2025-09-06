@@ -2,7 +2,7 @@ use crate::models::{Behavior, Component, ComponentRelation, ContextModel, ViewPa
 
 use rusqlite::{Connection, Result};
 
-pub fn get_component_by_id(db_conn: &Connection, component_id: i32) -> Result<Component> {
+pub fn get_component_by_id(db_conn: &Connection, component_id: u64) -> Result<Component> {
     let mut stmt = db_conn
         .prepare("SELECT id, name, purpose, summary, team_id FROM component WHERE id = ?1")?;
     let component = stmt.query_row([component_id], |row| {
@@ -32,7 +32,7 @@ pub fn get_component_by_name(db_conn: &Connection, name: String) -> Result<Compo
     Ok(component)
 }
 
-pub fn get_component_name_by_id(db_conn: &Connection, component_id: i32) -> String {
+pub fn get_component_name_by_id(db_conn: &Connection, component_id: u64) -> String {
     let mut stmt = db_conn
         .prepare("SELECT name FROM component WHERE id = ?1")
         .unwrap();
@@ -70,7 +70,7 @@ pub fn get_vector_of_components_sorted_by_name(db_conn: &Connection) -> Result<V
 
 pub fn get_components_vector_by_team_id_sorted_by_name(
     db_conn: &Connection,
-    requested_team_id: i32,
+    requested_team_id: u64,
 ) -> Result<Vec<Component>> {
     let mut stmt = db_conn
         .prepare("SELECT id, name, purpose, summary, team_id FROM component WHERE team_id = ?1 ORDER BY name COLLATE NOCASE ASC")
@@ -112,7 +112,7 @@ pub fn get_vector_of_context_model_by_key(
 /// Get all the behaviors that are linked to the given view packet id.
 pub fn get_vector_of_behaviors_for_viewpacket_id(
     db_conn: &Connection,
-    viewpacket_id: i32,
+    viewpacket_id: u64,
 ) -> Result<Vec<Behavior>> {
     let mut stmt = db_conn.prepare(
         "SELECT id, sort_order, description, diagram_key FROM behavior WHERE view_packet_id = ?1 ORDER BY sort_order"
@@ -153,7 +153,7 @@ pub fn get_vector_of_behaviors_sorted_by_key_and_order(
 
 pub fn get_vector_of_component_relations_by_id_and_key(
     db_conn: &Connection,
-    component_id: i32,
+    component_id: u64,
     primary_display_key: String,
 ) -> Result<Vec<ComponentRelation>> {
     let mut stmt = db_conn.prepare(
@@ -184,7 +184,7 @@ pub fn get_vector_of_component_relations_by_id_and_key(
 // get a list of related components by component id and key, both up and down.
 pub fn get_vector_of_component_relations_by_id_and_key_both_directions(
     db_conn: &Connection,
-    component_id: i32,
+    component_id: u64,
     primary_display_key: String,
 ) -> Result<Vec<ComponentRelation>> {
     let mut stmt = db_conn.prepare(
@@ -280,10 +280,10 @@ pub fn get_vector_of_viewpacket_titles_sorted(db_conn: &Connection) -> Result<Ve
  */
 pub fn get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id(
     db_conn: &Connection,
-    search_component_id: i32,
+    search_component_id: u64,
     view_type: &str,
     style: &str,
-    exclude_viewpacket_id: i32,
+    exclude_viewpacket_id: u64,
 ) -> Result<Vec<ViewPacket>> {
     let viewpacket_vector = if search_component_id == 0 {
         let mut stmt = db_conn.prepare("SELECT component_id, context_model_key, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id FROM view_packet  WHERE view_type = ?1 AND view_style = ?2 ORDER BY sort_order")?;
@@ -336,7 +336,7 @@ pub fn get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id(
     Ok(viewpacket_vector)
 }
 
-pub fn get_viewpacket_by_team_id(db_conn: &Connection, search_team_id: i32) -> Option<ViewPacket> {
+pub fn get_viewpacket_by_team_id(db_conn: &Connection, search_team_id: u64) -> Option<ViewPacket> {
     if search_team_id == 0 {
         return None;
     }
@@ -387,7 +387,7 @@ pub fn get_viewpacket_by_title(db_conn: &Connection, title: &str) -> Result<View
 pub fn get_viewpacket_by_style_and_component_id(
     db_conn: &Connection,
     style: &str,
-    search_component_id: i32,
+    search_component_id: u64,
 ) -> Option<ViewPacket> {
     let mut stmt = db_conn.prepare(
         "SELECT component_id, context_model_key, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id FROM view_packet WHERE view_style = ?1 AND component_id = ?2",
@@ -445,7 +445,7 @@ pub fn get_viewpacket_vector_by_type_and_style_sorted_by_order(
  */
 pub fn get_vector_of_usedby_components_by_id_and_key(
     db_conn: &Connection,
-    component_id: i32,
+    component_id: u64,
     style: String,
 ) -> Result<Vec<ComponentRelation>> {
     let mut stmt = db_conn.prepare(
@@ -476,7 +476,7 @@ pub fn get_vector_of_usedby_components_by_id_and_key(
  */
 pub fn get_vector_of_viewpacket_parents_by_component_id_and_style_and_key(
     db_conn: &Connection,
-    component_id: i32,
+    component_id: u64,
     style: &str,
     primary_display_key: &str,
 ) -> Result<Vec<ViewPacket>> {
@@ -602,7 +602,7 @@ mod tests {
     fn test_get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id_zero() {
         let conn = setup_test_db();
         let result = get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id(
-            &conn, 0, "Type1", "Style1", 999,
+            &conn, 0, "Type1", "Decomposition", 999,
         )
         .unwrap();
         assert_eq!(result.len(), 1);

@@ -8,12 +8,18 @@ pub fn db_populate_from_xml(db_conn: &Connection, filename: &String) {
     // Parse the XML file
     let xml_root = load_xml_file(filename);
 
-    populate_db_with_viewpackets(db_conn, &xml_root);
-    populate_db_with_components(db_conn, &xml_root);
-    populate_db_with_componentrelations(db_conn, &xml_root);
-    populate_db_with_behaviors(db_conn, &xml_root);
-    populate_db_with_teams(db_conn, &xml_root);
+    // TODO pass file_id into each subsequent call, except for the teams.
+    let file_id = populate_db_with_document(db_conn, &xml_root, filename);
+    populate_db_with_viewpackets(db_conn, &xml_root, file_id);
+    populate_db_with_components(db_conn, &xml_root, file_id);
+    populate_db_with_componentrelations(db_conn, &xml_root, file_id);
+    populate_db_with_behaviors(db_conn, &xml_root, file_id);
+    populate_db_with_teams(db_conn, &xml_root, file_id);
+    // TODO load_include_files
 }
+
+// TODO itterate though include elements of the document of the first file.
+// TODO do not load viewpackets from include files.
 
 fn load_xml_file(filename: &str) -> Element {
     // verify the file exists
@@ -29,26 +35,44 @@ fn load_xml_file(filename: &str) -> Element {
     Element::parse(file).expect("Unable to parse XML")
 }
 
-fn populate_db_with_behaviors(db_conn: &Connection, xml_root: &Element) {
+/// Convert an address of the form "file_id.a.b.c" into a numerical ID.
+fn convert_from_address_to_id(file_id: u64, addr: String, location: &str) -> u64 {
+    // TODO: Implement the conversion logic
+    // TODO split "a.b.c" into parts and calculate the id.
+    let parts: Vec<&str> = addr.split('.').collect();
+    if parts.len() == 3 {
+        let bravo: u64 = parts[0].parse().unwrap_or(0);
+        let charlie: u64 = parts[1].parse().unwrap_or(0);
+        let delta: u64 = parts[2].parse().unwrap_or(0);
+        return file_id * 256 * 256 * 256 + bravo * 256 * 256 + charlie * 256 + delta;
+    } else {
+        panic!(
+            "!!! Warning: Address '{}' is not in the correct format 'a.b.c'. Location: {}",
+            addr, location
+        );
+    }
+}
+
+fn populate_db_with_behaviors(db_conn: &Connection, xml_root: &Element, file_id: u64) {
     // Insert the data
     for child in &xml_root.children {
         match child {
             XMLNode::Element(behavior) => {
                 if behavior.name == "Behavior" {
                     // TODO can I get the line in the XML that is currently read?
-                    let id: i32 = behavior
+                    let id_addr: String = behavior
                         .attributes
                         .get("Id")
                         .expect("Missing 'Id' attribute for Behavior")
                         .parse()
                         .unwrap();
-                    let sort_order: i32 = behavior
+                    let sort_order: u64 = behavior
                         .attributes
                         .get("SortOrder")
                         .unwrap()
                         .parse()
                         .unwrap();
-                    let view_packet_id: i32 = behavior
+                    let view_packet_addr: String = behavior
                         .get_child("ViewPacketId")
                         .expect("<ViewPacketId> element missing")
                         .get_text()
@@ -58,20 +82,27 @@ fn populate_db_with_behaviors(db_conn: &Connection, xml_root: &Element) {
                     let description = behavior
                         .get_child("Description")
                         .unwrap_or_else(|| {
-                            panic!("<Description> element missing in Behavior id= {}", id)
+                            panic!("<Description> element missing in Behavior id= {}", id_addr)
                         })
                         .get_text()
                         .unwrap_or_else(|| "".to_string().into());
-                    let diagram_key = behavior
+                    let local_diagram_key = behavior
                         .get_child("DiagramKey")
                         .unwrap_or_else(|| {
-                            panic!("<DiagramKey> element missing in Behavior id= {}", id)
+                            panic!("<DiagramKey> element missing in Behavior id= {}", id_addr)
                         })
                         .get_text()
                         .unwrap_or_else(|| {
-                            panic!("<DiagramKey> element empty in Behavior id= {}", id)
+                            panic!("<DiagramKey> element empty in Behavior id= {}", id_addr)
                         });
-
+                    let id: u64 =
+                        convert_from_address_to_id(file_id, id_addr.to_string(), "Behavior - id");
+                    let view_packet_id: u64 = convert_from_address_to_id(
+                        file_id,
+                        view_packet_addr.to_string(),
+                        "Behavior - ViewPacketId",
+                    );
+                    let diagram_key = format!("{}-{}", file_id, local_diagram_key);
                     db_conn
                         .execute(
                             "INSERT INTO behavior (id, sort_order, view_packet_id, description, diagram_key)
@@ -92,44 +123,50 @@ fn populate_db_with_behaviors(db_conn: &Connection, xml_root: &Element) {
     }
 }
 
-fn populate_db_with_components(db_conn: &Connection, xml_root: &Element) {
+fn populate_db_with_components(db_conn: &Connection, xml_root: &Element, file_id: u64) {
     // Insert the data
     for child in &xml_root.children {
         match child {
             XMLNode::Element(component) => {
                 if component.name == "Component" {
                     // TODO can I get the line in the XML that is currently read?
-                    let id: i32 = component
+                    let id_addr: String = component
                         .attributes
                         .get("Id")
                         .expect("Missing 'Id' attribute for Component")
-                        .parse()
-                        .unwrap();
+                        .to_string();
+
                     let name = component.attributes.get("Name").unwrap();
                     let purpose = component
                         .get_child("Purpose")
                         .unwrap_or_else(|| {
-                            panic!("<Purpose> element missing in Component id= {}", id)
+                            panic!("<Purpose> element missing in Component id= {}", id_addr)
                         })
                         .get_text()
                         .unwrap_or_else(|| "".to_string().into());
                     let summary = component
                         .get_child("Summary")
                         .unwrap_or_else(|| {
-                            panic!("<Summary> element missing in Component id= {}", id)
+                            panic!("<Summary> element missing in Component id= {}", id_addr)
                         })
                         .get_text()
                         .unwrap_or_else(|| "".to_string().into());
-                    let team_id: i32 = match component.get_child("TeamId") {
+                    let team_id: String = match component.get_child("TeamId") {
                         Some(team_id_elem) => {
                             let team_id_text = team_id_elem.get_text().unwrap_or_else(|| {
-                                panic!("<TeamId> element has no data in Component id= {}", id)
+                                panic!("<TeamId> element has no data in Component id= {}", id_addr)
                             });
                             team_id_text.parse().unwrap()
                         }
-                        None => 0,
+                        None => "0.0.0".into(),
                     };
-
+                    let id: u64 =
+                        convert_from_address_to_id(file_id, id_addr.to_string(), "Component - id");
+                    let team_id: u64 = convert_from_address_to_id(
+                        file_id,
+                        team_id.to_string(),
+                        "Component - TeamId",
+                    );
                     db_conn
                         .execute(
                             "INSERT INTO component (id, name, purpose, summary, team_id)
@@ -150,7 +187,7 @@ fn populate_db_with_components(db_conn: &Connection, xml_root: &Element) {
     }
 }
 
-fn populate_db_with_componentrelations(db_conn: &Connection, xml_root: &Element) {
+fn populate_db_with_componentrelations(db_conn: &Connection, xml_root: &Element, file_id: u64) {
     // Insert the data
     for child in &xml_root.children {
         match child {
@@ -158,32 +195,28 @@ fn populate_db_with_componentrelations(db_conn: &Connection, xml_root: &Element)
                 if component_relation.name == "ComponentRelation" {
                     // TODO can I get the line in the XML that is currently read?
 
-                    let id: i32 = component_relation
+                    let id_addr: String = component_relation
                         .attributes
                         .get("Id")
                         .expect("Missing 'Id' attribute for ComponentRelation")
                         .parse()
                         .unwrap();
-                    let sort_order: i32 = component_relation
+                    let sort_order: u64 = component_relation
                         .attributes
                         .get("SortOrder")
                         .expect("Missing 'SortOrder' attribute for ComponentRelation")
                         .parse()
                         .unwrap_or(0);
-                    let component_a_id: i32 = component_relation
+                    let component_a_addr: String = component_relation
                         .get_child("ComponentAId")
                         .expect("<ComponentAId> element missing")
                         .get_text()
-                        .expect("<ComponentAId> element has no data")
-                        .parse()
-                        .unwrap();
-                    let component_b_id: i32 = component_relation
+                        .expect("<ComponentAId> element has no data").to_string();
+                    let component_b_addr: String = component_relation
                         .get_child("ComponentBId")
                         .expect("<ComponentBId> element missing")
                         .get_text()
-                        .expect("<ComponentBId> element has no data")
-                        .parse()
-                        .unwrap();
+                        .expect("<ComponentBId> element has no data").to_string();
                     let connection_type = component_relation
                         .get_child("ConnectionType")
                         .and_then(|child| child.get_text())
@@ -210,6 +243,10 @@ fn populate_db_with_componentrelations(db_conn: &Connection, xml_root: &Element)
                         .get_child("Style")
                         .and_then(|child| child.get_text())
                         .unwrap_or_else(|| "".to_string().into());
+
+                        let id: u64 = convert_from_address_to_id(file_id, id_addr, "ComponentRelation - id");
+                        let component_a_id: u64 = convert_from_address_to_id(file_id, component_a_addr, "ComponentRelation - ComponentAId");
+                        let component_b_id: u64 = convert_from_address_to_id(file_id, component_b_addr, "ComponentRelation - ComponentBId");
                     db_conn
                         .execute(
                             "INSERT INTO component_relation (id, sort_order, component_a_id, component_b_id, connection_type, key, property_of_relation, relation_text, relation_description, style)
@@ -235,26 +272,74 @@ fn populate_db_with_componentrelations(db_conn: &Connection, xml_root: &Element)
     }
 }
 
-fn populate_db_with_teams(db_conn: &Connection, xml_root: &Element) {
+fn populate_db_with_document(db_conn: &Connection, xml_root: &Element, filename: &String) -> u64 {
+    // Insert the data
+    let mut file_id = 0;
+    for child in &xml_root.children {
+        match child {
+            XMLNode::Element(document) => {
+                if document.name == "Document" {
+                    file_id = document
+                        .get_child("FileId")
+                        .unwrap_or_else(|| panic!("<FileId> element missing in document"))
+                        .get_text()
+                        .unwrap_or_else(|| panic!("<FileId> element has no data in document"))
+                        .parse()
+                        .unwrap_or_else(|_| {
+                            panic!("<FileId> element contains invalid number in document")
+                        });
+
+                    let title = document
+                        .get_child("Title")
+                        .and_then(|child| child.get_text())
+                        .unwrap_or_else(|| "".to_string().into());
+
+                    let issue = document
+                        .get_child("Issue")
+                        .and_then(|child| child.get_text())
+                        .unwrap_or_else(|| "".to_string().into());
+
+                    let summary = document
+                        .get_child("Summary")
+                        .and_then(|child| child.get_text())
+                        .unwrap_or_else(|| "".to_string().into());
+
+                    // TODO also read the members and their roles and put in the member table.
+                    db_conn
+                        .execute(
+                            "INSERT INTO document (file_id, filename, title, issue, summary)
+                            VALUES (?1, ?2, ?3, ?4, ?5)",
+                            (file_id, filename, title, issue, summary),
+                        )
+                        .expect("Unable to insert data into document");
+                }
+            }
+            _ => {}
+        }
+    }
+    file_id
+}
+
+fn populate_db_with_teams(db_conn: &Connection, xml_root: &Element, file_id: u64) {
     // Insert the data
     for child in &xml_root.children {
         match child {
             XMLNode::Element(team) => {
                 if team.name == "Team" {
-                    let id: i32 = team
+                    let id_addr: String = team
                         .attributes
                         .get("Id")
                         .expect("Missing 'Id' attribute for team")
-                        .parse()
-                        .unwrap();
+                        .to_string();
                     let name = team.attributes.get("Name").unwrap();
                     let description = team
                         .get_child("Description")
                         .unwrap_or_else(|| {
-                            panic!("<Description> element missing in team id= {}", id)
+                            panic!("<Description> element missing in team id= {}", id_addr)
                         })
                         .get_text()
                         .unwrap_or_else(|| "".to_string().into());
+                    let id: u64 = convert_from_address_to_id(file_id, id_addr, "Team - id");
                     // TODO also read the members and their roles and put in the member table.
                     db_conn
                         .execute(
@@ -270,22 +355,21 @@ fn populate_db_with_teams(db_conn: &Connection, xml_root: &Element) {
     }
 }
 
-fn populate_db_with_viewpackets(db_conn: &Connection, xml_root: &Element) {
+fn populate_db_with_viewpackets(db_conn: &Connection, xml_root: &Element, file_id: u64) {
     // Insert the data
     for child in &xml_root.children {
         match child {
             XMLNode::Element(viewpacket) => {
                 if viewpacket.name == "ViewPacket" {
                     // TODO can I get the line in the XML that is currently read?
-                    let viewpacket_id: i32 = viewpacket
+                    let viewpacket_addr: String = viewpacket
                         .attributes
                         .get("Id")
                         .expect("Missing 'Id' attribute for ViewPacket")
-                        .parse()
-                        .unwrap();
+                        .to_string();
                     let view_type = viewpacket.attributes.get("ViewType").unwrap();
                     let view_style = viewpacket.attributes.get("ViewStyle").unwrap();
-                    let sort_order: i32 = viewpacket
+                    let sort_order: u64 = viewpacket
                         .attributes
                         .get("SortOrder")
                         .unwrap()
@@ -296,7 +380,7 @@ fn populate_db_with_viewpackets(db_conn: &Connection, xml_root: &Element) {
                         .unwrap_or_else(|| {
                             panic!(
                                 "<Title> element missing in ViewPacket id= {}",
-                                viewpacket_id
+                                viewpacket_addr
                             )
                         })
                         .get_text()
@@ -306,7 +390,7 @@ fn populate_db_with_viewpackets(db_conn: &Connection, xml_root: &Element) {
                         .unwrap_or_else(|| {
                             panic!(
                                 "<Introduction> element missing in ViewPacket id= {}",
-                                viewpacket_id
+                                viewpacket_addr
                             )
                         })
                         .get_text()
@@ -316,7 +400,7 @@ fn populate_db_with_viewpackets(db_conn: &Connection, xml_root: &Element) {
                         .unwrap_or_else(|| {
                             panic!(
                                 "<ContextModelKey> element missing in ViewPacket id= {}",
-                                viewpacket_id
+                                viewpacket_addr
                             )
                         })
                         .get_text()
@@ -326,44 +410,53 @@ fn populate_db_with_viewpackets(db_conn: &Connection, xml_root: &Element) {
                         .unwrap_or_else(|| {
                             panic!(
                                 "<PrimaryDisplayKey> element missing in ViewPacket id= {}",
-                                viewpacket_id
+                                viewpacket_addr
                             )
                         })
                         .get_text()
                         .unwrap_or_else(|| "".to_string().into());
-                    let component_id: i32 = match viewpacket.get_child("ComponentId") {
+                    let component_addr: String = match viewpacket.get_child("ComponentId") {
                         Some(component_id_elem) => {
                             let component_id_text =
-                                component_id_elem.get_text().unwrap_or("0".into());
+                                component_id_elem.get_text().unwrap_or("0.0.0".into());
                             component_id_text.parse().unwrap()
                         }
-                        None => 0,
+                        None => "0.0.0".to_string(),
                     };
 
-                    let team_id: i32 = match viewpacket.get_child("TeamId") {
+                    let team_addr: String = match viewpacket.get_child("TeamId") {
                         Some(team_id_elem) => {
-                            let team_id_text = team_id_elem.get_text().unwrap_or("0".into());
+                            let team_id_text = team_id_elem.get_text().unwrap_or("0.0.0".into());
                             team_id_text.parse().unwrap()
                         }
-                        None => 0,
+                        None => "0.0.0".to_string(),
                     };
 
                     if view_style == "Assignment" {
-                        if team_id == 0 {
+                        if team_addr == "0.0.0" {
                             eprintln!(
                                 "!!! Warning: ViewPacket id= {} has viewStyle 'Assignment' but no TeamId assigned.",
-                                viewpacket_id
+                                viewpacket_addr
                             );
                         }
                     } else {
-                        if component_id == 0 {
+                        if component_addr == "0.0.0" {
                             eprintln!(
                                 "!!! Warning: ViewPacket id= {} has no ComponentId assigned.",
-                                viewpacket_id
+                                viewpacket_addr
                             );
                         }
                     }
 
+                    let viewpacket_id: u64 =
+                        convert_from_address_to_id(file_id, viewpacket_addr, "ViewPacket - id");
+                    let component_id: u64 = convert_from_address_to_id(
+                        file_id,
+                        component_addr,
+                        "ViewPacket - Component",
+                    );
+                    let team_id: u64 =
+                        convert_from_address_to_id(file_id, team_addr, "ViewPacket - Team");
                     db_conn
                         .execute(
                             "INSERT INTO view_packet (component_id, context_model_key, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id)

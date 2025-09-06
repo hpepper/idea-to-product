@@ -104,6 +104,18 @@ VALUES (?, ?);
   * Get the team from the team table for the team_id
   * get a list of members from the team_to_member_lut sorted alphabetically by member name
 
+### Convert from old to new version of the xml file
+
+Read in the version, then in each read function, do a match on the version, and default to read the newest version.
+
+Ammend the the data read so it fits the current db structure and write the data to the table.
+Once all data has been read in, then dump to a new file in the current version format.
+
 ## TODO
 
+* Load includes into DB
+* Load each includes (mark them as loaded when the include file is loaded into DB)
+  * the next level includes should be marked as loaded.
+  * If I try to include a fileid i have in the db I should fail.
+* Add support for converting from old xml format to new.
 * Make name of components unique so I can use it for reference in the component selector list.

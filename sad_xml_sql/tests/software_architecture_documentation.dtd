@@ -2,14 +2,7 @@
 <!-- validate xml: clear; xmllint -valid  itp.xml  > t 2>u; head u -->
 <!-- the '-valid' actually has a double '-' in front but dtd can't have that. -->
 <!ELEMENT SoftwareArchitectureDocumentation (
-  Title,
-  Issue,
-  Revision,
-  Draft,
-  Status,
-  ReleaseDate,
-  Author,
-  Summary,
+  Document,
   ViewPacket+,
   Component+,
   ComponentRelation*,
@@ -19,12 +12,17 @@
 )>
 <!ATTLIST SoftwareArchitectureDocumentation Version CDATA #REQUIRED>
 
-<!ELEMENT Author (#PCDATA)>
-<!ELEMENT Draft (#PCDATA)>
+<!ELEMENT Document (
+  FileId,
+  Include*,
+  Title,
+  Issue,
+  Summary
+)>
+
+<!ELEMENT FileId (#PCDATA)>
+<!ELEMENT Include (#PCDATA)>
 <!ELEMENT Issue (#PCDATA)>
-<!ELEMENT ReleaseDate (#PCDATA)>
-<!ELEMENT Revision (#PCDATA)>
-<!ELEMENT Status (#PCDATA)>
 <!ELEMENT Summary (#PCDATA)>
 <!ELEMENT Title (#PCDATA)>
 

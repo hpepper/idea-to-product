@@ -70,7 +70,7 @@
 
 ### How viewpacket is being used for rendering
 
-these fielads are used for...
+these fields are used for...
 
 * ComponentId
   * Look up the Component with that ID to get the details for the component to display.
@@ -112,7 +112,12 @@ TODO the related view
     * Response - return a message.
     * InstanceCreation - Create a line that did not exist from the start.
     * InstanceDestruction - End the line.
-  
+  * Deployment
+    * Contains - creates a subgraph
+      * I guess I need to go and find the root components, so I guess I nee to build a tree
+    * Connect - line attachment
+    * Allign - for the ~~~ thing
+
 #### ViewPacket Behavior
 
 * For now the Behavior element is outside the viewpacket and references the viewpacket it belongs to.
