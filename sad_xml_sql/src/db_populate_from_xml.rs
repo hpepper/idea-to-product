@@ -2,22 +2,33 @@ use rusqlite::Connection;
 use std::fs::File;
 use std::io::BufReader;
 use xmltree::{Element, XMLNode};
+use std::path::Path;
 
 // Requires create_database() to have been called.
 pub fn db_populate_from_xml(db_conn: &Connection, filename: &String) {
+    let path = Path::new(filename);
+    let parent = path.parent().expect("Failed to get parent directory").to_str().unwrap_or(".");
     // Parse the XML file
     let xml_root = load_xml_file(filename);
 
     // TODO pass file_id into each subsequent call, except for the teams.
     let file_id = populate_db_with_document(db_conn, &xml_root, filename);
     populate_db_with_viewpackets(db_conn, &xml_root, file_id);
-    populate_db_with_components(db_conn, &xml_root, file_id);
-    populate_db_with_componentrelations(db_conn, &xml_root, file_id);
     populate_db_with_behaviors(db_conn, &xml_root, file_id);
-    populate_db_with_teams(db_conn, &xml_root, file_id);
-    // TODO load_include_files
+    populate_db_with_components(db_conn, &xml_root);
+    populate_db_with_componentrelations(db_conn, &xml_root);
+    populate_db_with_includes(db_conn, &xml_root, parent);
+    populate_db_with_teams(db_conn, &xml_root);
 }
 
+pub fn db_populate_from_include_xml(db_conn: &Connection, filename: &String) {
+    println!("DDD loading including file: {}", filename);
+    // Parse the XML file
+    let xml_root = load_xml_file(filename);
+
+    populate_db_with_components(db_conn, &xml_root);
+    populate_db_with_teams(db_conn, &xml_root);
+}
 // TODO itterate though include elements of the document of the first file.
 // TODO do not load viewpackets from include files.
 
@@ -36,18 +47,19 @@ fn load_xml_file(filename: &str) -> Element {
 }
 
 /// Convert an address of the form "file_id.a.b.c" into a numerical ID.
-fn convert_from_address_to_id(file_id: u64, addr: String, location: &str) -> u64 {
+fn convert_from_address_to_id(addr: String, location: &str) -> u64 {
     // TODO: Implement the conversion logic
     // TODO split "a.b.c" into parts and calculate the id.
     let parts: Vec<&str> = addr.split('.').collect();
-    if parts.len() == 3 {
-        let bravo: u64 = parts[0].parse().unwrap_or(0);
-        let charlie: u64 = parts[1].parse().unwrap_or(0);
-        let delta: u64 = parts[2].parse().unwrap_or(0);
-        return file_id * 256 * 256 * 256 + bravo * 256 * 256 + charlie * 256 + delta;
+    if parts.len() == 4 {
+        let alpha: u64 = parts[0].parse().unwrap_or(0);
+        let bravo: u64 = parts[1].parse().unwrap_or(0);
+        let charlie: u64 = parts[2].parse().unwrap_or(0);
+        let delta: u64 = parts[3].parse().unwrap_or(0);
+        return alpha * 256 * 256 * 256 + bravo * 256 * 256 + charlie * 256 + delta;
     } else {
         panic!(
-            "!!! Warning: Address '{}' is not in the correct format 'a.b.c'. Location: {}",
+            "!!! Warning: Address '{}' is not in the correct format 'a.b.c.d'. Location: {}",
             addr, location
         );
     }
@@ -96,9 +108,9 @@ fn populate_db_with_behaviors(db_conn: &Connection, xml_root: &Element, file_id:
                             panic!("<DiagramKey> element empty in Behavior id= {}", id_addr)
                         });
                     let id: u64 =
-                        convert_from_address_to_id(file_id, id_addr.to_string(), "Behavior - id");
+                        convert_from_address_to_id( id_addr.to_string(), "Behavior - id");
                     let view_packet_id: u64 = convert_from_address_to_id(
-                        file_id,
+                        
                         view_packet_addr.to_string(),
                         "Behavior - ViewPacketId",
                     );
@@ -123,7 +135,7 @@ fn populate_db_with_behaviors(db_conn: &Connection, xml_root: &Element, file_id:
     }
 }
 
-fn populate_db_with_components(db_conn: &Connection, xml_root: &Element, file_id: u64) {
+fn populate_db_with_components(db_conn: &Connection, xml_root: &Element) {
     // Insert the data
     for child in &xml_root.children {
         match child {
@@ -158,12 +170,11 @@ fn populate_db_with_components(db_conn: &Connection, xml_root: &Element, file_id
                             });
                             team_id_text.parse().unwrap()
                         }
-                        None => "0.0.0".into(),
+                        None => "0.0.0.0".into(),
                     };
                     let id: u64 =
-                        convert_from_address_to_id(file_id, id_addr.to_string(), "Component - id");
+                        convert_from_address_to_id( id_addr.to_string(), "Component - id");
                     let team_id: u64 = convert_from_address_to_id(
-                        file_id,
                         team_id.to_string(),
                         "Component - TeamId",
                     );
@@ -187,7 +198,7 @@ fn populate_db_with_components(db_conn: &Connection, xml_root: &Element, file_id
     }
 }
 
-fn populate_db_with_componentrelations(db_conn: &Connection, xml_root: &Element, file_id: u64) {
+fn populate_db_with_componentrelations(db_conn: &Connection, xml_root: &Element) {
     // Insert the data
     for child in &xml_root.children {
         match child {
@@ -244,9 +255,9 @@ fn populate_db_with_componentrelations(db_conn: &Connection, xml_root: &Element,
                         .and_then(|child| child.get_text())
                         .unwrap_or_else(|| "".to_string().into());
 
-                        let id: u64 = convert_from_address_to_id(file_id, id_addr, "ComponentRelation - id");
-                        let component_a_id: u64 = convert_from_address_to_id(file_id, component_a_addr, "ComponentRelation - ComponentAId");
-                        let component_b_id: u64 = convert_from_address_to_id(file_id, component_b_addr, "ComponentRelation - ComponentBId");
+                        let id: u64 = convert_from_address_to_id(id_addr, "ComponentRelation - id");
+                        let component_a_id: u64 = convert_from_address_to_id(component_a_addr, "ComponentRelation - ComponentAId");
+                        let component_b_id: u64 = convert_from_address_to_id(component_b_addr, "ComponentRelation - ComponentBId");
                     db_conn
                         .execute(
                             "INSERT INTO component_relation (id, sort_order, component_a_id, component_b_id, connection_type, key, property_of_relation, relation_text, relation_description, style)
@@ -320,7 +331,41 @@ fn populate_db_with_document(db_conn: &Connection, xml_root: &Element, filename:
     file_id
 }
 
-fn populate_db_with_teams(db_conn: &Connection, xml_root: &Element, file_id: u64) {
+fn populate_db_with_includes(db_conn: &Connection, xml_root: &Element, parent: &str) {
+    // Insert the data
+    for child in &xml_root.children {
+        match child {
+            XMLNode::Element(include) => {
+                if include.name == "Include" {
+                    let url: String = include
+                        .attributes
+                        .get("url")
+                        .expect("Missing 'url' attribute for Include")
+                        .parse()
+                        .unwrap();
+                    // TODO secure this against path traversal attacks.
+                    let filename: String = include
+                        .get_text()
+                        .expect("<Include> element has no data")
+                        .parse()
+                        .unwrap();
+                    db_conn
+                        .execute(
+                            "INSERT INTO include (url, filename)
+                            VALUES (?1, ?2)",
+                            (url, filename.clone()),
+                        )
+                        .expect("Unable to insert data");
+                    let full_path = format!("{}/{}", parent, filename);
+                    db_populate_from_include_xml(db_conn, &full_path);
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+fn populate_db_with_teams(db_conn: &Connection, xml_root: &Element) {
     // Insert the data
     for child in &xml_root.children {
         match child {
@@ -339,7 +384,7 @@ fn populate_db_with_teams(db_conn: &Connection, xml_root: &Element, file_id: u64
                         })
                         .get_text()
                         .unwrap_or_else(|| "".to_string().into());
-                    let id: u64 = convert_from_address_to_id(file_id, id_addr, "Team - id");
+                    let id: u64 = convert_from_address_to_id(id_addr, "Team - id");
                     // TODO also read the members and their roles and put in the member table.
                     db_conn
                         .execute(
@@ -355,7 +400,8 @@ fn populate_db_with_teams(db_conn: &Connection, xml_root: &Element, file_id: u64
     }
 }
 
-fn populate_db_with_viewpackets(db_conn: &Connection, xml_root: &Element, file_id: u64) {
+// TODO maybe use the file_id for the diagram keys.
+fn populate_db_with_viewpackets(db_conn: &Connection, xml_root: &Element, _file_id: u64) {
     // Insert the data
     for child in &xml_root.children {
         match child {
@@ -418,29 +464,29 @@ fn populate_db_with_viewpackets(db_conn: &Connection, xml_root: &Element, file_i
                     let component_addr: String = match viewpacket.get_child("ComponentId") {
                         Some(component_id_elem) => {
                             let component_id_text =
-                                component_id_elem.get_text().unwrap_or("0.0.0".into());
+                                component_id_elem.get_text().unwrap_or("0.0.0.0".into());
                             component_id_text.parse().unwrap()
                         }
-                        None => "0.0.0".to_string(),
+                        None => "0.0.0.0".to_string(),
                     };
 
                     let team_addr: String = match viewpacket.get_child("TeamId") {
                         Some(team_id_elem) => {
-                            let team_id_text = team_id_elem.get_text().unwrap_or("0.0.0".into());
+                            let team_id_text = team_id_elem.get_text().unwrap_or("0.0.0.0".into());
                             team_id_text.parse().unwrap()
                         }
-                        None => "0.0.0".to_string(),
+                        None => "0.0.0.0".to_string(),
                     };
 
                     if view_style == "Assignment" {
-                        if team_addr == "0.0.0" {
+                        if team_addr == "0.0.0.0" {
                             eprintln!(
                                 "!!! Warning: ViewPacket id= {} has viewStyle 'Assignment' but no TeamId assigned.",
                                 viewpacket_addr
                             );
                         }
                     } else {
-                        if component_addr == "0.0.0" {
+                        if component_addr == "0.0.0.0" {
                             eprintln!(
                                 "!!! Warning: ViewPacket id= {} has no ComponentId assigned.",
                                 viewpacket_addr
@@ -449,14 +495,13 @@ fn populate_db_with_viewpackets(db_conn: &Connection, xml_root: &Element, file_i
                     }
 
                     let viewpacket_id: u64 =
-                        convert_from_address_to_id(file_id, viewpacket_addr, "ViewPacket - id");
+                        convert_from_address_to_id(viewpacket_addr, "ViewPacket - id");
                     let component_id: u64 = convert_from_address_to_id(
-                        file_id,
                         component_addr,
                         "ViewPacket - Component",
                     );
                     let team_id: u64 =
-                        convert_from_address_to_id(file_id, team_addr, "ViewPacket - Team");
+                        convert_from_address_to_id(team_addr, "ViewPacket - Team");
                     db_conn
                         .execute(
                             "INSERT INTO view_packet (component_id, context_model_key, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id)

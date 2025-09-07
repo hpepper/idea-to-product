@@ -48,18 +48,12 @@ pub struct Document  {
     pub issue: String,
     pub summary: String,
 }
+
 #[derive(Debug)]
-pub struct ViewPacket {
-    pub component_id: u64,
-    pub context_model_key: String,
-    pub primary_display_key: String,
-    pub introduction: String,
-    pub sort_order: u64,
-    pub team_id: u64,
-    pub title: String,
-    pub view_style: String,
-    pub view_type: String,
-    pub viewpacket_id: u64,
+pub struct Include  {
+    pub file_id: u64,
+    pub filename: String,
+    pub url: String,
 }
 
 #[derive(Debug)]
@@ -75,3 +69,18 @@ pub struct TeamMember {
     pub member_name: String,
     pub role: String,
 }
+
+#[derive(Debug)]
+pub struct ViewPacket {
+    pub component_id: u64,
+    pub context_model_key: String,
+    pub primary_display_key: String,
+    pub introduction: String,
+    pub sort_order: u64,
+    pub team_id: u64,
+    pub title: String,
+    pub view_style: String,
+    pub view_type: String,
+    pub viewpacket_id: u64,
+}
+

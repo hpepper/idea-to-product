@@ -12,15 +12,19 @@ use crate::db_retrieval::{
 pub fn dump_db_to_xml(db_conn: &Connection, output_file: &str) -> Result<(), std::io::Error> {
     let file = File::create(output_file)?;
 
+    println!("DDD Dumping database to XML file: {}", output_file);
+
     let mut xml_root = XMLElement::new("SoftwareArchitectureDocumentation");
     xml_root.add_attribute("version", "0.1.1");
 
     // Dump each table
     // TODO dump the top architecture
-    dump_table_viewpacket_to_xml(&mut xml_root, db_conn);
-    dump_table_component_to_xml(&mut xml_root, db_conn);
-    dump_table_componentrelation_to_xml(&mut xml_root, db_conn);
-    dump_table_behavior_to_xml(&mut xml_root, db_conn);
+    dump_table_viewpacket_to_xml(&mut xml_root, db_conn).expect("Failed to dump view packets");
+    println!("DDD Dumped view packets");
+    dump_table_component_to_xml(&mut xml_root, db_conn).expect("Failed to dump components");
+    println!("DDD Dumped components");
+    dump_table_componentrelation_to_xml(&mut xml_root, db_conn).expect("Failed to dump component relations");
+    dump_table_behavior_to_xml(&mut xml_root, db_conn).expect("Failed to dump behaviors");
     // TODO dump_table_requirement_to_xml(&mut xml_root, db_conn)?;
     xml_root.write(file)?;
     Ok(())

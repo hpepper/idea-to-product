@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE SoftwareArchitectureDocumentation SYSTEM "software_architecture_documentation.dtd">
+
+<SoftwareArchitectureDocumentation Version="0.1.1">
+  <Document>
+    <FileId>2</FileId>
+    <Title>example of Infrastructure Architecture Documentation</Title>
+    <Issue>0.1.0</Issue>
+    <Summary>provide an  example of Software Architecture Document</Summary>
+  </Document>
+
+  <ViewPacket Id="1.1.1" ViewType="Module" ViewStyle="Decomposition" SortOrder="1">
+    <Title>Application infrastructure</Title>
+    <Introduction>The application infrastructure</Introduction>
+    <ComponentId>0.0.1</ComponentId>
+    <PrimaryDisplayKey>Decomposition-1.1.1</PrimaryDisplayKey>
+    <ContextModelKey>ContextDiagram001</ContextModelKey>
+  </ViewPacket>
+
+  <Component Id="2.0.0.1" Name="Infrastructure">
+    <Purpose></Purpose>
+    <Summary>Provide the infrastructure for the application</Summary>
+  </Component>
+  <Component Id="2.0.0.2" Name="Kubernetes Cluster">
+    <Purpose></Purpose>
+    <Summary>Container orchestration platform.</Summary>
+  </Component>
+
+  <ComponentRelation Id="0.1.1" SortOrder="">
+    <ComponentAId>2.0.0.1</ComponentAId>
+    <ComponentBId>2.0.0.2</ComponentBId>
+    <Key>Decomposition-1.1.1</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+    <RelationText></RelationText>
+    <RelationDescription></RelationDescription>
+    <Style></Style>
+  </ComponentRelation>
+
+  <!-- 36
+  <ComponentRelation Id="" SortOrder="">
+    <ComponentAId></ComponentAId>
+    <ComponentBId></ComponentBId>
+    <Key></Key>
+    <PropertyOfRelation></PropertyOfRelation>
+    <RelationText></RelationText>
+    <RelationDescription></RelationDescription>
+    <Style></Style>
+  </ComponentRelation>
+  -->
+
+
+</SoftwareArchitectureDocumentation>

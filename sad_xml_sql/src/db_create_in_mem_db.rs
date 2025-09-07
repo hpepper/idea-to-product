@@ -6,6 +6,7 @@ pub fn db_create_in_mem_db(db_conn: &Connection) {
     create_table_components(db_conn);
     create_table_context_model(db_conn);
     create_table_document(db_conn);
+    create_table_include(db_conn);
     create_table_team(db_conn);
     create_table_viewpackets(db_conn);
 }
@@ -96,6 +97,19 @@ fn create_table_document(db_conn: &Connection) {
         .expect("Failed to create file table");
 }
 
+
+fn create_table_include(db_conn: &Connection) {
+    // Create the tables
+    db_conn
+        .execute(
+            "CREATE TABLE IF NOT EXISTS include (
+        filename TEXT PRIMARY KEY,
+        url TEXT
+    )",
+            [],
+        )
+        .expect("Failed to create include table");
+}
 
 fn create_table_team(db_conn: &Connection) {
     // Create the tables

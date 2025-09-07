@@ -501,7 +501,7 @@ fn render_child_relationship(
                         Err(err) => {
                             eprintln!(
                                 "Error: returned from get_component_by_id() for component id = {} - {}",
-                                component_relation.component_b_id,
+                                convert_id_to_address(component_relation.component_b_id),
                                 err
                             );
                         }
@@ -922,7 +922,7 @@ fn render_graphical_primary_display(
                         Err(err) => {
                             eprintln!(
                                 "Error: returned from get_component_by_id() for component id = {} - {}",
-                                component_relation.component_b_id,
+                                convert_id_to_address(component_relation.component_b_id),
                                 err
                             );
                         }
@@ -1036,7 +1036,7 @@ fn render_graphical_layered_display(
                         Err(err) => {
                             eprintln!(
                                 "Error: returned from get_component_by_id() for component id = {} - {}",
-                                component_relation.component_b_id,
+                                convert_id_to_address(component_relation.component_b_id),
                                 err
                             );
                         }
@@ -1206,7 +1206,7 @@ fn render_graphical_context_diagram(
                         Err(err) => {
                             eprintln!(
                                 "Error: returned from get_component_by_id() for component id = {} - {}",
-                                component_relation.component_b_id,
+                                convert_id_to_address(component_relation.component_b_id),
                                 err
                             );
                         }
@@ -1347,7 +1347,7 @@ fn render_textual_primary_display(
                             Err(err) => {
                                 eprintln!(
                                 "Error: returned from get_component_by_id() for component id = {} - {}",
-                                component_relation.component_b_id,
+                                convert_id_to_address(component_relation.component_b_id),
                                 err
                             );
                             }
@@ -1376,7 +1376,7 @@ fn render_textual_primary_display(
                             Err(err) => {
                                 eprintln!(
                                 "Error: returned from get_component_by_id() for component id = {} - {}",
-                                component_relation.component_b_id,
+                                convert_id_to_address(component_relation.component_b_id),
                                 err
                                 );
                             }
@@ -1513,7 +1513,7 @@ fn render_graphical_all_behaviors_for_viewpacket(
                                 Err(err) => {
                                     eprintln!(
                                         "Error: returned from get_component_by_id() for component id = {} - {}",
-                                        component_relation.component_b_id,
+                                        convert_id_to_address(component_relation.component_b_id),
                                         err
                                     );
                                 }

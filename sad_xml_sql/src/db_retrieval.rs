@@ -51,21 +51,28 @@ pub fn get_vector_of_component_names_sorted(db_conn: &Connection) -> Result<Vec<
 }
 
 pub fn get_vector_of_components_sorted_by_name(db_conn: &Connection) -> Result<Vec<Component>> {
+    //println!("Preparing statement to fetch components sorted by name");
     let mut stmt = db_conn
-        .prepare("SELECT id, name, purpose, summary team_id FROM component ORDER BY name COLLATE NOCASE ASC")
+        .prepare("SELECT id, name, purpose, summary, team_id FROM component ORDER BY name COLLATE NOCASE ASC")
         .unwrap();
+    //println!("Statement prepared, querying components...");
     let component_names = stmt
         .query_map([], |row| {
+            let id: u64 = row.get(0)?;
+            let name: String = row.get(1)?;
+            //println!("Fetched component: id={}, name={}", id, name);
             Ok(Component {
-                id: row.get(0)?,
-                name: row.get(1)?,
+                id,
+                name,
                 purpose: row.get(2)?,
                 summary: row.get(3)?,
                 team_id: row.get(4)?,
             })
         })
         .unwrap();
-    component_names.collect::<Result<Vec<Component>, _>>()
+    let result = component_names.collect::<Result<Vec<Component>, _>>()?;
+    //println!("Total components fetched: {}", result.len());
+    Ok(result)
 }
 
 pub fn get_components_vector_by_team_id_sorted_by_name(
