@@ -15,18 +15,31 @@ pub fn db_populate_from_xml(db_conn: &Connection, filename: &String) {
     let file_id = populate_db_with_document(db_conn, &xml_root, filename);
     populate_db_with_viewpackets(db_conn, &xml_root, file_id);
     populate_db_with_behaviors(db_conn, &xml_root, file_id);
-    populate_db_with_components(db_conn, &xml_root);
+    populate_db_with_components(db_conn, &xml_root, file_id);
     populate_db_with_componentrelations(db_conn, &xml_root);
     populate_db_with_includes(db_conn, &xml_root, parent);
     populate_db_with_teams(db_conn, &xml_root);
 }
 
-pub fn db_populate_from_include_xml(db_conn: &Connection, filename: &String) {
+fn update_file_id_for_filename(db_conn: &Connection, file_id: u64, filename: String) {
+    db_conn
+        .execute(
+            "UPDATE include SET file_id = ?1 WHERE filename = ?2",
+            (file_id, filename),
+        )
+        .expect("Unable to update file_id for include");
+}
+
+pub fn db_populate_from_include_xml(db_conn: &Connection, filename: &String, original_filename: String) {
     println!("DDD loading including file: {}", filename);
     // Parse the XML file
     let xml_root = load_xml_file(filename);
 
-    populate_db_with_components(db_conn, &xml_root);
+    let file_id = get_file_id_from_include_xml(&xml_root);
+    update_file_id_for_filename(db_conn, file_id, original_filename);
+    populate_db_with_viewpackets(db_conn, &xml_root, file_id);
+
+    populate_db_with_components(db_conn, &xml_root, file_id);
     populate_db_with_teams(db_conn, &xml_root);
 }
 // TODO itterate though include elements of the document of the first file.
@@ -64,6 +77,31 @@ fn convert_from_address_to_id(addr: String, location: &str) -> u64 {
         );
     }
 }
+
+fn get_file_id_from_include_xml(xml_root: &Element) -> u64 {
+    // Insert the data
+    let mut file_id = 0;
+    for child in &xml_root.children {
+        match child {
+            XMLNode::Element(document) => {
+                if document.name == "Document" {
+                    file_id = document
+                        .get_child("FileId")
+                        .unwrap_or_else(|| panic!("<FileId> element missing in document"))
+                        .get_text()
+                        .unwrap_or_else(|| panic!("<FileId> element has no data in document"))
+                        .parse()
+                        .unwrap_or_else(|_| {
+                            panic!("<FileId> element contains invalid number in document")
+                        });
+                }
+            }
+            _ => {}
+        }
+    }
+    file_id
+}
+
 
 fn populate_db_with_behaviors(db_conn: &Connection, xml_root: &Element, file_id: u64) {
     // Insert the data
@@ -135,7 +173,7 @@ fn populate_db_with_behaviors(db_conn: &Connection, xml_root: &Element, file_id:
     }
 }
 
-fn populate_db_with_components(db_conn: &Connection, xml_root: &Element) {
+fn populate_db_with_components(db_conn: &Connection, xml_root: &Element, file_id: u64) {
     // Insert the data
     for child in &xml_root.children {
         match child {
@@ -180,9 +218,10 @@ fn populate_db_with_components(db_conn: &Connection, xml_root: &Element) {
                     );
                     db_conn
                         .execute(
-                            "INSERT INTO component (id, name, purpose, summary, team_id)
-                            VALUES (?1, ?2, ?3, ?4, ?5)",
+                            "INSERT INTO component (file_id, id, name, purpose, summary, team_id)
+                            VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
                             (
+                                file_id,
                                 id,
                                 &name.to_string(),
                                 &purpose.to_string(),
@@ -357,7 +396,7 @@ fn populate_db_with_includes(db_conn: &Connection, xml_root: &Element, parent: &
                         )
                         .expect("Unable to insert data");
                     let full_path = format!("{}/{}", parent, filename);
-                    db_populate_from_include_xml(db_conn, &full_path);
+                    db_populate_from_include_xml(db_conn, &full_path, filename);
                 }
             }
             _ => {}
@@ -401,7 +440,7 @@ fn populate_db_with_teams(db_conn: &Connection, xml_root: &Element) {
 }
 
 // TODO maybe use the file_id for the diagram keys.
-fn populate_db_with_viewpackets(db_conn: &Connection, xml_root: &Element, _file_id: u64) {
+fn populate_db_with_viewpackets(db_conn: &Connection, xml_root: &Element, file_id: u64) {
     // Insert the data
     for child in &xml_root.children {
         match child {
@@ -504,11 +543,12 @@ fn populate_db_with_viewpackets(db_conn: &Connection, xml_root: &Element, _file_
                         convert_from_address_to_id(team_addr, "ViewPacket - Team");
                     db_conn
                         .execute(
-                            "INSERT INTO view_packet (component_id, context_model_key, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id)
-                            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                            "INSERT INTO view_packet (component_id, context_model_key, file_id, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id)
+                            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
                             (
                                 component_id,
                                 &context_model_key.to_string(),
+                                file_id,
                                 &primary_display_key.to_string(),
                                 &introduction.to_string(),
                                 sort_order,

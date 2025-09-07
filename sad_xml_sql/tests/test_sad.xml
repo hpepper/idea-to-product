@@ -51,6 +51,14 @@
     <ContextModelKey></ContextModelKey>
   </ViewPacket>
 
+  <ViewPacket Id="1.1.1.11" ViewType="Module" ViewStyle="Decomposition" SortOrder="6">
+    <Title>oAuth decomposition</Title>
+    <Introduction></Introduction>
+    <ComponentId>1.0.0.11</ComponentId>
+    <PrimaryDisplayKey>DecompositionOAuth</PrimaryDisplayKey>
+    <ContextModelKey></ContextModelKey>
+  </ViewPacket>
+
   <ViewPacket Id="1.1.2.2" ViewType="Module" ViewStyle="Uses" SortOrder="2">
     <Title>Edge connector</Title>
     <Introduction></Introduction>

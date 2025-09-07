@@ -10,10 +10,11 @@ pub struct Behavior {
 
 #[derive(Debug)]
 pub struct Component {
+    pub file_id: u64,
     pub id: u64,
     pub name: String,
-    pub summary: String,
     pub purpose: String,
+    pub summary: String,
     pub team_id: u64,
 }
 
@@ -74,8 +75,9 @@ pub struct TeamMember {
 pub struct ViewPacket {
     pub component_id: u64,
     pub context_model_key: String,
-    pub primary_display_key: String,
+    pub file_id: u64,
     pub introduction: String,
+    pub primary_display_key: String,
     pub sort_order: u64,
     pub team_id: u64,
     pub title: String,

@@ -11,13 +11,15 @@ use sad_xml_sql::models;
 
 use db_retrieval::{
     get_component_by_id, get_component_name_by_id, get_components_vector_by_team_id_sorted_by_name,
+    get_include_url_by_file_id,
     get_vector_of_behaviors_for_viewpacket_id, get_vector_of_component_relations_by_id_and_key,
     get_vector_of_component_relations_by_id_and_key_both_directions,
     get_vector_of_component_relations_by_key, get_vector_of_context_model_by_key,
     get_vector_of_usedby_components_by_id_and_key,
-    get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id,
-    get_vector_of_viewpacket_parents_by_component_id_and_style_and_key, get_viewpacket_by_team_id,
-    get_viewpacket_by_style_and_component_id,
+    get_vector_of_any_viewpacket_by_component_id_excluding_viewpacket_id,
+    get_vector_of_local_viewpacket_by_component_id_excluding_viewpacket_id,
+    get_vector_of_viewpacket_parents_by_component_id_and_style_and_key,
+    get_viewpacket_by_style_and_component_id, get_viewpacket_by_team_id,
 };
 use sad_xml_sql::db_dump_to_xml::convert_id_to_address;
 
@@ -214,7 +216,7 @@ fn render_partone(
         if let Some(styles) = styles_map.get(view_type) {
             for style in styles {
                 let viewpacket_vector =
-                    get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id(
+                    get_vector_of_any_viewpacket_by_component_id_excluding_viewpacket_id(
                         db_conn, 0, view_type, style, 0,
                     );
 
@@ -261,7 +263,7 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
     // TODO maybe call this in the parent function so it only gets called once.
     let type_and_style_to_section_number = create_hardcoded_map();
 
-    let viewpacket_vector = get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id(
+    let viewpacket_vector = get_vector_of_local_viewpacket_by_component_id_excluding_viewpacket_id(
         db_conn, 0, view_type, style, 0,
     );
 
@@ -551,9 +553,9 @@ fn render_viewpacket_relationship_by_component_id(
     viewpacket_id: u64,
     component_id: u64,
 ) {
-    let _type_and_style_to_section_number = create_hardcoded_map();
+    // TODO delete? let _type_and_style_to_section_number = create_hardcoded_map();
 
-    let viewpacket_vector = get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id(
+    let viewpacket_vector = get_vector_of_any_viewpacket_by_component_id_excluding_viewpacket_id(
         db_conn,
         component_id,
         "",
@@ -571,9 +573,29 @@ fn render_viewpacket_relationship_by_component_id(
                     viewpacket.sort_order,
                 );
                 let linkable_view_title = make_markdown_linkable_text(view_title.clone());
+                // TODO if this is a non-local viewpacket then include the url.
+                let local_file_id = match db_retrieval::get_local_file_id(db_conn) {
+                    Ok(file_id) => file_id,
+                    Err(err) => {
+                        eprintln!(
+                            "Error retrieving local file id at {}:{}: {}",
+                            file!(),
+                            line!(),
+                            err
+                        );
+                        0
+                    }
+                };
+                if viewpacket.file_id == local_file_id {
                 markdown_file
                     .write(&format!("  * [{view_title}](#{linkable_view_title})\n").as_bytes())
                     .expect("Unable to write to file");
+                } else {
+                    let url = get_include_url_by_file_id(db_conn,viewpacket.file_id).expect("Unable to get include URL");
+                markdown_file
+                    .write(&format!("  * [external: {view_title}]({url}#{linkable_view_title})\n").as_bytes())
+                    .expect("Unable to write to file");
+                }
             }
         }
         Err(err) => {
@@ -727,15 +749,22 @@ fn render_viewpacket_section_primary_display(
             Vec::new()
         };
         for component in component_list {
-            let reference_for_viewpacket = get_viewpacket_reference_for_component_id(db_conn, component.id);
+            let reference_for_viewpacket =
+                get_viewpacket_reference_for_component_id(db_conn, component.id);
             match reference_for_viewpacket {
-                Some(reference) => {markdown_file
-                .write(&format!("| {} | {} | {} |\n", component.name, component.summary, reference).as_bytes())
-                .expect("Unable to write to file");},
-                None => {},
-                
+                Some(reference) => {
+                    markdown_file
+                        .write(
+                            &format!(
+                                "| {} | {} | {} |\n",
+                                component.name, component.summary, reference
+                            )
+                            .as_bytes(),
+                        )
+                        .expect("Unable to write to file");
+                }
+                None => {}
             }
-            
         }
         markdown_file
             .write("\n".as_bytes())
@@ -797,34 +826,41 @@ fn get_viewpacket_reference_for_component_id(
     db_conn: &Connection,
     component_id: u64,
 ) -> Option<String> {
-  let viewpacket = get_viewpacket_by_style_and_component_id(db_conn, MODULE_VIEW_TYPE_STYLE_DECOMPOSITION, component_id);
-  if viewpacket.is_some() {
-    let viewpacket = viewpacket.unwrap();
-    let view_title = create_view_packet_title(
-        viewpacket.view_type.as_str(),
-        viewpacket.view_style.as_str(),
-        viewpacket.title.as_str(),
-        viewpacket.sort_order,
+    let viewpacket = get_viewpacket_by_style_and_component_id(
+        db_conn,
+        MODULE_VIEW_TYPE_STYLE_DECOMPOSITION,
+        component_id,
     );
-    let linkable_view_title = make_markdown_linkable_text(view_title.clone());
-    Some(format!("[{view_title}](#{linkable_view_title})"))
-  } else {
-    let viewpacket = get_viewpacket_by_style_and_component_id(db_conn, MODULE_VIEW_TYPE_STYLE_USES, component_id);
     if viewpacket.is_some() {
-      let viewpacket = viewpacket.unwrap();
-      let view_title = create_view_packet_title(
-          viewpacket.view_type.as_str(),
-          viewpacket.view_style.as_str(),
-          viewpacket.title.as_str(),
-          viewpacket.sort_order,
-      );
-      let linkable_view_title = make_markdown_linkable_text(view_title.clone());
-      Some(format!("[{view_title}](#{linkable_view_title})"))
+        let viewpacket = viewpacket.unwrap();
+        let view_title = create_view_packet_title(
+            viewpacket.view_type.as_str(),
+            viewpacket.view_style.as_str(),
+            viewpacket.title.as_str(),
+            viewpacket.sort_order,
+        );
+        let linkable_view_title = make_markdown_linkable_text(view_title.clone());
+        Some(format!("[{view_title}](#{linkable_view_title})"))
     } else {
-      None
+        let viewpacket = get_viewpacket_by_style_and_component_id(
+            db_conn,
+            MODULE_VIEW_TYPE_STYLE_USES,
+            component_id,
+        );
+        if viewpacket.is_some() {
+            let viewpacket = viewpacket.unwrap();
+            let view_title = create_view_packet_title(
+                viewpacket.view_type.as_str(),
+                viewpacket.view_style.as_str(),
+                viewpacket.title.as_str(),
+                viewpacket.sort_order,
+            );
+            let linkable_view_title = make_markdown_linkable_text(view_title.clone());
+            Some(format!("[{view_title}](#{linkable_view_title})"))
+        } else {
+            None
+        }
     }
-  }
-  
 }
 
 fn render_graphical_primary_display(
@@ -959,7 +995,9 @@ fn render_graphical_layered_display(
 ) {
     println!(
         "render_graphical_layered_display {} {} {}",
-        convert_id_to_address(component_id), primary_display_key, first_layer
+        convert_id_to_address(component_id),
+        primary_display_key,
+        first_layer
     );
 
     if first_layer {

@@ -100,10 +100,11 @@ mod tests {
     fn test_update_component_by_id_updates_row() {
         let conn = setup_db();
         conn.execute(
-            "INSERT INTO component (id, name, summary, purpose, team_id) VALUES (1, 'OldName', 'OldSummary', 'OldPurpose', 0)",
+            "INSERT INTO component (file_id, id, name, summary, purpose, team_id) VALUES (0,1, 'OldName', 'OldSummary', 'OldPurpose', 0)",
             (),
         ).unwrap();
         let component = Component {
+            file_id: 0,
             id: 1,
             name: "NewName".to_string(),
             summary: "NewSummary".to_string(),
@@ -126,6 +127,7 @@ mod tests {
     fn test_update_component_by_id_nonexistent_id() {
         let conn = setup_db();
         let component = Component {
+            file_id: 0,
             id: 42,
             name: "Name".to_string(),
             summary: "Summary".to_string(),

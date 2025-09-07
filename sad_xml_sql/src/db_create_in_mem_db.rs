@@ -32,6 +32,7 @@ fn create_table_components(db_conn: &Connection) {
     db_conn
         .execute(
             "CREATE TABLE component (
+            file_id INTEGER,
             id INTEGER PRIMARY KEY,
             name TEXT NOT NULL,
             purpose TEXT,
@@ -103,7 +104,8 @@ fn create_table_include(db_conn: &Connection) {
     db_conn
         .execute(
             "CREATE TABLE IF NOT EXISTS include (
-        filename TEXT PRIMARY KEY,
+        file_id INTEGER PRIMARY KEY,
+        filename TEXT,
         url TEXT
     )",
             [],
@@ -125,19 +127,19 @@ fn create_table_team(db_conn: &Connection) {
         .expect("Failed to create team table");
 }
 
-fn create_table_team_member(db_conn: &Connection) {
-    // Create the tables
-    db_conn
-        .execute(
-            "CREATE TABLE IF NOT EXISTS team_member (
-        name TEXT NOT NULL,
-        role TEXT,
-        team_id INTEGER
-    )",
-            [],
-        )
-        .expect("Failed to create team_member table");
-}
+// fn create_table_team_member(db_conn: &Connection) {
+//     // Create the tables
+//     db_conn
+//         .execute(
+//             "CREATE TABLE IF NOT EXISTS team_member (
+//         name TEXT NOT NULL,
+//         role TEXT,
+//         team_id INTEGER
+//     )",
+//             [],
+//         )
+//         .expect("Failed to create team_member table");
+// }
 
 fn create_table_viewpackets(db_conn: &Connection) {
     // Create the tables
@@ -147,6 +149,7 @@ fn create_table_viewpackets(db_conn: &Connection) {
             component_id INTEGER NOT NULL,
             context_model_key TEXT,
             primary_display_key TEXT,
+            file_id INTEGER,
             introduction TEXT,
             sort_order INTEGER NOT NULL,
             team_id INTEGER,

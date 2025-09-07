@@ -3,30 +3,34 @@ use crate::models::{Behavior, Component, ComponentRelation, ContextModel, ViewPa
 use rusqlite::{Connection, Result};
 
 pub fn get_component_by_id(db_conn: &Connection, component_id: u64) -> Result<Component> {
-    let mut stmt = db_conn
-        .prepare("SELECT id, name, purpose, summary, team_id FROM component WHERE id = ?1")?;
+    let mut stmt = db_conn.prepare(
+        "SELECT file_id, id, name, purpose, summary, team_id FROM component WHERE id = ?1",
+    )?;
     let component = stmt.query_row([component_id], |row| {
         Ok(Component {
-            id: row.get(0)?,
-            name: row.get(1)?,
-            purpose: row.get(2)?,
-            summary: row.get(3)?,
-            team_id: row.get(4)?,
+            file_id: row.get(0)?,
+            id: row.get(1)?,
+            name: row.get(2)?,
+            purpose: row.get(3)?,
+            summary: row.get(4)?,
+            team_id: row.get(5)?,
         })
     })?;
     Ok(component)
 }
 
 pub fn get_component_by_name(db_conn: &Connection, name: String) -> Result<Component> {
-    let mut stmt = db_conn
-        .prepare("SELECT id, name, purpose, summary, team_id FROM component WHERE name = ?1")?;
+    let mut stmt = db_conn.prepare(
+        "SELECT file_id,id, name, purpose, summary, team_id FROM component WHERE name = ?1",
+    )?;
     let component = stmt.query_row([name], |row| {
         Ok(Component {
-            id: row.get(0)?,
-            name: row.get(1)?,
-            purpose: row.get(2)?,
-            summary: row.get(3)?,
-            team_id: row.get(4)?,
+            file_id: row.get(0)?,
+            id: row.get(1)?,
+            name: row.get(2)?,
+            purpose: row.get(3)?,
+            summary: row.get(4)?,
+            team_id: row.get(5)?,
         })
     })?;
     Ok(component)
@@ -53,20 +57,19 @@ pub fn get_vector_of_component_names_sorted(db_conn: &Connection) -> Result<Vec<
 pub fn get_vector_of_components_sorted_by_name(db_conn: &Connection) -> Result<Vec<Component>> {
     //println!("Preparing statement to fetch components sorted by name");
     let mut stmt = db_conn
-        .prepare("SELECT id, name, purpose, summary, team_id FROM component ORDER BY name COLLATE NOCASE ASC")
+        .prepare("SELECT file_id, id, name, purpose, summary, team_id FROM component ORDER BY name COLLATE NOCASE ASC")
         .unwrap();
     //println!("Statement prepared, querying components...");
     let component_names = stmt
         .query_map([], |row| {
-            let id: u64 = row.get(0)?;
-            let name: String = row.get(1)?;
             //println!("Fetched component: id={}, name={}", id, name);
             Ok(Component {
-                id,
-                name,
-                purpose: row.get(2)?,
-                summary: row.get(3)?,
-                team_id: row.get(4)?,
+                file_id: row.get(0)?,
+                id: row.get(1)?,
+                name: row.get(2)?,
+                purpose: row.get(3)?,
+                summary: row.get(4)?,
+                team_id: row.get(5)?,
             })
         })
         .unwrap();
@@ -80,16 +83,17 @@ pub fn get_components_vector_by_team_id_sorted_by_name(
     requested_team_id: u64,
 ) -> Result<Vec<Component>> {
     let mut stmt = db_conn
-        .prepare("SELECT id, name, purpose, summary, team_id FROM component WHERE team_id = ?1 ORDER BY name COLLATE NOCASE ASC")
+        .prepare("SELECT file_id, id, name, purpose, summary, team_id FROM component WHERE team_id = ?1 ORDER BY name COLLATE NOCASE ASC")
         .unwrap();
     let component_names = stmt
         .query_map([requested_team_id], |row| {
             Ok(Component {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                purpose: row.get(2)?,
-                summary: row.get(3)?,
-                team_id: row.get(4)?,
+                file_id: row.get(0)?,
+                id: row.get(1)?,
+                name: row.get(2)?,
+                purpose: row.get(3)?,
+                summary: row.get(4)?,
+                team_id: row.get(5)?,
             })
         })
         .unwrap();
@@ -273,6 +277,7 @@ pub fn get_vector_of_component_relations_sorted_by_key_and_order(
     Ok(component_relations)
 }
 
+// TODO should this also filter on file_id?
 pub fn get_vector_of_viewpacket_titles_sorted(db_conn: &Connection) -> Result<Vec<String>> {
     let mut stmt = db_conn
         .prepare("SELECT title FROM view_packet ORDER BY title COLLATE NOCASE ASC")
@@ -281,33 +286,47 @@ pub fn get_vector_of_viewpacket_titles_sorted(db_conn: &Connection) -> Result<Ve
     viewpacket_titles.collect::<Result<Vec<String>, _>>()
 }
 
-/**
- * if search_component_id == 0, then return all view packets for the given view_type and style
- * if search_component_id != 0, then return all view packets for the given component_id except for the given viewpacket_id
- */
-pub fn get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id(
+pub fn get_local_file_id(db_conn: &Connection) -> Result<u64> {
+    // TODO get rid of limit
+    let mut stmt = db_conn.prepare("SELECT file_id FROM document LIMIT 1")?;
+    let file_id: u64 = stmt.query_row([], |row| row.get(0))?;
+    Ok(file_id)
+}
+
+pub fn get_include_url_by_file_id(db_conn: &Connection, file_id: u64) -> Result<String> {
+    let mut stmt = db_conn.prepare("SELECT url FROM include WHERE file_id = ?1")?;
+    let url: String = stmt.query_row([file_id], |row| row.get(0))?;
+    Ok(url)
+}
+
+
+// TODO at some point refactor this and get_vector_of_any_viewpacket_by_component_id_excluding_viewpacket_id
+pub fn get_vector_of_local_viewpacket_by_component_id_excluding_viewpacket_id(
     db_conn: &Connection,
     search_component_id: u64,
     view_type: &str,
     style: &str,
     exclude_viewpacket_id: u64,
 ) -> Result<Vec<ViewPacket>> {
+    let file_id = get_local_file_id(db_conn)?;
+
     let viewpacket_vector = if search_component_id == 0 {
-        let mut stmt = db_conn.prepare("SELECT component_id, context_model_key, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id FROM view_packet  WHERE view_type = ?1 AND view_style = ?2 ORDER BY sort_order")?;
+        let mut stmt = db_conn.prepare("SELECT component_id, context_model_key, primary_display_key, file_id, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id FROM view_packet  WHERE view_type = ?1 AND view_style = ?2 AND file_id = ?3 ORDER BY sort_order")?;
         // TODO how can I refactor the let viewpacket_vector_for_style so I could just ust the stmt without the temporary variable?
         let viewpacket_vector_for_style = stmt
-            .query_map([view_type, style], |row| {
+            .query_map((view_type, style, file_id), |row| {
                 Ok(ViewPacket {
                     component_id: row.get(0)?,
                     context_model_key: row.get(1)?,
                     primary_display_key: row.get(2)?,
-                    introduction: row.get(3)?,
-                    sort_order: row.get(4)?,
-                    team_id: row.get(5)?,
-                    title: row.get(6)?,
-                    view_style: row.get(7)?,
-                    view_type: row.get(8)?,
-                    viewpacket_id: row.get(9)?,
+                    file_id: row.get(3)?,
+                    introduction: row.get(4)?,
+                    sort_order: row.get(5)?,
+                    team_id: row.get(6)?,
+                    title: row.get(7)?,
+                    view_style: row.get(8)?,
+                    view_type: row.get(9)?,
+                    viewpacket_id: row.get(10)?,
                 })
             })?
             .collect::<Result<Vec<_>, _>>()?;
@@ -315,7 +334,7 @@ pub fn get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id(
     } else {
         let mut stmt_specific_component_id = db_conn
     .prepare(
-        "SELECT component_id, context_model_key, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id
+        "SELECT component_id, context_model_key, primary_display_key, file_id, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id
     FROM view_packet
     WHERE component_id = ?1 AND viewpacket_id != ?2
     ORDER BY sort_order"
@@ -327,13 +346,14 @@ pub fn get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id(
                     component_id: row.get(0)?,
                     context_model_key: row.get(1)?,
                     primary_display_key: row.get(2)?,
-                    introduction: row.get(3)?,
-                    sort_order: row.get(4)?,
-                    team_id: row.get(5)?,
-                    title: row.get(6)?,
-                    view_style: row.get(7)?,
-                    view_type: row.get(8)?,
-                    viewpacket_id: row.get(9)?,
+                    file_id: row.get(3)?,
+                    introduction: row.get(4)?,
+                    sort_order: row.get(5)?,
+                    team_id: row.get(6)?,
+                    title: row.get(7)?,
+                    view_style: row.get(8)?,
+                    view_type: row.get(9)?,
+                    viewpacket_id: row.get(10)?,
                 })
             })?
             .collect::<Result<Vec<_>, _>>()?;
@@ -343,23 +363,89 @@ pub fn get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id(
     Ok(viewpacket_vector)
 }
 
+/**
+ * if search_component_id == 0, then return all view packets for the given view_type and style
+ * if search_component_id != 0, then return all view packets for the given component_id except for the given viewpacket_id
+ */
+pub fn get_vector_of_any_viewpacket_by_component_id_excluding_viewpacket_id(
+    db_conn: &Connection,
+    search_component_id: u64,
+    view_type: &str,
+    style: &str,
+    exclude_viewpacket_id: u64,
+) -> Result<Vec<ViewPacket>> {
+    let viewpacket_vector = if search_component_id == 0 {
+        let mut stmt = db_conn.prepare("SELECT component_id, context_model_key, primary_display_key, file_id, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id FROM view_packet  WHERE view_type = ?1 AND view_style = ?2 ORDER BY sort_order")?;
+        // TODO how can I refactor the let viewpacket_vector_for_style so I could just ust the stmt without the temporary variable?
+        let viewpacket_vector_for_style = stmt
+            .query_map([view_type, style], |row| {
+                Ok(ViewPacket {
+                    component_id: row.get(0)?,
+                    context_model_key: row.get(1)?,
+                    primary_display_key: row.get(2)?,
+                    file_id: row.get(3)?,
+                    introduction: row.get(4)?,
+                    sort_order: row.get(5)?,
+                    team_id: row.get(6)?,
+                    title: row.get(7)?,
+                    view_style: row.get(8)?,
+                    view_type: row.get(9)?,
+                    viewpacket_id: row.get(10)?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        viewpacket_vector_for_style
+    } else {
+        let mut stmt_specific_component_id = db_conn
+    .prepare(
+        "SELECT component_id, context_model_key, primary_display_key, file_id, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id
+    FROM view_packet
+    WHERE component_id = ?1 AND viewpacket_id != ?2
+    ORDER BY sort_order"
+    )
+    .unwrap();
+        let viewpacket_vector_for_component_id = stmt_specific_component_id
+            .query_map([search_component_id, exclude_viewpacket_id], |row| {
+                Ok(ViewPacket {
+                    component_id: row.get(0)?,
+                    context_model_key: row.get(1)?,
+                    primary_display_key: row.get(2)?,
+                    file_id: row.get(3)?,
+                    introduction: row.get(4)?,
+                    sort_order: row.get(5)?,
+                    team_id: row.get(6)?,
+                    title: row.get(7)?,
+                    view_style: row.get(8)?,
+                    view_type: row.get(9)?,
+                    viewpacket_id: row.get(10)?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        viewpacket_vector_for_component_id
+    };
+
+    Ok(viewpacket_vector)
+}
+
+// TODO only get this for the local file_id
 pub fn get_viewpacket_by_team_id(db_conn: &Connection, search_team_id: u64) -> Option<ViewPacket> {
     if search_team_id == 0 {
         return None;
     }
-    let mut stmt = db_conn.prepare("SELECT component_id, context_model_key, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id FROM view_packet  WHERE team_id = ?1 ORDER BY sort_order").unwrap();
+    let mut stmt = db_conn.prepare("SELECT component_id, context_model_key, primary_display_key, file_id, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id FROM view_packet  WHERE team_id = ?1 ORDER BY sort_order").unwrap();
     let viewpacket = stmt.query_row([search_team_id], |row| {
         Ok(ViewPacket {
             component_id: row.get(0)?,
             context_model_key: row.get(1)?,
             primary_display_key: row.get(2)?,
-            introduction: row.get(3)?,
-            sort_order: row.get(4)?,
-            team_id: row.get(5)?,
-            title: row.get(6)?,
-            view_style: row.get(7)?,
-            view_type: row.get(8)?,
-            viewpacket_id: row.get(9)?,
+            file_id: row.get(3)?,
+            introduction: row.get(4)?,
+            sort_order: row.get(5)?,
+            team_id: row.get(6)?,
+            title: row.get(7)?,
+            view_style: row.get(8)?,
+            view_type: row.get(9)?,
+            viewpacket_id: row.get(10)?,
         })
     });
 
@@ -371,19 +457,20 @@ pub fn get_viewpacket_by_team_id(db_conn: &Connection, search_team_id: u64) -> O
 }
 
 pub fn get_viewpacket_by_title(db_conn: &Connection, title: &str) -> Result<ViewPacket> {
-    let mut stmt = db_conn.prepare(        "SELECT component_id, context_model_key, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id FROM view_packet  WHERE title = ?1")?;
+    let mut stmt = db_conn.prepare(        "SELECT component_id, context_model_key, primary_display_key, file_id, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id FROM view_packet  WHERE title = ?1")?;
     let viewpacket = stmt.query_row([title], |row| {
         Ok(ViewPacket {
             component_id: row.get(0)?,
             context_model_key: row.get(1)?,
             primary_display_key: row.get(2)?,
-            introduction: row.get(3)?,
-            sort_order: row.get(4)?,
-            team_id: row.get(5)?,
-            title: row.get(6)?,
-            view_style: row.get(7)?,
-            view_type: row.get(8)?,
-            viewpacket_id: row.get(9)?,
+            file_id: row.get(3)?,
+            introduction: row.get(4)?,
+            sort_order: row.get(5)?,
+            team_id: row.get(6)?,
+            title: row.get(7)?,
+            view_style: row.get(8)?,
+            view_type: row.get(9)?,
+            viewpacket_id: row.get(10)?,
         })
     })?;
 
@@ -397,20 +484,21 @@ pub fn get_viewpacket_by_style_and_component_id(
     search_component_id: u64,
 ) -> Option<ViewPacket> {
     let mut stmt = db_conn.prepare(
-        "SELECT component_id, context_model_key, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id FROM view_packet WHERE view_style = ?1 AND component_id = ?2",
+        "SELECT component_id, context_model_key, primary_display_key, file_id, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id FROM view_packet WHERE view_style = ?1 AND component_id = ?2",
     ).unwrap();
     let viewpacket = stmt.query_row((&style, search_component_id), |row| {
         Ok(ViewPacket {
             component_id: row.get(0)?,
             context_model_key: row.get(1)?,
             primary_display_key: row.get(2)?,
-            introduction: row.get(3)?,
-            sort_order: row.get(4)?,
-            team_id: row.get(5)?,
-            title: row.get(6)?,
-            view_style: row.get(7)?,
-            view_type: row.get(8)?,
-            viewpacket_id: row.get(9)?,
+            file_id: row.get(3)?,
+            introduction: row.get(4)?,
+            sort_order: row.get(5)?,
+            team_id: row.get(6)?,
+            title: row.get(7)?,
+            view_style: row.get(8)?,
+            view_type: row.get(9)?,
+            viewpacket_id: row.get(10)?,
         })
     });
 
@@ -426,20 +514,21 @@ pub fn get_viewpacket_vector_by_type_and_style_sorted_by_order(
     filter_view_type: &str,
     filter_view_style: &str,
 ) -> Result<Vec<ViewPacket>> {
-    let mut stmt = db_conn.prepare(        "SELECT component_id, context_model_key, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id FROM view_packet  WHERE view_type = ?1 AND view_style = ?2")?;
+    let mut stmt = db_conn.prepare(        "SELECT component_id, context_model_key, primary_display_key, file_id, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id FROM view_packet  WHERE view_type = ?1 AND view_style = ?2")?;
     let viewpacket_vector = stmt
         .query_map([filter_view_type, filter_view_style], |row| {
             Ok(ViewPacket {
                 component_id: row.get(0)?,
                 context_model_key: row.get(1)?,
                 primary_display_key: row.get(2)?,
-                introduction: row.get(3)?,
-                sort_order: row.get(4)?,
-                team_id: row.get(5)?,
-                title: row.get(6)?,
-                view_style: row.get(7)?,
-                view_type: row.get(8)?,
-                viewpacket_id: row.get(9)?,
+                file_id: row.get(3)?,
+                introduction: row.get(4)?,
+                sort_order: row.get(5)?,
+                team_id: row.get(6)?,
+                title: row.get(7)?,
+                view_style: row.get(8)?,
+                view_type: row.get(9)?,
+                viewpacket_id: row.get(10)?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -488,7 +577,7 @@ pub fn get_vector_of_viewpacket_parents_by_component_id_and_style_and_key(
     primary_display_key: &str,
 ) -> Result<Vec<ViewPacket>> {
     let mut stmt = db_conn.prepare(
-        "SELECT component_id, context_model_key, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id
+        "SELECT component_id, context_model_key, primary_display_key, file_id, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id
     FROM view_packet
     WHERE component_id IN (SELECT component_a_id FROM component_relation WHERE component_b_id = ?1 AND key != ?2) AND view_style = ?3
     ORDER BY sort_order"
@@ -501,13 +590,14 @@ pub fn get_vector_of_viewpacket_parents_by_component_id_and_style_and_key(
                     component_id: row.get(0)?,
                     context_model_key: row.get(1)?,
                     primary_display_key: row.get(2)?,
-                    introduction: row.get(3)?,
-                    sort_order: row.get(4)?,
-                    team_id: row.get(5)?,
-                    title: row.get(6)?,
-                    view_style: row.get(7)?,
-                    view_type: row.get(8)?,
-                    viewpacket_id: row.get(9)?,
+                    file_id: row.get(3)?,
+                    introduction: row.get(4)?,
+                    sort_order: row.get(5)?,
+                    team_id: row.get(6)?,
+                    title: row.get(7)?,
+                    view_style: row.get(8)?,
+                    view_type: row.get(9)?,
+                    viewpacket_id: row.get(10)?,
                 })
             },
         )?
@@ -527,17 +617,18 @@ mod tests {
         db_create_in_mem_db(&conn);
 
         let team_id = 1;
+        let file_id: u64 = 8;
 
         // Insert test data
         conn.execute(
-            "INSERT INTO component (id, name, purpose, summary, team_id) VALUES (1, 'ComponentA', 'PurposeA', 'SummaryA', 0)",[],
+            "INSERT INTO component (file_id, id, name, purpose, summary, team_id) VALUES (?1, 1, 'ComponentA', 'PurposeA', 'SummaryA', 0)",[file_id],
         ).unwrap();
         conn.execute(
-            "INSERT INTO component (id, name, purpose, summary, team_id) VALUES (2, 'ComponentB', 'PurposeB', 'SummaryB', ?1)",[team_id],
+            "INSERT INTO component (file_id, id, name, purpose, summary, team_id) VALUES (?1, 2, 'ComponentB', 'PurposeB', 'SummaryB', ?2)",[file_id, team_id],
         )
         .unwrap();
         conn.execute(
-            "INSERT INTO component (id, name, purpose, summary, team_id) VALUES (3, 'ComponentC', 'PurposeC', 'SummaryC', ?1)",[team_id],
+            "INSERT INTO component (file_id, id, name, purpose, summary, team_id) VALUES (?1, 3, 'ComponentC', 'PurposeC', 'SummaryC', ?2)",[file_id, team_id],
         )
         .unwrap();
         conn.execute(
@@ -551,18 +642,18 @@ mod tests {
         )
         .unwrap();
         conn.execute(
-            "INSERT INTO view_packet (component_id, context_model_key, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id) VALUES (1, 'key1', 'display1', 'Intro1', 1, 0, 'Title1', 'Decomposition', 'Type1', 10)",
-            [],
+            "INSERT INTO view_packet (component_id, context_model_key, primary_display_key, file_id, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id) VALUES (1, 'key1', 'display1', ?1, 'Intro1', 1, 0, 'Title1', 'Decomposition', 'Type1', 10)",
+            [file_id],
         )
         .unwrap();
         conn.execute(
-            "INSERT INTO view_packet (component_id, context_model_key, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id) VALUES (0, 'key1', 'display1', 'Intro1', 1, ?1, 'Team Assignment', 'Assignment', 'Type1', 11)",
-            [team_id],
+            "INSERT INTO view_packet (component_id, context_model_key, primary_display_key, file_id, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id) VALUES (0, 'key1', 'display1', ?1, 'Intro1', 1, ?2, 'Team Assignment', 'Assignment', 'Type1', 11)",
+            [file_id, team_id],
         )
         .unwrap();
         conn.execute(
-            "INSERT INTO view_packet (component_id, context_model_key, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id) VALUES (0, 'key1', 'display1', 'Intro1', 1, ?1, 'empty Team Assignment', 'Assignment', 'Type1', 12)",
-            [0],
+            "INSERT INTO view_packet (component_id, context_model_key, primary_display_key, file_id, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id) VALUES (0, 'key1', 'display1', ?1, 'Intro1', 1, ?2, 'empty Team Assignment', 'Assignment', 'Type1', 12)",
+            [file_id, team_id],
         )
         .unwrap();
         conn.execute(
@@ -606,10 +697,14 @@ mod tests {
     }
 
     #[test]
-    fn test_get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id_zero() {
+    fn test_get_vector_of_any_viewpacket_by_component_id_excluding_viewpacket_id_zero() {
         let conn = setup_test_db();
-        let result = get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id(
-            &conn, 0, "Type1", "Decomposition", 999,
+        let result = get_vector_of_any_viewpacket_by_component_id_excluding_viewpacket_id(
+            &conn,
+            0,
+            "Type1",
+            "Decomposition",
+            999,
         )
         .unwrap();
         assert_eq!(result.len(), 1);
@@ -617,9 +712,9 @@ mod tests {
     }
 
     #[test]
-    fn test_get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id_nonzero() {
+    fn test_get_vector_of_any_viewpacket_by_component_id_excluding_viewpacket_id_nonzero() {
         let conn = setup_test_db();
-        let result = get_vector_of_viewpacket_by_component_id_excluding_viewpacket_id(
+        let result = get_vector_of_any_viewpacket_by_component_id_excluding_viewpacket_id(
             &conn, 1, "Type1", "Style1", 999,
         )
         .unwrap();
@@ -689,11 +784,11 @@ mod tests {
 
         conn.execute("INSERT INTO component_relation (id, component_a_id, component_b_id, connection_type, key, property_of_relation, relation_text, relation_description, style, sort_order) VALUES (104, 12, 1, 'type', 'Uses04', 'prop', 'rel_text', 'rel_desc', 'Empty', 1)",[],).unwrap();
 
-        conn.execute("INSERT INTO view_packet (viewpacket_id, view_type, view_style, component_id, primary_display_key, context_model_key, introduction, sort_order, team_id, title) VALUES (1, 'Module', 'Decomposition', 11, 'Decomp001', 'Ctxt01', 'Intro1', 1, 0, 'Title1')",[],).unwrap();
-        conn.execute("INSERT INTO view_packet (viewpacket_id, view_type, view_style, component_id, primary_display_key, context_model_key, introduction, sort_order, team_id, title) VALUES (2, 'Module', 'Decomposition', 12, 'Decomp002', 'Ctxt02', 'Intro2', 1, 0, 'Title2')",[],).unwrap();
-        conn.execute("INSERT INTO view_packet (viewpacket_id, view_type, view_style, component_id, primary_display_key, context_model_key, introduction, sort_order, team_id, title) VALUES (3, 'Module', 'Decomposition', 13, 'Decomp003', 'Ctxt03', 'Intro3', 1, 0, 'Title3')",[],).unwrap();
+        conn.execute("INSERT INTO view_packet (viewpacket_id, view_type, view_style, component_id, primary_display_key, context_model_key, file_id, introduction, sort_order, team_id, title) VALUES (1, 'Module', 'Decomposition', 11, 'Decomp001', 'Ctxt01', 0, 'Intro1', 1, 0, 'Title1')",[],).unwrap();
+        conn.execute("INSERT INTO view_packet (viewpacket_id, view_type, view_style, component_id, primary_display_key, context_model_key, file_id, introduction, sort_order, team_id, title) VALUES (2, 'Module', 'Decomposition', 12, 'Decomp002', 'Ctxt02', 0, 'Intro2', 1, 0, 'Title2')",[],).unwrap();
+        conn.execute("INSERT INTO view_packet (viewpacket_id, view_type, view_style, component_id, primary_display_key, context_model_key, file_id, introduction, sort_order, team_id, title) VALUES (3, 'Module', 'Decomposition', 13, 'Decomp003', 'Ctxt03', 0, 'Intro3', 1, 0, 'Title3')",[],).unwrap();
 
-        conn.execute("INSERT INTO view_packet (viewpacket_id, view_type, view_style, component_id, primary_display_key, context_model_key, introduction, sort_order, team_id, title) VALUES (4, 'Module', 'Uses', 12, 'Uses04', 'Ctxt04', 'Intro4', 1, 0, 'Title4')",[],).unwrap();
+        conn.execute("INSERT INTO view_packet (viewpacket_id, view_type, view_style, component_id, primary_display_key, context_model_key, file_id, introduction, sort_order, team_id, title) VALUES (4, 'Module', 'Uses', 12, 'Uses04', 'Ctxt04', 0, 'Intro4', 1, 0, 'Title4')",[],).unwrap();
 
         let result = get_vector_of_viewpacket_parents_by_component_id_and_style_and_key(
             &conn,
