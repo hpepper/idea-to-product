@@ -90,9 +90,9 @@ pub fn render_component_details_pane(
 pub fn render_component_editor_pane(
     frame: &mut Frame,
     work_state: &mut WorkState,
-    db_conn: &Connection,
+    _db_conn: &Connection,
     area: Rect,
-    selected_item: String,
+    _selected_item: String,
 ) {
     // TODO fix this, it overwrites the
 

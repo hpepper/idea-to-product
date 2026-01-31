@@ -30,7 +30,11 @@ use work_component_render::{
 };
 
 
-
+mod work_viewpacket_render;
+use work_viewpacket_render::{
+    render_viewpacket_details_pane,
+    render_viewpacket_editor_pane,
+};
 
 
 /**
@@ -158,13 +162,26 @@ pub fn render_work(
                 )
             }
         }
-        TabSubjects::ViewPackets => render_viewpacket_details_pane(
-            frame,
-            work_state,
-            db_conn,
-            work_layout[1],
-            selected_item,
-        ),
+        TabSubjects::ViewPackets => {
+            if work_state.active_pane == WorkPane::Selector
+                || work_state.active_pane == WorkPane::Details
+            {
+                render_viewpacket_details_pane(
+                    frame,
+                    work_state,
+                    db_conn,
+                    work_layout[1],
+                    selected_item,
+                );
+                // TODO implement for ViewPackets
+            } else {
+                render_viewpacket_editor_pane(
+                    frame,
+                    work_state,
+                    work_layout[1],
+                )
+            }
+        }
         TabSubjects::Diagrams => {
             render_diagram_details_pane(frame, work_state, db_conn, work_layout[1], selected_item)
         }
@@ -187,108 +204,6 @@ fn render_diagram_details_pane(
     );
 
     frame.render_widget(&work_state.textarea, area);
-}
-
-fn render_viewpacket_details_pane(
-    frame: &mut Frame,
-    _work_state: &mut WorkState,
-    db_conn: &Connection,
-    area: Rect,
-    selected_item: String,
-) {
-    let viewpacket = get_viewpacket_by_title(db_conn, &selected_item);
-
-    let text = if let Ok(viewpacket) = viewpacket {
-        let line_id = Line::from(vec![
-            Span::styled(
-                "id.................: ",
-                Style::default().fg(Color::Black).bg(Color::Gray),
-            ),
-            Span::styled(
-                format!("{} ", viewpacket.viewpacket_id),
-                Style::default().fg(Color::Black).bg(Color::Gray),
-            ),
-        ]);
-        let line_title = Line::from(vec![
-            Span::styled(
-                "title..............: ",
-                Style::default().fg(Color::Black).bg(Color::Gray),
-            ),
-            Span::styled(
-                format!("{} ", viewpacket.title),
-                Style::default().fg(Color::Black).bg(Color::Gray),
-            ),
-        ]);
-        let line_introduction = Line::from(vec![
-            Span::styled(
-                "introduction.......: ",
-                Style::default().fg(Color::Black).bg(Color::Gray),
-            ),
-            Span::styled(
-                format!("{} ", viewpacket.introduction),
-                Style::default().fg(Color::Black).bg(Color::Gray),
-            ),
-        ]);
-        let line_view_style = Line::from(vec![
-            Span::styled(
-                "view_style.........: ",
-                Style::default().fg(Color::Black).bg(Color::Gray),
-            ),
-            Span::styled(
-                format!("{} ", viewpacket.view_style),
-                Style::default().fg(Color::Black).bg(Color::Gray),
-            ),
-        ]);
-        let line_view_type = Line::from(vec![
-            Span::styled(
-                "view_type..........: ",
-                Style::default().fg(Color::Black).bg(Color::Gray),
-            ),
-            Span::styled(
-                format!("{} ", viewpacket.view_type),
-                Style::default().fg(Color::Black).bg(Color::Gray),
-            ),
-        ]);
-        let line_primary_display_key = Line::from(vec![
-            Span::styled(
-                "primary_display_key: ",
-                Style::default().fg(Color::Black).bg(Color::Gray),
-            ),
-            Span::styled(
-                format!("{} ", viewpacket.primary_display_key),
-                Style::default().fg(Color::Black).bg(Color::Gray),
-            ),
-        ]);
-        let line_context_model_key = Line::from(vec![
-            Span::styled(
-                "context_model_key..: ",
-                Style::default().fg(Color::Black).bg(Color::Gray),
-            ),
-            Span::styled(
-                format!("{} ", viewpacket.context_model_key),
-                Style::default().fg(Color::Black).bg(Color::Gray),
-            ),
-        ]);
-        Text::from(vec![
-            line_id,
-            line_title,
-            line_introduction,
-            line_view_type,
-            line_view_style,
-            line_primary_display_key,
-            line_context_model_key,
-        ])
-    } else {
-        Text::from("no data available for this viewpacket")
-    };
-
-    let paragraph = Paragraph::new(text).block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title("View Packet")
-            .style(Style::default().bg(Color::DarkGray)),
-    );
-    frame.render_widget(paragraph, area);
 }
 
 fn get_list_of_component_names(work_state: &mut WorkState, db_conn: &Connection) -> Vec<String> {
@@ -352,12 +267,17 @@ pub fn handle_work_input(
     } // TODO move this a more appropriate place?
 
     let event_handled = if work_state.active_pane == WorkPane::Editor {
+        // TODO let the viepacket editor handle the input first and if false is returned then try the rest here
         match (event.modifiers, event.code) {
             (KeyModifiers::NONE, KeyCode::Tab) => {
                 match work_state.selected_tab {
                     TabSubjects::Components => {
                         work_state.component_text_areas.next_field();
                         work_state.component_text_areas.update_styling();
+                    }
+                    TabSubjects::ViewPackets => {
+                        work_state.viewpacket_editor_fields.next_field();
+                        // TODO work_state.viewpacket_editor_fields.update_styling();
                     }
                     // Handle other tabs...
                     _ => {}
@@ -413,7 +333,7 @@ pub fn handle_work_input(
         }
     } else {
         match (event.modifiers, event.code) {
-            // Alt+1, Alt+2, Alt+3, Alt+4 to switch tabs
+            // ctrl+1, ctrl+2, ctrl+3, ctrl+4 to switch tabs
             (KeyModifiers::ALT, KeyCode::Char('1')) => {
                 work_state.selected_tab = TabSubjects::Components;
                 true
@@ -422,6 +342,7 @@ pub fn handle_work_input(
                 work_state.selected_tab = TabSubjects::ViewPackets;
                 true
             }
+            //(KeyModifiers::CONTROL | KeyModifiers::SHIFT, KeyCode::Char('x')) => {
             (KeyModifiers::ALT, KeyCode::Char('3')) => {
                 work_state.selected_tab = TabSubjects::Diagrams;
                 true
@@ -450,6 +371,19 @@ pub fn handle_work_input(
                                 get_component_by_name(db_conn, selected_item.to_string());
                             if let Ok(component) = component {
                                 work_state.component_text_areas.load_component(&component);
+                            }
+                        }
+                        true
+                    }
+                    TabSubjects::ViewPackets => {
+                        // Load the selected viewpacket into the text areas
+                        let selected_index = work_state.list_state.selected().unwrap_or(0);
+                        if selected_index < work_state.current_selection_list.len() {
+                            let selected_item = &work_state.current_selection_list[selected_index];
+                            let viewpacket =
+                                get_viewpacket_by_title(db_conn, selected_item);
+                            if let Ok(viewpacket) = viewpacket {
+                                work_state.viewpacket_editor_fields.load_viewpacket(&viewpacket);
                             }
                         }
                         true
