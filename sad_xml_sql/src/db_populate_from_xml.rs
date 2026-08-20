@@ -4,10 +4,15 @@ use std::io::BufReader;
 use xmltree::{Element, XMLNode};
 use std::path::Path;
 
+use crate::db_dump_to_xml::convert_id_to_address;
+
 // Requires create_database() to have been called.
 pub fn db_populate_from_xml(db_conn: &Connection, filename: &String) {
     let path = Path::new(filename);
-    let parent = path.parent().expect("Failed to get parent directory").to_str().unwrap_or(".");
+    let mut parent = path.parent().expect("Failed to get parent directory").to_str().unwrap_or(".");
+    if parent == "" {
+        parent = ".";
+    }
     // Parse the XML file
     let xml_root = load_xml_file(filename);
 
@@ -229,7 +234,7 @@ fn populate_db_with_components(db_conn: &Connection, xml_root: &Element, file_id
                                 team_id,
                             ),
                         )
-                        .expect("Unable to insert data");
+                        .expect(&format!("Unable to insert data id: {}", convert_id_to_address(id)));
                 }
             }
             _ => {}

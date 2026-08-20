@@ -56,7 +56,7 @@
 * Have a Diagram Entity, for holding diagrams
   * to be used in e.g. Behavior
   * for e.g. MSCs
-  * TODO is a Diagram lke a mini viewpacket?
+  * TODO is a Diagram like a mini viewpacket?
 
 ### Assignment
 
@@ -65,6 +65,20 @@
 * In the non-assignment viewpacket get the ComponentID
 * get component with ID
 * Look up a viewpacket with component TeamID
+
+### Generating deployment diagrams
+
+- Prompt 1
+  - The end goal is to generate a deployment diagram, wich can depict comoponents,
+  - some components inside other components
+  - some components containing multiple components.
+  - in rust how to read the list component relations for a diagram and generate a mermaid diagram
+- Prompt 2
+  - In rust how to create a tree the holds the relations between componentrelations of ComponentAId and ComponentBId, where the top level contains all componentRelations where ComponentAId is not ComponentBId in any other relations
+
+See #### ComponentRelation - ConnectionType
+
+- get all ConnectionType is Contains for Key 
 
 ## Implementation notes
 
@@ -114,7 +128,7 @@ TODO the related view
     * InstanceDestruction - End the line.
   * Deployment
     * Contains - creates a subgraph
-      * I guess I need to go and find the root components, so I guess I nee to build a tree
+      * I guess I need to go and find the root components, so I guess I need to build a tree
     * Connect - line attachment
     * Allign - for the ~~~ thing
 

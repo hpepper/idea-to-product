@@ -12,12 +12,12 @@ use sad_xml_sql::models;
 use db_retrieval::{
     get_component_by_id, get_component_name_by_id, get_components_vector_by_team_id_sorted_by_name,
     get_include_url_by_file_id,
+    get_vector_of_any_viewpacket_by_component_id_excluding_viewpacket_id,
     get_vector_of_behaviors_for_viewpacket_id, get_vector_of_component_relations_by_id_and_key,
     get_vector_of_component_relations_by_id_and_key_both_directions,
     get_vector_of_component_relations_by_key, get_vector_of_context_model_by_key,
-    get_vector_of_usedby_components_by_id_and_key,
-    get_vector_of_any_viewpacket_by_component_id_excluding_viewpacket_id,
     get_vector_of_local_viewpacket_by_component_id_excluding_viewpacket_id,
+    get_vector_of_usedby_components_by_id_and_key,
     get_vector_of_viewpacket_parents_by_component_id_and_style_and_key,
     get_viewpacket_by_style_and_component_id, get_viewpacket_by_team_id,
 };
@@ -216,7 +216,7 @@ fn render_partone(
         if let Some(styles) = styles_map.get(view_type) {
             for style in styles {
                 let viewpacket_vector =
-                    get_vector_of_any_viewpacket_by_component_id_excluding_viewpacket_id(
+                    get_vector_of_local_viewpacket_by_component_id_excluding_viewpacket_id(
                         db_conn, 0, view_type, style, 0,
                     );
 
@@ -492,6 +492,8 @@ fn render_child_relationship(
                     match component_b {
                         Ok(component_b) => {
                             if component_relation.component_b_id != component_id {
+                                // create a list of viewpacket where the child component id is the primary in a viewpacket.
+                                // TODO later maybe exclude the Allocation type
                                 render_viewpacket_relationship(
                                     markdown_file,
                                     db_conn,
@@ -530,6 +532,7 @@ fn render_viewpacket_relationship_for_team(
     // TODO for each component, get a decomposition view packet otherwise a Uses viepacket
 }
 
+// TODO I think this can be refactored away.
 fn render_viewpacket_relationship(
     markdown_file: &mut File,
     db_conn: &Connection,
@@ -587,14 +590,18 @@ fn render_viewpacket_relationship_by_component_id(
                     }
                 };
                 if viewpacket.file_id == local_file_id {
-                markdown_file
-                    .write(&format!("  * [{view_title}](#{linkable_view_title})\n").as_bytes())
-                    .expect("Unable to write to file");
+                    markdown_file
+                        .write(&format!("  * [{view_title}](#{linkable_view_title})\n").as_bytes())
+                        .expect("Unable to write to file");
                 } else {
-                    let url = get_include_url_by_file_id(db_conn,viewpacket.file_id).expect("Unable to get include URL");
-                markdown_file
-                    .write(&format!("  * [external: {view_title}]({url}#{linkable_view_title})\n").as_bytes())
-                    .expect("Unable to write to file");
+                    let url = get_include_url_by_file_id(db_conn, viewpacket.file_id)
+                        .expect("Unable to get include URL");
+                    markdown_file
+                        .write(
+                            &format!("  * [external: {view_title}]({url}#{linkable_view_title})\n")
+                                .as_bytes(),
+                        )
+                        .expect("Unable to write to file");
                 }
             }
         }
@@ -624,7 +631,7 @@ fn render_viewpacket_relationship_by_team_id(
         Err(err) => {
             eprintln!(
                 "Error for component_id {} at {}:{}: {}",
-                component_id,
+                convert_id_to_address(component_id),
                 file!(),
                 line!(),
                 err
@@ -788,7 +795,8 @@ fn render_viewpacket_section_primary_display(
                 Ok(top_component) => Some(top_component),
                 Err(err) => {
                     eprintln!(
-                        "Error retrieving component: at {}:{}: {}",
+                        "Error retrieving component: {} at {}:{}: {}",
+                        convert_id_to_address(viewpacket.component_id),
                         file!(),
                         line!(),
                         err
@@ -877,7 +885,8 @@ fn render_graphical_primary_display(
         Ok(top_component) => Some(top_component),
         Err(err) => {
             eprintln!(
-                "Error retrieving component: at {}:{}: {}",
+                "Error retrieving component: {} at {}:{}: {}",
+                convert_id_to_address(component_id),
                 file!(),
                 line!(),
                 err
@@ -1122,7 +1131,8 @@ fn render_viewpacket_section_purpose(
             Ok(component) => component.purpose,
             Err(err) => {
                 eprintln!(
-                    "Error retrieving component: at {}:{}: {}",
+                    "Error retrieving component: {} at {}:{}: {}",
+                    convert_id_to_address(viewpacket.component_id),
                     file!(),
                     line!(),
                     err
@@ -1167,7 +1177,8 @@ fn render_graphical_context_diagram(
         }
         Err(err) => {
             eprintln!(
-                "Error retrieving component: at {}:{}: {}",
+                "Error retrieving component: {} at {}:{}: {}",
+                convert_id_to_address(component_id),
                 file!(),
                 line!(),
                 err
@@ -1266,6 +1277,12 @@ fn render_context_table(markdown_file: &mut File, db_conn: &Connection, context_
     match context_model_vector {
         Ok(context_model_vector) => {
             if context_model_vector.is_empty() {
+                println!(
+                    "WWW no entries for context key: {} at {}:{}",
+                    context_model_key,
+                    file!(),
+                    line!()
+                );
                 return;
             }
             markdown_file

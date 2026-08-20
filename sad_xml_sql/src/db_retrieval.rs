@@ -100,10 +100,53 @@ pub fn get_components_vector_by_team_id_sorted_by_name(
     component_names.collect::<Result<Vec<Component>, _>>()
 }
 
+// TODO  first read the information from the component_relation table and write into the context_model.
 pub fn get_vector_of_context_model_by_key(
     db_conn: &Connection,
     key: &str,
 ) -> Result<Vec<ContextModel>> {
+    let mut stmt = db_conn.prepare(
+        "SELECT component_relation.component_b_id, component_relation.key, component_relation.relation_text, component_relation.relation_description, component.name, component.summary FROM component_relation JOIN component WHERE component.id = component_relation.component_b_id AND component_relation.key = ?1"
+    )?;
+    let unsorted_context_list = stmt
+        .query_map(rusqlite::params![key], |row| {
+            Ok((
+                ContextModel {
+                    entity: row.get(4)?,
+                    entity_type: "adjacent".to_string(),
+                    description: row.get(5)?,
+                    reference: "".to_string(), // TODO populate when component has the reference field.
+                },
+                ContextModel {
+                    entity: row.get(2)?,
+                    entity_type: "connection".to_string(),
+                    description: row.get(3)?,
+                    reference: "".to_string(), // populate if I ever find a reference need.
+                },
+            ))
+        })?
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .flat_map(|(a, b)| vec![a, b]) // flatten tuple into Vec<ContextModel>
+        .collect::<Vec<_>>();
+
+    let mut stmt = db_conn.prepare(
+        "INSERT INTO context_model (key, entity, entity_type, description, reference) 
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+    )?;
+
+    for context_entry in &unsorted_context_list {
+        if !context_entry.entity.is_ascii() {
+            stmt.execute(rusqlite::params![
+                key, // the same key you queried with
+                context_entry.entity,
+                context_entry.entity_type,
+                context_entry.description,
+                context_entry.reference,
+            ])?;
+        }
+    }
+
     let mut stmt = db_conn.prepare(
         "SELECT entity, entity_type, description, reference FROM context_model WHERE key = ?1 ORDER BY LOWER(entity)"
     )?;
@@ -168,7 +211,7 @@ pub fn get_vector_of_component_relations_by_id_and_key(
     primary_display_key: String,
 ) -> Result<Vec<ComponentRelation>> {
     let mut stmt = db_conn.prepare(
-        "SELECT component_a_id, component_b_id, connection_type, id, key, property_of_relation, relation_text, relation_description, sort_order, style FROM component_relation WHERE component_a_id = ?1 AND key = ?2 ORDER BY id"
+        "SELECT component_a_id, component_b_id, connection_type, id, key, property_of_relation, relation_text, relation_description, sort_order, style FROM component_relation WHERE component_a_id = ?1 AND key = ?2 ORDER BY sort_order"
     )?;
     let component_relations = stmt
         .query_map(
@@ -199,7 +242,7 @@ pub fn get_vector_of_component_relations_by_id_and_key_both_directions(
     primary_display_key: String,
 ) -> Result<Vec<ComponentRelation>> {
     let mut stmt = db_conn.prepare(
-        "SELECT component_a_id, component_b_id, connection_type, id, key, property_of_relation, relation_text, relation_description, sort_order, style FROM component_relation WHERE (component_a_id = ?1 OR component_b_id = ?1) AND key = ?2 ORDER BY id"
+        "SELECT component_a_id, component_b_id, connection_type, id, key, property_of_relation, relation_text, relation_description, sort_order, style FROM component_relation WHERE (component_a_id = ?1 OR component_b_id = ?1) AND key = ?2 ORDER BY sort_order"
     )?;
     let component_relations = stmt
         .query_map(
@@ -298,7 +341,6 @@ pub fn get_include_url_by_file_id(db_conn: &Connection, file_id: u64) -> Result<
     let url: String = stmt.query_row([file_id], |row| row.get(0))?;
     Ok(url)
 }
-
 
 // TODO at some point refactor this and get_vector_of_any_viewpacket_by_component_id_excluding_viewpacket_id
 pub fn get_vector_of_local_viewpacket_by_component_id_excluding_viewpacket_id(

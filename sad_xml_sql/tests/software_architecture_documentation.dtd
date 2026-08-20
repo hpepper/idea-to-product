@@ -22,6 +22,7 @@
 
 <!ELEMENT FileId (#PCDATA)>
 <!ELEMENT Include (#PCDATA)>
+<!ATTLIST Include url CDATA #REQUIRED>
 <!ELEMENT Issue (#PCDATA)>
 <!ELEMENT Summary (#PCDATA)>
 <!ELEMENT Title (#PCDATA)>
@@ -117,7 +118,6 @@
 <!ELEMENT  Security (#PCDATA)>
 <!ELEMENT  SchedulerPriority (#PCDATA)>
 <!ELEMENT  ArchitectureDecisionId (#PCDATA)>
-<!ELEMENT  TeamId (#PCDATA)>
 
 <!ELEMENT ComponentRelation (
   ComponentAId,

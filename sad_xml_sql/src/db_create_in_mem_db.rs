@@ -65,6 +65,7 @@ fn create_table_componentrelations(db_conn: &Connection) {
         .expect("Unable to create table");
 }
 
+// This table gets populated when a call to get_vector_of_context_model_by_key() is executed.
 fn create_table_context_model(db_conn: &Connection) {
     // Create the tables
     db_conn
@@ -74,8 +75,7 @@ fn create_table_context_model(db_conn: &Connection) {
         entity TEXT,
         entity_type TEXT,
         description TEXT,
-        reference TEXT,
-        UNIQUE (key)
+        reference TEXT
     )",
             [],
         )
