@@ -1,5 +1,6 @@
 # TODO
 
+* Add a deployment ComponentRelation.ConnectionType of Allign
 * include repo in the include element
 * Add links to diagram components
 * Fill out lattice

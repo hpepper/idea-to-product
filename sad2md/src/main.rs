@@ -57,6 +57,10 @@ const ALLOCATION_VIEW_TYPE_STYLE_INSTALL: &str = "Install";
 const ALLOCATION_VIEW_TYPE_STYLE_ASSIGNMENT: &str = "Assignment";
 const ALLOCATION_VIEW_TYPE_STYLE_TESTING: &str = "Testing";
 
+const CONNECTION_TYPE_DEPLOYMENT_CONTAINS: &str = "Contains";
+const CONNECTION_TYPE_DEPLOYMENT_CONNECT: &str = "Connect";
+const CONNECTION_TYPE_DEPLOYMENT_ALLIGN: &str = "Allign";
+
 fn create_hardcoded_map() -> HashMap<&'static str, u64> {
     let mut map = HashMap::new();
     map.insert(MODULE_VIEW_TYPE, 1);
@@ -729,6 +733,18 @@ fn render_viewpacket_section_primary_display(
                 .write("\n".as_bytes())
                 .expect("Unable to write to file");
         }
+    } else if view_type == ALLOCATION_VIEW_TYPE && style == ALLOCATION_VIEW_TYPE_STYLE_DEPLOYEMENT {
+        mermaid_leadin(markdown_file, "graph TB");
+        render_graphical_deployment_display(
+            markdown_file,
+            db_conn,
+            view_type,
+            style,
+            viewpacket.component_id,
+            viewpacket.primary_display_key.clone(),
+            true,
+        );
+        mermaid_leadout(markdown_file);
     } else if view_type == ALLOCATION_VIEW_TYPE && style == ALLOCATION_VIEW_TYPE_STYLE_ASSIGNMENT {
         // TODO Get list of components with the team_id
         markdown_file
@@ -1472,6 +1488,102 @@ fn render_textural_connector_list(
     markdown_file
         .write(&format!("\n").as_bytes())
         .expect("Unable to write to file");
+}
+
+/**
+ * Renders the graphical representation of the deployment display via mermaid diagram.
+ *
+ * The mermaid code is written to the markdown_file.
+ * This function expects the caller to write the mermaid leadin and leadout to the markdown file.
+ *
+ * The function currently write the part of the digram as they are found,
+ *   and hope the mermaid renderer will be able to provide a correct rendering.
+ */
+fn render_graphical_deployment_display(
+    markdown_file: &mut File,
+    db_conn: &Connection,
+    view_type: &str,
+    style: &str,
+    component_id: u64,
+    primary_display_key: String,
+    first_layer: bool,
+) {
+    let component_relations_vector =
+        get_vector_of_component_relations_by_key(db_conn, primary_display_key.clone());
+    match component_relations_vector {
+        Ok(component_relations_vector) => {
+            for component_relation in component_relations_vector {
+                // TODO both component a and component b.
+                let component_a_name =
+                    get_component_name_by_id(db_conn, component_relation.component_a_id);
+                let linkable_component_a_name =
+                    make_mermaid_linkable_text(component_a_name.clone());
+                let component_b_name =
+                    get_component_name_by_id(db_conn, component_relation.component_b_id);
+                let linkable_component_b_name =
+                    make_mermaid_linkable_text(component_b_name.clone());
+                // generate output depending on the connection_type.
+                match component_relation.connection_type.as_str() {
+                    CONNECTION_TYPE_DEPLOYMENT_ALLIGN => {
+                        markdown_file
+                            .write(
+                                &format!(
+                                    "    {} ~~~ {}\n",
+                                    linkable_component_a_name, linkable_component_b_name
+                                )
+                                .as_bytes(),
+                            )
+                            .expect("Unable to write to file");
+                    }
+                    CONNECTION_TYPE_DEPLOYMENT_CONTAINS => {
+                        markdown_file
+                            .write(
+                                &format!(
+                                    "    subgraph {}[\"{}\"]\n",
+                                    linkable_component_a_name, component_a_name
+                                )
+                                .as_bytes(),
+                            )
+                            .expect("Unable to write to file");
+                        markdown_file
+                            .write(
+                                &format!(
+                                    "      {}[\"{}\"]\n",
+                                    linkable_component_b_name, component_b_name
+                                )
+                                .as_bytes(),
+                            )
+                            .expect("Unable to write to file");
+                        markdown_file
+                            .write(
+                                &format!("    end\n").as_bytes(),
+                            )
+                            .expect("Unable to write to file");
+                    }
+                    CONNECTION_TYPE_DEPLOYMENT_CONNECT => {
+                        markdown_file
+                            .write(
+                                &format!(
+                                    "    {} --- {}\n",
+                                    linkable_component_a_name, linkable_component_b_name
+                                )
+                                .as_bytes(),
+                            )
+                            .expect("Unable to write to file");
+                    }
+                    _ => {
+                        // TODO handle unknown connection type
+                    }
+                }
+            }
+        }
+        Err(err) => {
+            eprintln!(
+                "Error: returned from get_vector_of_related_components_by_key() {}",
+                err
+            );
+        }
+    }
 }
 
 /// Itterates through all behaviors that are linked to the given view packet id.

@@ -205,6 +205,15 @@ pub fn get_vector_of_behaviors_sorted_by_key_and_order(
     Ok(behavior)
 }
 
+/// Get all component relations originating from `component_id` (as `component_a_id`) matching `primary_display_key`.
+///
+/// # Arguments
+/// * `db_conn` - open database connection
+/// * `component_id` - id of the component acting as `component_a_id`
+/// * `primary_display_key` - relation key to filter on
+///
+/// # Returns
+/// Component relations sorted by `sort_order`.
 pub fn get_vector_of_component_relations_by_id_and_key(
     db_conn: &Connection,
     component_id: u64,
@@ -267,6 +276,13 @@ pub fn get_vector_of_component_relations_by_id_and_key_both_directions(
 }
 
 /// Filter only by key, return vector sorted by sort_order.
+///
+/// # Arguments
+/// * `db_conn` - open database connection
+/// * `primary_display_key` - relation key to filter on
+///
+/// # Returns
+/// Component relations sorted by `sort_order`.
 pub fn get_vector_of_component_relations_by_key(
     db_conn: &Connection,
     key: String,

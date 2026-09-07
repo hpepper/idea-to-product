@@ -103,6 +103,14 @@
     <ContextModelKey>ContextDiagram002</ContextModelKey>
   </ViewPacket>
 
+  <ViewPacket Id="1.3.1.1" ViewType="Allocation" ViewStyle="Deployment" SortOrder="1">
+    <Title>Server deployment</Title>
+    <Introduction></Introduction>
+    <ComponentId></ComponentId>
+    <PrimaryDisplayKey>Deployment001</PrimaryDisplayKey>
+    <ContextModelKey></ContextModelKey>
+  </ViewPacket>
+
   <ViewPacket Id="1.3.3.1" ViewType="Allocation" ViewStyle="Assignment" SortOrder="1">
     <Title>Frontender team</Title>
     <Introduction></Introduction>
@@ -213,6 +221,35 @@
   <Component Id="1.0.0.20" Name="WebSocket">
     <Purpose></Purpose>
     <Summary>WebSocket library for the client application.</Summary>
+  </Component>
+
+  <Component Id="1.0.0.31" Name="Statistics VM">
+    <Purpose></Purpose>
+    <Summary>VM hosting the statistics services.</Summary>
+  </Component>
+  <Component Id="1.0.0.32" Name="HAProxy">
+    <Purpose></Purpose>
+    <Summary>Load balancer for distributing client requests among server instances.</Summary>
+  </Component>
+  <Component Id="1.0.0.33" Name="Logstash">
+    <Purpose></Purpose>
+    <Summary>Log management and processing tool for server logs.</Summary>
+  </Component>
+  <Component Id="1.0.0.34" Name="Elasticsearch">
+    <Purpose></Purpose>
+    <Summary>Search and analytics engine for server logs.</Summary>
+  </Component>
+  <Component Id="1.0.0.35" Name="Kibana">
+    <Purpose></Purpose>
+    <Summary>Visualization tool for server logs stored in Elasticsearch.</Summary>
+  </Component>
+  <Component Id="1.0.0.36" Name="statistics2web">
+    <Purpose></Purpose>
+    <Summary>Service for providing player statistics to the web application.</Summary>
+  </Component>
+  <Component Id="1.0.0.37" Name="webserver">
+    <Purpose></Purpose>
+    <Summary>Service for serving web content to clients.</Summary>
   </Component>
 
   <!-- 20
@@ -500,6 +537,53 @@
     <RelationText></RelationText>
     <RelationDescription></RelationDescription>
     <Style>Uses</Style>
+  </ComponentRelation>
+
+
+  <ComponentRelation Id="1.0.1.38" SortOrder="">
+    <ComponentAId>1.0.0.31</ComponentAId>
+    <ComponentBId>1.0.0.32</ComponentBId>
+    <Key>Deployment001</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+    <RelationText></RelationText>
+    <RelationDescription></RelationDescription>
+    <ConnectionType>Contains</ConnectionType>
+  </ComponentRelation>
+  <ComponentRelation Id="1.0.1.39" SortOrder="">
+    <ComponentAId>1.0.0.31</ComponentAId>
+    <ComponentBId>1.0.0.33</ComponentBId>
+    <Key>Deployment001</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+    <RelationText></RelationText>
+    <RelationDescription></RelationDescription>
+    <ConnectionType>Contains</ConnectionType>
+  </ComponentRelation>
+  <ComponentRelation Id="1.0.1.40" SortOrder="">
+    <ComponentAId>1.0.0.32</ComponentAId>
+    <ComponentBId>1.0.0.33</ComponentBId>
+    <Key>Deployment001</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+    <RelationText></RelationText>
+    <RelationDescription></RelationDescription>
+    <ConnectionType>Connect</ConnectionType>
+  </ComponentRelation>
+  <ComponentRelation Id="1.0.1.41" SortOrder="">
+    <ComponentAId>1.0.0.31</ComponentAId>
+    <ComponentBId>1.0.0.34</ComponentBId>
+    <Key>Deployment001</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+    <RelationText></RelationText>
+    <RelationDescription></RelationDescription>
+    <ConnectionType>Contains</ConnectionType>
+  </ComponentRelation>
+  <ComponentRelation Id="1.0.1.42" SortOrder="">
+    <ComponentAId>1.0.0.33</ComponentAId>
+    <ComponentBId>1.0.0.34</ComponentBId>
+    <Key>Deployment001</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+    <RelationText></RelationText>
+    <RelationDescription></RelationDescription>
+    <ConnectionType>Connect</ConnectionType>
   </ComponentRelation>
 
   <!-- 37

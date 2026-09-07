@@ -118,6 +118,8 @@ From: ACME: An Architecture Description Interchange Language; David Garlan Rober
 * representations
 * rep-maps:
 
+### ADL entities
+
 #### Components
 
 represent the primary computational elements and data stores of a system.

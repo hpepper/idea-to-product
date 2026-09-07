@@ -278,7 +278,7 @@ fn populate_db_with_componentrelations(db_conn: &Connection, xml_root: &Element)
                         .unwrap_or_else(|| "".to_string().into());
                     let key = component_relation
                         .get_child("Key")
-                        .expect("<PropertyOfRelation> element missing")
+                        .expect("<Key> element missing")
                         .get_text()
                         .unwrap_or_else(|| "".to_string().into());
                     let property_of_relation = component_relation
@@ -294,6 +294,7 @@ fn populate_db_with_componentrelations(db_conn: &Connection, xml_root: &Element)
                         .get_child("RelationDescription")
                         .and_then(|child| child.get_text())
                         .unwrap_or_else(|| "".to_string().into());
+                    // TODO should Style be Type?
                     let style = component_relation
                         .get_child("Style")
                         .and_then(|child| child.get_text())
