@@ -887,6 +887,7 @@ fn get_viewpacket_reference_for_component_id(
     }
 }
 
+// TODO create a copy of this, where all relations are retrieved using the key and then all relations are rendered, e.g. ClientServer view packet. (When multiple components are in the call before the central component.)
 fn render_graphical_primary_display(
     markdown_file: &mut File,
     db_conn: &Connection,

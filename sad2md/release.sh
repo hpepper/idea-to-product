@@ -8,7 +8,9 @@ export PATH="$HOME/.cargo/bin:$PATH"
 
 script_path="$(dirname -- "${BASH_SOURCE[0]}")"
 
+echo "III script_path $script_path"
+
 cd "${script_path}" || exit 1
 cargo build --release
 
-cp /tmp/sad2md/release/sad2md "$HOME/bin"
+cp /tmp/sad2md/release/sad2md "/home/builder/bin"
