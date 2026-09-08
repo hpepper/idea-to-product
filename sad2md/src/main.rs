@@ -15,7 +15,8 @@ use db_retrieval::{
     get_vector_of_any_viewpacket_by_component_id_excluding_viewpacket_id,
     get_vector_of_behaviors_for_viewpacket_id, get_vector_of_component_relations_by_id_and_key,
     get_vector_of_component_relations_by_id_and_key_both_directions,
-    get_vector_of_component_relations_by_key, get_vector_of_context_model_by_key,
+    get_vector_of_component_relations_by_key, get_vector_of_components_by_key_sorted_by_name,
+    get_vector_of_context_model_by_key,
     get_vector_of_local_viewpacket_by_component_id_excluding_viewpacket_id,
     get_vector_of_usedby_components_by_id_and_key,
     get_vector_of_viewpacket_parents_by_component_id_and_style_and_key,
@@ -745,6 +746,14 @@ fn render_viewpacket_section_primary_display(
             true,
         );
         mermaid_leadout(markdown_file);
+        render_textual_component_list_by_key(
+            markdown_file,
+            db_conn,
+            viewpacket.primary_display_key.clone(),
+        );
+        markdown_file
+            .write("\n".as_bytes())
+            .expect("Unable to write to file");
     } else if view_type == ALLOCATION_VIEW_TYPE && style == ALLOCATION_VIEW_TYPE_STYLE_ASSIGNMENT {
         // TODO Get list of components with the team_id
         markdown_file
@@ -1491,6 +1500,48 @@ fn render_textural_connector_list(
         .expect("Unable to write to file");
 }
 
+fn render_textual_component_list_by_key(
+    markdown_file: &mut File,
+    db_conn: &Connection,
+    key: String,
+) {
+    let component_vector =
+        get_vector_of_components_by_key_sorted_by_name(db_conn, &key);
+    match component_vector {
+        Ok(component_vector) => {
+            if component_vector.is_empty() {
+                println!(
+                    "WWW no entries for component key: {} at {}:{}",
+                    key,
+                    file!(),
+                    line!()
+                );
+                return;
+            }
+            markdown_file
+                .write(&format!("* Components:\n").as_bytes())
+                .expect("Unable to write to file");
+            for component in component_vector {
+                markdown_file
+                    .write(
+                        &format!(
+                            "  * {}: {}\n",
+                            component.name, component.summary
+                        )
+                        .as_bytes(),
+                    )
+                    .expect("Unable to write to file");
+            }
+            markdown_file
+                .write(&format!("\n").as_bytes())
+                .expect("Unable to write to file");
+        }
+        Err(err) => {
+            eprintln!("Error at {}:{}: {}", file!(), line!(), err);
+        }
+    }
+}
+
 /**
  * Renders the graphical representation of the deployment display via mermaid diagram.
  *
@@ -1556,9 +1607,7 @@ fn render_graphical_deployment_display(
                             )
                             .expect("Unable to write to file");
                         markdown_file
-                            .write(
-                                &format!("    end\n").as_bytes(),
-                            )
+                            .write(&format!("    end\n").as_bytes())
                             .expect("Unable to write to file");
                     }
                     CONNECTION_TYPE_DEPLOYMENT_CONNECT => {

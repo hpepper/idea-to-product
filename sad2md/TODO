@@ -1,13 +1,11 @@
 # TODO
 
-* Add a deployment ComponentRelation.ConnectionType of Allign
-* include repo in the include element
+* Fix the TODO for the primary display for ClientServer.
+* Implement the Install view style.
+
 * Add links to diagram components
 * Fill out lattice
 
-* add support for deployment diagrams.
-* For the Deployment viewpacket use 'Contains' to describe the subgraph thingy.
-  * I guess I have to have some memory of the first Contains, so that I only creat the subgraph the first time I see this contains op.
 * In mermaid diagrams the name of a node cannot start with 'o' like in 'oAuth' because then it becomes a dot as an arrow on the line. Perhaps upper case all the diagram references.
 * have a cli parm to enable being able to include colapse option for all sections in the md file.
 * If a relationsB in componentrelation is 0, then just render the A and not the link.

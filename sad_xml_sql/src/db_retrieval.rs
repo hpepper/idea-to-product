@@ -78,6 +78,38 @@ pub fn get_vector_of_components_sorted_by_name(db_conn: &Connection) -> Result<V
     Ok(result)
 }
 
+/// get vector of components referenrenced in component relations by a key and sorted by component name,
+pub fn get_vector_of_components_by_key_sorted_by_name(
+    db_conn: &Connection,
+    key: &str,
+) -> Result<Vec<Component>> {
+    let mut stmt = db_conn.prepare(
+        "SELECT DISTINCT c.file_id, c.id, c.name, c.purpose, c.summary, c.team_id
+         FROM component c
+         WHERE c.id IN (
+             SELECT component_a_id FROM component_relation WHERE key = ?1
+             UNION
+             SELECT component_b_id FROM component_relation WHERE key = ?1
+         )
+         ORDER BY c.name COLLATE NOCASE ASC",
+    )?;
+    let components = stmt
+        .query_map([key], |row| {
+            Ok(Component {
+                file_id: row.get(0)?,
+                id: row.get(1)?,
+                name: row.get(2)?,
+                purpose: row.get(3)?,
+                summary: row.get(4)?,
+                team_id: row.get(5)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(components)
+}
+
+
+
 pub fn get_components_vector_by_team_id_sorted_by_name(
     db_conn: &Connection,
     requested_team_id: u64,
@@ -744,6 +776,23 @@ mod tests {
         let result = get_vector_of_context_model_by_key(&conn, "key1").unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].entity, "Entity1");
+    }
+
+    #[test]
+    fn test_get_vector_of_components_by_key_sorted_by_name() {
+        let conn = setup_test_db();
+        // ComponentC only ever appears as component_a_id for this key, ComponentB only as component_b_id.
+        conn.execute(
+            "INSERT INTO component_relation (component_a_id, component_b_id, connection_type, id, key, property_of_relation, relation_text, relation_description, style, sort_order) VALUES (3, 2, 'type', 2, 'deploy1', 'prop', 'rel_text', 'rel_desc', 'Style1', 1)",
+            [],
+        )
+        .unwrap();
+
+        let result = get_vector_of_components_by_key_sorted_by_name(&conn, "deploy1").unwrap();
+
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].name, "ComponentB");
+        assert_eq!(result[1].name, "ComponentC");
     }
 
     #[test]
