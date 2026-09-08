@@ -307,7 +307,7 @@ fn render_viewpacket(markdown_file: &mut File, db_conn: &Connection, view_type: 
                     &viewpacket,
                     section_number.clone(),
                 );
-                // TODO make the primary display a sub function, so this viewpacket function doesn become huge.
+                // TODO make the primary display a sub function, so this viewpacket function doesn't become huge.
                 render_viewpacket_section_primary_display(
                     markdown_file,
                     db_conn,
@@ -751,9 +751,6 @@ fn render_viewpacket_section_primary_display(
             db_conn,
             viewpacket.primary_display_key.clone(),
         );
-        markdown_file
-            .write("\n".as_bytes())
-            .expect("Unable to write to file");
     } else if view_type == ALLOCATION_VIEW_TYPE && style == ALLOCATION_VIEW_TYPE_STYLE_ASSIGNMENT {
         // TODO Get list of components with the team_id
         markdown_file
@@ -801,6 +798,26 @@ fn render_viewpacket_section_primary_display(
         markdown_file
             .write("\n".as_bytes())
             .expect("Unable to write to file");
+    } else if view_type == CNC_VIEW_TYPE && style == CNC_VIEW_TYPE_STYLE_CLIENTSERVER {
+        mermaid_leadin(markdown_file, "graph LR;");
+        render_graphical_primary_display_by_key(
+            markdown_file,
+            db_conn,
+            view_type,
+            style,
+            viewpacket.primary_display_key.clone(),
+        );
+        mermaid_leadout(markdown_file);
+
+        markdown_file
+            .write(&format!("\n").as_bytes())
+            .expect("Unable to write to file");
+
+        render_textual_component_list_by_key(
+            markdown_file,
+            db_conn,
+            viewpacket.primary_display_key.clone(),
+        );
     } else {
         // generate the primary presentation mermaid diagram
         mermaid_leadin(markdown_file, "graph LR;");
@@ -829,7 +846,7 @@ fn render_viewpacket_section_primary_display(
                     None
                 }
             };
-        // TODO put this whole part in a function so it can be shared with the layered display, iwth just the parms changed.
+        // TODO put this whole part in a function so it can be shared with the layered display, with just the parms changed.
         if let Some(top_component) = top_component {
             markdown_file
                 .write(&format!("* {}: {}\n", top_component.name, top_component.summary).as_bytes())
@@ -896,7 +913,6 @@ fn get_viewpacket_reference_for_component_id(
     }
 }
 
-// TODO create a copy of this, where all relations are retrieved using the key and then all relations are rendered, e.g. ClientServer view packet. (When multiple components are in the call before the central component.)
 fn render_graphical_primary_display(
     markdown_file: &mut File,
     db_conn: &Connection,
@@ -1006,6 +1022,76 @@ fn render_graphical_primary_display(
                     err
                 );
             }
+        }
+    }
+}
+
+fn render_graphical_primary_display_by_key(
+    markdown_file: &mut File,
+    db_conn: &Connection,
+    view_type: &str,
+    style: &str,
+    primary_display_key: String,
+) {
+    let component_relations_vector =
+        get_vector_of_component_relations_by_key(db_conn, primary_display_key.clone());
+    match component_relations_vector {
+        Ok(component_relations_vector) => {
+            for component_relation in component_relations_vector {
+                let component_b = get_component_by_id(db_conn, component_relation.component_b_id);
+                match component_b {
+                    Ok(component_b) => {
+                        // The component_a_id is retrieved here, since sometimes the component_id might point to the component_b_id.
+                        let component_a_name =
+                            get_component_name_by_id(db_conn, component_relation.component_a_id);
+                        let linkable_component_a_name =
+                            make_mermaid_linkable_text(component_a_name.clone());
+                        let linkable_component_b_name =
+                            make_mermaid_linkable_text(component_b.name.clone());
+                        let link_annotation = if component_relation.relation_text.is_empty() {
+                            "".to_string()
+                        } else {
+                            format!("|{}|", component_relation.relation_text)
+                        };
+
+                        markdown_file
+                            .write(
+                                &format!(
+                                    "    {}[{}]---{link_annotation}{}[{}]\n",
+                                    linkable_component_a_name,
+                                    component_a_name,
+                                    linkable_component_b_name,
+                                    component_b.name
+                                )
+                                .as_bytes(),
+                            )
+                            .expect("Unable to write to file");
+                        // We have to do this to avoid an endless loop, since for some drawing the component is in the b place instead of the a place.
+                        render_graphical_primary_display(
+                            markdown_file,
+                            db_conn,
+                            view_type,
+                            style,
+                            component_relation.component_b_id,
+                            primary_display_key.clone(),
+                            false,
+                        );
+                    }
+                    Err(err) => {
+                        eprintln!(
+                            "Error: returned from get_component_by_id() for component id = {} - {}",
+                            convert_id_to_address(component_relation.component_b_id),
+                            err
+                        );
+                    }
+                }
+            }
+        }
+        Err(err) => {
+            eprintln!(
+                "Error: returned from get_vector_of_related_components_by_id_and_key() {}",
+                err
+            );
         }
     }
 }
@@ -1505,8 +1591,7 @@ fn render_textual_component_list_by_key(
     db_conn: &Connection,
     key: String,
 ) {
-    let component_vector =
-        get_vector_of_components_by_key_sorted_by_name(db_conn, &key);
+    let component_vector = get_vector_of_components_by_key_sorted_by_name(db_conn, &key);
     match component_vector {
         Ok(component_vector) => {
             if component_vector.is_empty() {
@@ -1523,13 +1608,7 @@ fn render_textual_component_list_by_key(
                 .expect("Unable to write to file");
             for component in component_vector {
                 markdown_file
-                    .write(
-                        &format!(
-                            "  * {}: {}\n",
-                            component.name, component.summary
-                        )
-                        .as_bytes(),
-                    )
+                    .write(&format!("  * {}: {}\n", component.name, component.summary).as_bytes())
                     .expect("Unable to write to file");
             }
             markdown_file
