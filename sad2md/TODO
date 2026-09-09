@@ -1,22 +1,24 @@
 # TODO
 
-* Implement the Install view style.
+- Change UL '*' to '-'
+- Implement the Install view style.
+- Add support for showing sad2cm version
 
-* Add links to diagram components
-* Fill out lattice
+- Add links to diagram components
+- Fill out lattice
 
-* In mermaid diagrams the name of a node cannot start with 'o' like in 'oAuth' because then it becomes a dot as an arrow on the line. Perhaps upper case all the diagram references.
-* have a cli parm to enable being able to include colapse option for all sections in the md file.
-* If a relationsB in componentrelation is 0, then just render the A and not the link.
-* Add install of edge connector
-* Add deployment of edge connector
-* Add protocol info on edge connector to CnC
-* Generate a link to the parent(prefereably automatically)
-* Add support for TransportProtocol in ComponentRelations and present as VikGameProtocol/websocket
-* Add support for layers rendering.
-* generate the allocation mode
-* add relation description to ComponentRelation
-* Be able to limit the level in the primary display.
-* Change the viewpacket to behavior reference to be stored in the viewpacket.
-  * Having the reference in the behavior, you might forget to update if the viewpacket id is changed.
-  * Another way could be to have a behavior key that selects all behaviours.
+- In mermaid diagrams the name of a node cannot start with 'o' like in 'oAuth' because then it becomes a dot as an arrow on the line. Perhaps upper case all the diagram references.
+- have a cli parm to enable being able to include colapse option for all sections in the md file.
+- If a relationsB in componentrelation is 0, then just render the A and not the link.
+- Add install of edge connector
+- Add deployment of edge connector
+- Add protocol info on edge connector to CnC
+- Generate a link to the parent(prefereably automatically)
+- Add support for TransportProtocol in ComponentRelations and present as VikGameProtocol/websocket
+- Add support for layers rendering.
+- generate the allocation mode
+- add relation description to ComponentRelation
+- Be able to limit the level in the primary display.
+- Change the viewpacket to behavior reference to be stored in the viewpacket.
+  - Having the reference in the behavior, you might forget to update if the viewpacket id is changed.
+  - Another way could be to have a behavior key that selects all behaviours.

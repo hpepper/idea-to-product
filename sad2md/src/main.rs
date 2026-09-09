@@ -1066,16 +1066,6 @@ fn render_graphical_primary_display_by_key(
                                 .as_bytes(),
                             )
                             .expect("Unable to write to file");
-                        // We have to do this to avoid an endless loop, since for some drawing the component is in the b place instead of the a place.
-                        render_graphical_primary_display(
-                            markdown_file,
-                            db_conn,
-                            view_type,
-                            style,
-                            component_relation.component_b_id,
-                            primary_display_key.clone(),
-                            false,
-                        );
                     }
                     Err(err) => {
                         eprintln!(
