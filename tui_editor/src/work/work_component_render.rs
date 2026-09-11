@@ -286,10 +286,12 @@ impl ComponentTextAreas {
     // Extract component data from text areas
     pub fn extract_component(&self) -> Component {
         Component {
-            id: self.id.lines().join("").parse::<i32>().unwrap_or(0), // TODO panic if fail?
+            file_id: 0, // TODO populate.
+            id: self.id.lines().join("").parse::<u64>().unwrap_or(0), // TODO panic if fail?
             name: self.name.lines().join("\n"),
             purpose: self.purpose.lines().join("\n"),
             summary: self.summary.lines().join("\n"),
+            team_id: 0, // TODO populate.
         }
     }
 
