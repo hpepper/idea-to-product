@@ -743,6 +743,23 @@ fn render_viewpacket_section_primary_display(
             style,
             viewpacket.component_id,
             viewpacket.primary_display_key.clone(),
+            false,
+        );
+        mermaid_leadout(markdown_file);
+        render_textual_component_list_by_key(
+            markdown_file,
+            db_conn,
+            viewpacket.primary_display_key.clone(),
+        );
+    } else if view_type == ALLOCATION_VIEW_TYPE && style == ALLOCATION_VIEW_TYPE_STYLE_INSTALL {
+        mermaid_leadin(markdown_file, "graph LR");
+        render_graphical_deployment_display(
+            markdown_file,
+            db_conn,
+            view_type,
+            style,
+            viewpacket.component_id,
+            viewpacket.primary_display_key.clone(),
             true,
         );
         mermaid_leadout(markdown_file);
@@ -1612,7 +1629,7 @@ fn render_textual_component_list_by_key(
 }
 
 /**
- * Renders the graphical representation of the deployment display via mermaid diagram.
+ * Renders the graphical representation of the deployment or install display via mermaid diagram.
  *
  * The mermaid code is written to the markdown_file.
  * This function expects the caller to write the mermaid leadin and leadout to the markdown file.
@@ -1623,12 +1640,13 @@ fn render_textual_component_list_by_key(
 fn render_graphical_deployment_display(
     markdown_file: &mut File,
     db_conn: &Connection,
-    view_type: &str,
-    style: &str,
-    component_id: u64,
+    _view_type: &str,
+    _style: &str,
+    _component_id: u64,
     primary_display_key: String,
-    first_layer: bool,
+    directed_connector: bool,
 ) {
+    let connector_string = if directed_connector { "-->" } else { "---" };
     let component_relations_vector =
         get_vector_of_component_relations_by_key(db_conn, primary_display_key.clone());
     match component_relations_vector {
@@ -1680,11 +1698,16 @@ fn render_graphical_deployment_display(
                             .expect("Unable to write to file");
                     }
                     CONNECTION_TYPE_DEPLOYMENT_CONNECT => {
+                        let connection_text = if ! component_relation.relation_text.is_empty() {
+                            format!("|{}|", component_relation.relation_text)
+                        } else {
+                            "".to_string()
+                        };
                         markdown_file
                             .write(
                                 &format!(
-                                    "    {} --- {}\n",
-                                    linkable_component_a_name, linkable_component_b_name
+                                    "    {} {}{} {}\n",
+                                    linkable_component_a_name, connector_string, connection_text, linkable_component_b_name
                                 )
                                 .as_bytes(),
                             )

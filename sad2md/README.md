@@ -45,6 +45,11 @@
   * The ComponentAId is 'The Work' in a context diagram.
     * it is known that it is a contextdiagram, from the referance in the viewpacket.
 
+### XML updates
+
+- grep "ComponentRelation Id" ../sad_xml_sql/tests/test_sad.xml | sort
+- grep "Component Id" ../sad_xml_sql/tests/test_sad.xml | sort
+
 ## Design
 
 ### Behavior

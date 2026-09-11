@@ -111,6 +111,14 @@
     <ContextModelKey></ContextModelKey>
   </ViewPacket>
 
+  <ViewPacket Id="1.3.2.1" ViewType="Allocation" ViewStyle="Install" SortOrder="1">
+    <Title>Statistics server installation</Title>
+    <Introduction></Introduction>
+    <ComponentId>1.0.0.36</ComponentId>
+    <PrimaryDisplayKey>Install001</PrimaryDisplayKey>
+    <ContextModelKey></ContextModelKey>
+  </ViewPacket>
+
   <ViewPacket Id="1.3.3.1" ViewType="Allocation" ViewStyle="Assignment" SortOrder="1">
     <Title>Frontender team</Title>
     <Introduction></Introduction>
@@ -150,9 +158,17 @@
     <Purpose></Purpose>
     <Summary>An online multiplayer tournament conflict card game.</Summary>
   </Component>
+  <Component Id="1.0.0.40" Name="Docker container repository">
+    <Purpose></Purpose>
+    <Summary></Summary>
+  </Component>
   <Component Id="1.0.0.7" Name="Edge connector">
     <Purpose>Ensure the client is authticated and the payload is valid(not a security risk)</Purpose>
     <Summary>Receive client connections, validate the message and route the message.</Summary>
+  </Component>
+  <Component Id="1.0.0.34" Name="Elasticsearch">
+    <Purpose></Purpose>
+    <Summary>Search and analytics engine for server logs.</Summary>
   </Component>
   <Component Id="1.0.0.5" Name="game download server">
     <Purpose></Purpose>
@@ -167,6 +183,10 @@
     <Purpose></Purpose>
     <Summary>The server side solution.</Summary>
   </Component>
+  <Component Id="1.0.0.32" Name="HAProxy">
+    <Purpose></Purpose>
+    <Summary>Load balancer for distributing client requests among server instances.</Summary>
+  </Component>
   <Component Id="1.0.0.21" Name="JSON payload">
     <Purpose></Purpose>
     <Summary>JSON message payloads.</Summary>
@@ -175,9 +195,17 @@
     <Purpose></Purpose>
     <Summary></Summary>
   </Component>
+  <Component Id="1.0.0.35" Name="Kibana">
+    <Purpose></Purpose>
+    <Summary>Visualization tool for server logs stored in Elasticsearch.</Summary>
+  </Component>
   <Component Id="1.0.0.17" Name="kubernetes">
     <Purpose></Purpose>
     <Summary></Summary>
+  </Component>
+  <Component Id="1.0.0.33" Name="Logstash">
+    <Purpose></Purpose>
+    <Summary>Log management and processing tool for server logs.</Summary>
   </Component>
   <Component Id="1.0.0.8" Name="Message broker">
     <Purpose></Purpose>
@@ -210,6 +238,22 @@
     <Summary>TODO Handle setting up game sessions, and transition the session between the different
       stations until the game is done.</Summary>
   </Component>
+  <Component Id="1.0.0.31" Name="Statistics VM">
+    <Purpose></Purpose>
+    <Summary>VM hosting the statistics services.</Summary>
+  </Component>
+  <Component Id="1.0.0.36" Name="statistics2web">
+    <Purpose></Purpose>
+    <Summary>Service for providing player statistics to the web application.</Summary>
+  </Component>
+  <Component Id="1.0.0.38" Name="statistics2web src repo">
+    <Purpose></Purpose>
+    <Summary></Summary>
+  </Component>
+  <Component Id="1.0.0.39" Name="statistics2web image">
+    <Purpose></Purpose>
+    <Summary></Summary>
+  </Component>
   <Component Id="1.0.0.13" Name="VillageSquare">
     <Purpose></Purpose>
     <Summary>Modify the deck for the next battle.</Summary>
@@ -218,42 +262,20 @@
     <Purpose></Purpose>
     <Summary>Web browser application.</Summary>
   </Component>
+  <Component Id="1.0.0.37" Name="webserver">
+    <Purpose></Purpose>
+    <Summary>Service for serving web content to clients.</Summary>
+  </Component>
   <Component Id="1.0.0.20" Name="WebSocket">
     <Purpose></Purpose>
     <Summary>WebSocket library for the client application.</Summary>
   </Component>
 
-  <Component Id="1.0.0.31" Name="Statistics VM">
-    <Purpose></Purpose>
-    <Summary>VM hosting the statistics services.</Summary>
-  </Component>
-  <Component Id="1.0.0.32" Name="HAProxy">
-    <Purpose></Purpose>
-    <Summary>Load balancer for distributing client requests among server instances.</Summary>
-  </Component>
-  <Component Id="1.0.0.33" Name="Logstash">
-    <Purpose></Purpose>
-    <Summary>Log management and processing tool for server logs.</Summary>
-  </Component>
-  <Component Id="1.0.0.34" Name="Elasticsearch">
-    <Purpose></Purpose>
-    <Summary>Search and analytics engine for server logs.</Summary>
-  </Component>
-  <Component Id="1.0.0.35" Name="Kibana">
-    <Purpose></Purpose>
-    <Summary>Visualization tool for server logs stored in Elasticsearch.</Summary>
-  </Component>
-  <Component Id="1.0.0.36" Name="statistics2web">
-    <Purpose></Purpose>
-    <Summary>Service for providing player statistics to the web application.</Summary>
-  </Component>
-  <Component Id="1.0.0.37" Name="webserver">
-    <Purpose></Purpose>
-    <Summary>Service for serving web content to clients.</Summary>
-  </Component>
 
-  <!-- 20
-  <Component Id="1." Name="">
+
+
+  <!-- 40
+  <Component Id="1.0.0." Name="">
     <Purpose></Purpose>
     <Summary></Summary>
   </Component>
@@ -586,7 +608,46 @@
     <ConnectionType>Connect</ConnectionType>
   </ComponentRelation>
 
-  <!-- 37
+
+  <ComponentRelation Id="1.0.1.43" SortOrder="">
+    <ComponentAId>1.0.0.38</ComponentAId>
+    <ComponentBId>1.0.0.39</ComponentBId>
+    <Key>Install001</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+    <RelationText>build</RelationText>
+    <RelationDescription></RelationDescription>
+    <ConnectionType>Connect</ConnectionType>
+  </ComponentRelation>
+  <ComponentRelation Id="1.0.1.44" SortOrder="">
+    <ComponentAId>1.0.0.39</ComponentAId>
+    <ComponentBId>1.0.0.40</ComponentBId>
+    <Key>Install001</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+    <RelationText>push</RelationText>
+    <RelationDescription></RelationDescription>
+    <ConnectionType>Connect</ConnectionType>
+  </ComponentRelation>
+  <ComponentRelation Id="1.0.1.45" SortOrder="">
+    <ComponentAId>1.0.0.31</ComponentAId>
+    <ComponentBId>1.0.0.36</ComponentBId>
+    <Key>Install001</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+    <RelationText></RelationText>
+    <RelationDescription></RelationDescription>
+    <ConnectionType>Contains</ConnectionType>
+  </ComponentRelation>
+  <ComponentRelation Id="1.0.1.46" SortOrder="">
+    <ComponentAId>1.0.0.39</ComponentAId>
+    <ComponentBId>1.0.0.36</ComponentBId>
+    <Key>Install001</Key>
+    <PropertyOfRelation></PropertyOfRelation>
+    <RelationText>pull</RelationText>
+    <RelationDescription></RelationDescription>
+    <ConnectionType>Connect</ConnectionType>
+  </ComponentRelation>
+
+
+  <!-- 46
   <ComponentRelation Id="1." SortOrder="">
     <ComponentAId>1.</ComponentAId>
     <ComponentBId>1.</ComponentBId>
@@ -594,6 +655,7 @@
     <PropertyOfRelation></PropertyOfRelation>
     <RelationText></RelationText>
     <RelationDescription></RelationDescription>
+    <ConnectionType></ConnectionType>
     <Style></Style>
   </ComponentRelation>
   -->
