@@ -130,6 +130,17 @@ fn main() {
         return;
     }
 
+    if std::env::args().any(|arg| arg == "help") {
+        println!("{} generate markdown from SAD XML", env!("CARGO_PKG_NAME"));
+        println!("Usage: {} <filename>", env!("CARGO_PKG_NAME"));
+        println!("   This output the markdown file: draft_architecture.md in the current directory.");
+        println!("");
+        println!("Commands:");
+        println!("  help      Print this help message");
+        println!("  version   Print the version of the program");
+        return;
+    }
+
     // get filename from command line arguments
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 2 {
