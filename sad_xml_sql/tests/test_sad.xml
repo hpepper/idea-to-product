@@ -106,7 +106,7 @@
   <ViewPacket Id="1.3.1.1" ViewType="Allocation" ViewStyle="Deployment" SortOrder="1">
     <Title>Server deployment</Title>
     <Introduction></Introduction>
-    <ComponentId></ComponentId>
+    <ComponentId>1.0.0.31</ComponentId>
     <PrimaryDisplayKey>Deployment001</PrimaryDisplayKey>
     <ContextModelKey></ContextModelKey>
   </ViewPacket>
@@ -144,6 +144,7 @@
   <Component Id="1.0.0.14" Name="BattleResolver">
     <Purpose></Purpose>
     <Summary>Execute the battle</Summary>
+    <Title>The Battle Resolver</Title>
   </Component>
   <Component Id="1.0.0.15" Name="CardDeckStorage">
     <Purpose></Purpose>
@@ -567,45 +568,45 @@
     <ComponentBId>1.0.0.32</ComponentBId>
     <Key>Deployment001</Key>
     <PropertyOfRelation></PropertyOfRelation>
+    <ConnectionType>Contains</ConnectionType>
     <RelationText></RelationText>
     <RelationDescription></RelationDescription>
-    <ConnectionType>Contains</ConnectionType>
   </ComponentRelation>
   <ComponentRelation Id="1.0.1.39" SortOrder="">
     <ComponentAId>1.0.0.31</ComponentAId>
     <ComponentBId>1.0.0.33</ComponentBId>
     <Key>Deployment001</Key>
     <PropertyOfRelation></PropertyOfRelation>
+    <ConnectionType>Contains</ConnectionType>
     <RelationText></RelationText>
     <RelationDescription></RelationDescription>
-    <ConnectionType>Contains</ConnectionType>
   </ComponentRelation>
   <ComponentRelation Id="1.0.1.40" SortOrder="">
     <ComponentAId>1.0.0.32</ComponentAId>
     <ComponentBId>1.0.0.33</ComponentBId>
     <Key>Deployment001</Key>
     <PropertyOfRelation></PropertyOfRelation>
+    <ConnectionType>Connect</ConnectionType>
     <RelationText></RelationText>
     <RelationDescription></RelationDescription>
-    <ConnectionType>Connect</ConnectionType>
   </ComponentRelation>
   <ComponentRelation Id="1.0.1.41" SortOrder="">
     <ComponentAId>1.0.0.31</ComponentAId>
     <ComponentBId>1.0.0.34</ComponentBId>
     <Key>Deployment001</Key>
     <PropertyOfRelation></PropertyOfRelation>
+    <ConnectionType>Contains</ConnectionType>
     <RelationText></RelationText>
     <RelationDescription></RelationDescription>
-    <ConnectionType>Contains</ConnectionType>
   </ComponentRelation>
   <ComponentRelation Id="1.0.1.42" SortOrder="">
     <ComponentAId>1.0.0.33</ComponentAId>
     <ComponentBId>1.0.0.34</ComponentBId>
     <Key>Deployment001</Key>
     <PropertyOfRelation></PropertyOfRelation>
+    <ConnectionType>Connect</ConnectionType>
     <RelationText></RelationText>
     <RelationDescription></RelationDescription>
-    <ConnectionType>Connect</ConnectionType>
   </ComponentRelation>
 
 
@@ -614,36 +615,36 @@
     <ComponentBId>1.0.0.39</ComponentBId>
     <Key>Install001</Key>
     <PropertyOfRelation></PropertyOfRelation>
+    <ConnectionType>Connect</ConnectionType>
     <RelationText>build</RelationText>
     <RelationDescription></RelationDescription>
-    <ConnectionType>Connect</ConnectionType>
   </ComponentRelation>
   <ComponentRelation Id="1.0.1.44" SortOrder="">
     <ComponentAId>1.0.0.39</ComponentAId>
     <ComponentBId>1.0.0.40</ComponentBId>
     <Key>Install001</Key>
     <PropertyOfRelation></PropertyOfRelation>
+    <ConnectionType>Connect</ConnectionType>
     <RelationText>push</RelationText>
     <RelationDescription></RelationDescription>
-    <ConnectionType>Connect</ConnectionType>
   </ComponentRelation>
   <ComponentRelation Id="1.0.1.45" SortOrder="">
     <ComponentAId>1.0.0.31</ComponentAId>
     <ComponentBId>1.0.0.36</ComponentBId>
     <Key>Install001</Key>
     <PropertyOfRelation></PropertyOfRelation>
+    <ConnectionType>Contains</ConnectionType>
     <RelationText></RelationText>
     <RelationDescription></RelationDescription>
-    <ConnectionType>Contains</ConnectionType>
   </ComponentRelation>
   <ComponentRelation Id="1.0.1.46" SortOrder="">
     <ComponentAId>1.0.0.39</ComponentAId>
     <ComponentBId>1.0.0.36</ComponentBId>
     <Key>Install001</Key>
     <PropertyOfRelation></PropertyOfRelation>
+    <ConnectionType>Connect</ConnectionType>
     <RelationText>pull</RelationText>
     <RelationDescription></RelationDescription>
-    <ConnectionType>Connect</ConnectionType>
   </ComponentRelation>
 
 

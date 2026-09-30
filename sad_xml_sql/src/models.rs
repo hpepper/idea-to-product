@@ -16,6 +16,19 @@ pub struct Component {
     pub purpose: String,
     pub summary: String,
     pub team_id: u64,
+    pub title: String,
+}
+
+impl Component {
+    // TODO I'm not sure I want this, I think I'd rather have that exception handling at the user level.
+    /// The name to display, the title if set, otherwise the name.
+    pub fn display_name(&self) -> &str {
+        if self.title.is_empty() {
+            &self.name
+        } else {
+            &self.title
+        }
+    }
 }
 
 // TODO Add Id from attribute

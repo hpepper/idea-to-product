@@ -65,6 +65,9 @@ use rusqlite::Connection;
 
 * The viewpacket has a single TeamID xml entry, only for the Allocation - Assignment viewpacket type.
 
+* Each component has an optional single Title, stored in the `title` column of the `component` table.
+  * An empty string means no title. Use `Component::display_name()` to get the title with a fallback to the name.
+
 * Each component has an optional single TeamID, this is written into the component_team_lut
   * the lut should probably be writen as unique but gracefully ignore duplicates.
   * Actually I do not have to ensure the above since there will only exist one instance of each component, so there can never exist multiple component id.

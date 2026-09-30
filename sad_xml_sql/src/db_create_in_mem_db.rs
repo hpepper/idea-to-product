@@ -37,7 +37,8 @@ fn create_table_components(db_conn: &Connection) {
             name TEXT NOT NULL,
             purpose TEXT,
             summary TEXT,
-            team_id INTEGER
+            team_id INTEGER,
+            title TEXT NOT NULL DEFAULT ''
         )",
             [],
         )

@@ -3,6 +3,7 @@
 <!-- the '-valid' actually has a double '-' in front but dtd can't have that. -->
 <!ELEMENT SoftwareArchitectureDocumentation (
   Document,
+  Include*,
   ViewPacket+,
   Component+,
   ComponentRelation*,
@@ -14,7 +15,6 @@
 
 <!ELEMENT Document (
   FileId,
-  Include*,
   Title,
   Issue,
   Summary
@@ -90,9 +90,10 @@
   Security?,
   SourceRepository*,
   Summary,
+  TeamId?,
   TestInformation?,
-  VisibilityOfInterfaces?,
-  TeamId?
+  Title?,
+  VisibilityOfInterfaces?
 )>
 <!ATTLIST Component Id CDATA #REQUIRED>
 <!ATTLIST Component Name CDATA #REQUIRED>
@@ -134,12 +135,12 @@
 
 <!ELEMENT ComponentAId  (#PCDATA)>
 <!ELEMENT ComponentBId  (#PCDATA)>
+<!ELEMENT Style  (#PCDATA)>
+<!ELEMENT ConnectionType  (#PCDATA)>
 <!ELEMENT Key  (#PCDATA)>
 <!ELEMENT PropertyOfRelation  (#PCDATA)>
-<!ELEMENT ConnectionType  (#PCDATA)>
 <!ELEMENT RelationText  (#PCDATA)>
 <!ELEMENT RelationDescription  (#PCDATA)>
-<!ELEMENT Style  (#PCDATA)>
 
 <!ELEMENT Diagram  (
   DiagramKey

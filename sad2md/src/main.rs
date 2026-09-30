@@ -7,10 +7,19 @@ use sad_xml_sql::db_create_in_mem_db;
 use sad_xml_sql::db_populate_from_xml;
 use sad_xml_sql::db_retrieval;
 use sad_xml_sql::db_update::insert_into_context_model_ignore_duplicates;
+use sad_xml_sql::db_utils::{
+    create_hardcoded_map, create_styles, ALLOCATION_VIEW_TYPE, ALLOCATION_VIEW_TYPE_STYLE_ASSIGNMENT,
+    ALLOCATION_VIEW_TYPE_STYLE_DEPLOYEMENT, ALLOCATION_VIEW_TYPE_STYLE_INSTALL,
+    CNC_VIEW_TYPE, CNC_VIEW_TYPE_STYLE_CLIENTSERVER,
+    CONNECTION_TYPE_DEPLOYMENT_ALLIGN, CONNECTION_TYPE_DEPLOYMENT_CONNECT,
+    CONNECTION_TYPE_DEPLOYMENT_CONTAINS, MODULE_VIEW_TYPE, MODULE_VIEW_TYPE_STYLE_DECOMPOSITION,
+    MODULE_VIEW_TYPE_STYLE_LAYERED,
+    MODULE_VIEW_TYPE_STYLE_USEDBY, MODULE_VIEW_TYPE_STYLE_USES, VIEW_TYPE_LIST,
+};
 use sad_xml_sql::models;
 
 use db_retrieval::{
-    get_component_by_id, get_component_name_by_id, get_components_vector_by_team_id_sorted_by_name,
+    get_component_by_id, get_component_by_name, get_component_name_by_id, get_components_vector_by_team_id_sorted_by_name,
     get_include_url_by_file_id,
     get_vector_of_any_viewpacket_by_component_id_excluding_viewpacket_id,
     get_vector_of_behaviors_for_viewpacket_id, get_vector_of_component_relations_by_id_and_key,
@@ -34,93 +43,6 @@ use std::io::Write;
 use std::collections::HashMap;
 // A HashSet is a collection of unique values. It does not store key-value pairs, only unique keys.
 use std::collections::HashSet;
-
-const MODULE_VIEW_TYPE: &str = "Module";
-const CNC_VIEW_TYPE: &str = "CnC";
-const ALLOCATION_VIEW_TYPE: &str = "Allocation";
-
-const VIEW_TYPE_LIST: &[&str] = &[MODULE_VIEW_TYPE, CNC_VIEW_TYPE, ALLOCATION_VIEW_TYPE];
-
-const MODULE_VIEW_TYPE_STYLE_DECOMPOSITION: &str = "Decomposition";
-const MODULE_VIEW_TYPE_STYLE_USES: &str = "Uses";
-const MODULE_VIEW_TYPE_STYLE_USEDBY: &str = "UsedBy";
-const MODULE_VIEW_TYPE_STYLE_GENERALIZE: &str = "Generalize";
-const MODULE_VIEW_TYPE_STYLE_LAYERED: &str = "Layered";
-
-const CNC_VIEW_TYPE_STYLE_CLIENTSERVER: &str = "ClientServer";
-const CNC_VIEW_TYPE_STYLE_PEERTOPEER: &str = "PeerToPeer";
-const CNC_VIEW_TYPE_STYLE_PUBSUB: &str = "PublishSubscribe";
-const CNC_VIEW_TYPE_STYLE_PIPEANDFILTER: &str = "PipeAndFilter";
-const CNC_VIEW_TYPE_STYLE_SHAREDDATA: &str = "SharedData";
-
-const ALLOCATION_VIEW_TYPE_STYLE_DEPLOYEMENT: &str = "Deployment";
-const ALLOCATION_VIEW_TYPE_STYLE_INSTALL: &str = "Install";
-const ALLOCATION_VIEW_TYPE_STYLE_ASSIGNMENT: &str = "Assignment";
-const ALLOCATION_VIEW_TYPE_STYLE_TESTING: &str = "Testing";
-
-const CONNECTION_TYPE_DEPLOYMENT_CONTAINS: &str = "Contains";
-const CONNECTION_TYPE_DEPLOYMENT_CONNECT: &str = "Connect";
-const CONNECTION_TYPE_DEPLOYMENT_ALLIGN: &str = "Allign";
-
-fn create_hardcoded_map() -> HashMap<&'static str, u64> {
-    let mut map = HashMap::new();
-    map.insert(MODULE_VIEW_TYPE, 1);
-    map.insert(CNC_VIEW_TYPE, 2);
-    map.insert(ALLOCATION_VIEW_TYPE, 3);
-    map.insert(MODULE_VIEW_TYPE_STYLE_DECOMPOSITION, 1);
-    map.insert(MODULE_VIEW_TYPE_STYLE_USES, 2);
-    map.insert(MODULE_VIEW_TYPE_STYLE_USEDBY, 3);
-    map.insert(MODULE_VIEW_TYPE_STYLE_GENERALIZE, 4);
-    map.insert(MODULE_VIEW_TYPE_STYLE_LAYERED, 5);
-    map.insert(CNC_VIEW_TYPE_STYLE_CLIENTSERVER, 1);
-    map.insert(CNC_VIEW_TYPE_STYLE_PEERTOPEER, 2);
-    map.insert(CNC_VIEW_TYPE_STYLE_PUBSUB, 3);
-    map.insert(CNC_VIEW_TYPE_STYLE_PIPEANDFILTER, 4);
-    map.insert(CNC_VIEW_TYPE_STYLE_SHAREDDATA, 5);
-    map.insert(ALLOCATION_VIEW_TYPE_STYLE_DEPLOYEMENT, 1);
-    map.insert(ALLOCATION_VIEW_TYPE_STYLE_INSTALL, 2);
-    map.insert(ALLOCATION_VIEW_TYPE_STYLE_ASSIGNMENT, 3);
-    map.insert(ALLOCATION_VIEW_TYPE_STYLE_TESTING, 4);
-
-    map
-}
-
-// Module: Decomposition, Uses, Generalize, Layered
-// CnC: ClientServer, PeerToPeer, PublishSubscribe, PeerToPeer, PipeAndFilter, PublishSubscribe, SharedData
-// Allocation: Deployment, Implemnetation, Assignment
-fn create_styles() -> HashMap<&'static str, Vec<&'static str>> {
-    let mut map = HashMap::new();
-    map.insert(
-        MODULE_VIEW_TYPE,
-        vec![
-            MODULE_VIEW_TYPE_STYLE_DECOMPOSITION,
-            MODULE_VIEW_TYPE_STYLE_USES,
-            MODULE_VIEW_TYPE_STYLE_USEDBY,
-            MODULE_VIEW_TYPE_STYLE_GENERALIZE,
-            MODULE_VIEW_TYPE_STYLE_LAYERED,
-        ],
-    );
-    map.insert(
-        CNC_VIEW_TYPE,
-        vec![
-            CNC_VIEW_TYPE_STYLE_CLIENTSERVER,
-            CNC_VIEW_TYPE_STYLE_PEERTOPEER,
-            CNC_VIEW_TYPE_STYLE_PUBSUB,
-            CNC_VIEW_TYPE_STYLE_PIPEANDFILTER,
-            CNC_VIEW_TYPE_STYLE_SHAREDDATA,
-        ],
-    );
-    map.insert(
-        ALLOCATION_VIEW_TYPE,
-        vec![
-            ALLOCATION_VIEW_TYPE_STYLE_DEPLOYEMENT,
-            ALLOCATION_VIEW_TYPE_STYLE_INSTALL,
-            ALLOCATION_VIEW_TYPE_STYLE_ASSIGNMENT,
-            ALLOCATION_VIEW_TYPE_STYLE_TESTING,
-        ],
-    );
-    map
-}
 
 fn main() {
     // if the first argument is 'version' then print the version in Cargo.toml and exit
@@ -724,7 +646,7 @@ fn render_viewpacket_section_primary_display(
             };
         if let Some(top_component) = top_component {
             markdown_file
-                .write(&format!("* {}: {}\n", top_component.name, top_component.summary).as_bytes())
+                .write(&format!("* {}: {}\n", top_component.display_name(), top_component.summary).as_bytes())
                 .expect("Unable to write to file");
 
             let mut connector_map: HashMap<String, String> = HashMap::new();
@@ -814,7 +736,7 @@ fn render_viewpacket_section_primary_display(
                         .write(
                             &format!(
                                 "| {} | {} | {} |\n",
-                                component.name, component.summary, reference
+                                component.display_name(), component.summary, reference
                             )
                             .as_bytes(),
                         )
@@ -877,7 +799,7 @@ fn render_viewpacket_section_primary_display(
         // TODO put this whole part in a function so it can be shared with the layered display, with just the parms changed.
         if let Some(top_component) = top_component {
             markdown_file
-                .write(&format!("* {}: {}\n", top_component.name, top_component.summary).as_bytes())
+                .write(&format!("* {}: {}\n", top_component.display_name(), top_component.summary).as_bytes())
                 .expect("Unable to write to file");
 
             let mut connector_map: HashMap<String, String> = HashMap::new();
@@ -1001,6 +923,7 @@ fn render_graphical_primary_display(
                             );
                             let linkable_component_a_name =
                                 make_mermaid_linkable_text(component_a_name.clone());
+                            let component_a_display_name = get_component_display_name_by_name(db_conn, &component_a_name);
                             let linkable_component_b_name =
                                 make_mermaid_linkable_text(component_b.name.clone());
                             let link_annotation = if component_relation.relation_text.is_empty() {
@@ -1014,9 +937,9 @@ fn render_graphical_primary_display(
                                     &format!(
                                         "    {}[{}]---{link_annotation}{}[{}]\n",
                                         linkable_component_a_name,
-                                        component_a_name,
+                                        component_a_display_name,
                                         linkable_component_b_name,
-                                        component_b.name
+                                        component_b.display_name()
                                     )
                                     .as_bytes(),
                                 )
@@ -1074,6 +997,7 @@ fn render_graphical_primary_display_by_key(
                             get_component_name_by_id(db_conn, component_relation.component_a_id);
                         let linkable_component_a_name =
                             make_mermaid_linkable_text(component_a_name.clone());
+                        let component_a_display_name = get_component_display_name_by_name(db_conn, &component_a_name);
                         let linkable_component_b_name =
                             make_mermaid_linkable_text(component_b.name.clone());
                         let link_annotation = if component_relation.relation_text.is_empty() {
@@ -1087,9 +1011,9 @@ fn render_graphical_primary_display_by_key(
                                 &format!(
                                     "    {}[{}]---{link_annotation}{}[{}]\n",
                                     linkable_component_a_name,
-                                    component_a_name,
+                                    component_a_display_name,
                                     linkable_component_b_name,
-                                    component_b.name
+                                    component_b.display_name()
                                 )
                                 .as_bytes(),
                             )
@@ -1142,11 +1066,12 @@ fn render_graphical_layered_display(
     if first_layer {
         let component_a_name = get_component_name_by_id(db_conn, component_id);
         let linkable_component_a_name = make_mermaid_linkable_text(component_a_name.clone());
+        let component_a_display_name = get_component_display_name_by_name(db_conn, &component_a_name);
         markdown_file
             .write(
                 &format!(
                     "    {}[\"{}\"]\n",
-                    linkable_component_a_name, component_a_name
+                    linkable_component_a_name, component_a_display_name
                 )
                 .as_bytes(),
             )
@@ -1191,7 +1116,7 @@ fn render_graphical_layered_display(
                                 .write(
                                     &format!(
                                         "    {}[\"{}\"]\n",
-                                        linkable_component_b_name, component_b.name
+                                        linkable_component_b_name, component_b.display_name()
                                     )
                                     .as_bytes(),
                                 )
@@ -1225,11 +1150,12 @@ fn render_graphical_layered_display(
                     let component_a_name = get_component_name_by_id(db_conn, component_id);
                     let linkable_component_a_name =
                         make_mermaid_linkable_text(component_a_name.clone());
+                    let component_a_display_name = get_component_display_name_by_name(db_conn, &component_a_name);
                     markdown_file
                         .write(
                             &format!(
                                 "    {}[\"{}\"]\n",
-                                linkable_component_a_name, component_a_name
+                                linkable_component_a_name, component_a_display_name
                             )
                             .as_bytes(),
                         )
@@ -1333,6 +1259,7 @@ fn render_graphical_context_diagram(
                             let component_a_name = get_component_name_by_id(db_conn, component_id);
                             let linkable_component_a_name =
                                 make_mermaid_linkable_text(component_a_name.clone());
+                            let component_a_display_name = get_component_display_name_by_name(db_conn, &component_a_name);
                             let linkable_component_b_name =
                                 make_mermaid_linkable_text(component_b.name.clone());
                             let link_annotation = if component_relation.relation_text.is_empty() {
@@ -1346,9 +1273,9 @@ fn render_graphical_context_diagram(
                                     &format!(
                                         "    {}[{}]---{link_annotation}{}(({}))\n",
                                         linkable_component_b_name,
-                                        component_b.name,
+                                        component_b.display_name(),
                                         linkable_component_a_name,
-                                        component_a_name
+                                        component_a_display_name
                                     )
                                     .as_bytes(),
                                 )
@@ -1502,7 +1429,7 @@ fn render_textual_primary_display(
                                     .write(
                                         &format!(
                                             "{}* {}: {}\n",
-                                            indent_spaces, component_b.name, component_b.summary
+                                            indent_spaces, component_b.display_name(), component_b.summary
                                         )
                                         .as_bytes(),
                                     )
@@ -1546,7 +1473,7 @@ fn render_textual_primary_display(
                                     .write(
                                         &format!(
                                             "{}* {}: {}\n",
-                                            indent_spaces, component_a.name, component_a.summary
+                                            indent_spaces, component_a.display_name(), component_a.summary
                                         )
                                         .as_bytes(),
                                     )
@@ -1626,7 +1553,7 @@ fn render_textual_component_list_by_key(
                 .expect("Unable to write to file");
             for component in component_vector {
                 markdown_file
-                    .write(&format!("  * {}: {}\n", component.name, component.summary).as_bytes())
+                    .write(&format!("  * {}: {}\n", component.display_name(), component.summary).as_bytes())
                     .expect("Unable to write to file");
             }
             markdown_file
@@ -1668,10 +1595,12 @@ fn render_graphical_deployment_display(
                     get_component_name_by_id(db_conn, component_relation.component_a_id);
                 let linkable_component_a_name =
                     make_mermaid_linkable_text(component_a_name.clone());
+                let component_a_display_name = get_component_display_name_by_name(db_conn, &component_a_name);
                 let component_b_name =
                     get_component_name_by_id(db_conn, component_relation.component_b_id);
                 let linkable_component_b_name =
                     make_mermaid_linkable_text(component_b_name.clone());
+                let component_b_display_name = get_component_display_name_by_name(db_conn, &component_b_name);
                 // generate output depending on the connection_type.
                 match component_relation.connection_type.as_str() {
                     CONNECTION_TYPE_DEPLOYMENT_ALLIGN => {
@@ -1690,7 +1619,7 @@ fn render_graphical_deployment_display(
                             .write(
                                 &format!(
                                     "    subgraph {}[\"{}\"]\n",
-                                    linkable_component_a_name, component_a_name
+                                    linkable_component_a_name, component_a_display_name
                                 )
                                 .as_bytes(),
                             )
@@ -1699,7 +1628,7 @@ fn render_graphical_deployment_display(
                             .write(
                                 &format!(
                                     "      {}[\"{}\"]\n",
-                                    linkable_component_b_name, component_b_name
+                                    linkable_component_b_name, component_b_display_name
                                 )
                                 .as_bytes(),
                             )
@@ -1773,6 +1702,7 @@ fn render_graphical_all_behaviors_for_viewpacket(
                                     );
                                     let linkable_component_a_name =
                                         make_mermaid_linkable_text(component_a_name.clone());
+                                    let component_a_display_name = get_component_display_name_by_name(db_conn, &component_a_name);
                                     let linkable_component_b_name =
                                         make_mermaid_linkable_text(component_b.name.clone());
 
@@ -1783,7 +1713,7 @@ fn render_graphical_all_behaviors_for_viewpacket(
                                             .write(
                                                 &format!(
                                                     "    participant {} as {}\n",
-                                                    linkable_component_a_name, component_a_name
+                                                    linkable_component_a_name, component_a_display_name
                                                 )
                                                 .as_bytes(),
                                             )
@@ -1797,7 +1727,7 @@ fn render_graphical_all_behaviors_for_viewpacket(
                                             .write(
                                                 &format!(
                                                     "    participant {} as {}\n",
-                                                    linkable_component_b_name, component_b.name
+                                                    linkable_component_b_name, component_b.display_name()
                                                 )
                                                 .as_bytes(),
                                             )
@@ -1873,6 +1803,15 @@ fn make_markdown_linkable_text(text: String) -> String {
         .replace("'", "")
         .replace("\"", "")
         .to_lowercase()
+}
+
+// TODO investigate and understand this, maybe move to the db crate. This was an LLM addition.
+/// Returns the text to show for a component in a diagram, the title if set, otherwise the name.
+fn get_component_display_name_by_name(db_conn: &Connection, component_name: &str) -> String {
+    match get_component_by_name(db_conn, component_name.to_string()) {
+        Ok(component) => component.display_name().to_string(),
+        Err(_) => component_name.to_string(),
+    }
 }
 
 fn mermaid_leadin(markdown_file: &mut File, diagram_type: &str) {

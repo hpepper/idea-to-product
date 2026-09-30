@@ -36,4 +36,20 @@ fn test_xml_load_and_dump() {
     let xml_content = fs::read_to_string(output_file).unwrap();
     let root = Element::parse(xml_content.as_bytes()).unwrap();
     assert_eq!(root.name, "SoftwareArchitectureDocumentation");
+
+    // A component with a Title keeps it, a component without one gets no Title element.
+    let find_component = |name: &str| {
+        root.children
+            .iter()
+            .filter_map(|node| node.as_element())
+            .find(|elem| elem.name == "Component" && elem.attributes.get("Name").map(String::as_str) == Some(name))
+            .unwrap_or_else(|| panic!("Component {} missing in dump", name))
+    };
+    let with_title = find_component("BattleResolver");
+    assert_eq!(
+        with_title.get_child("Title").and_then(|t| t.get_text()).as_deref(),
+        Some("Battle Resolver")
+    );
+    let without_title = find_component("CardDeckStorage");
+    assert!(without_title.get_child("Title").is_none());
 }

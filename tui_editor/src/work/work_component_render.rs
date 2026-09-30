@@ -161,6 +161,8 @@ pub struct ComponentTextAreas {
     pub name: TextArea<'static>,
     pub purpose: TextArea<'static>,
     pub summary: TextArea<'static>,
+    // Not editable yet, kept so saving does not clear the title.
+    pub title: String,
     pub active_field: ComponentField,
 }
 
@@ -224,6 +226,7 @@ impl ComponentTextAreas {
             name,
             purpose,
             summary,
+            title: String::new(),
             active_field: ComponentField::Name, // Start with name (skip read-only ID)
         }
     }
@@ -276,6 +279,8 @@ impl ComponentTextAreas {
         self.name.delete_line_by_head();
         self.name.insert_str(&component.name);
 
+        self.title = component.title.clone();
+
         self.purpose.delete_line_by_head();
         self.purpose.insert_str(&component.purpose);
 
@@ -292,6 +297,7 @@ impl ComponentTextAreas {
             purpose: self.purpose.lines().join("\n"),
             summary: self.summary.lines().join("\n"),
             team_id: 0, // TODO populate.
+            title: self.title.clone(),
         }
     }
 

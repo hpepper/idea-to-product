@@ -1,8 +1,10 @@
+use crate::convert_from_id_to_address;
 use rusqlite::Connection;
 use simple_xml_builder::XMLElement;
 use std::fs::File;
 
 use crate::db_retrieval::{
+    get_document,
     get_vector_of_behaviors_sorted_by_key_and_order,
     get_vector_of_component_relations_sorted_by_key_and_order,
     get_vector_of_components_sorted_by_name,
@@ -17,6 +19,8 @@ pub fn dump_db_to_xml(db_conn: &Connection, output_file: &str) -> Result<(), std
     let mut xml_root = XMLElement::new("SoftwareArchitectureDocumentation");
     xml_root.add_attribute("version", "0.1.1");
 
+    // TODO dump the Document entry
+    dump_document_to_xml(&mut xml_root, db_conn).expect("Failed to dump document");
     // Dump each table
     // TODO dump the top architecture
     dump_table_viewpacket_to_xml(&mut xml_root, db_conn).expect("Failed to dump view packets");
@@ -38,6 +42,34 @@ pub fn convert_id_to_address(id: u64) -> String {
     let c = temp_id / 256;
     let d = temp_id - (c * 256);
     format!("{}.{}.{}.{}", a, b, c, d)
+}
+
+fn dump_document_to_xml(
+    xml_root: &mut XMLElement,
+    db_conn: &Connection,
+) -> Result<(), rusqlite::Error> {
+    let document = get_document(db_conn)?;
+
+    let mut document_element = XMLElement::new("Document");
+
+    let mut file_id = XMLElement::new("FileId");
+    file_id.add_text(document.file_id.to_string());
+    document_element.add_child(file_id);
+
+    let mut title = XMLElement::new("Title");
+    title.add_text(document.title.clone());
+    document_element.add_child(title);
+
+    let mut issue = XMLElement::new("Issue");
+    issue.add_text(document.issue.clone());
+    document_element.add_child(issue);
+
+    let mut summary = XMLElement::new("Summary");
+    summary.add_text(document.summary.clone());
+    document_element.add_child(summary);
+
+    xml_root.add_child(document_element);
+    Ok(())
 }
 
 fn dump_table_behavior_to_xml(
@@ -76,7 +108,7 @@ fn dump_table_component_to_xml(
 
     for component in component_vector {
         let mut component_element = XMLElement::new("Component");
-        component_element.add_attribute("Id", component.id.to_string());
+        component_element.add_attribute("Id", convert_from_id_to_address(component.id));
         component_element.add_attribute("Name", &component.name);
 
         let mut purpose_element = XMLElement::new("Purpose");
@@ -86,6 +118,12 @@ fn dump_table_component_to_xml(
         let mut summary_element = XMLElement::new("Summary");
         summary_element.add_text(component.summary.clone());
         component_element.add_child(summary_element);
+
+        if !component.title.is_empty() {
+            let mut title_element = XMLElement::new("Title");
+            title_element.add_text(component.title.clone());
+            component_element.add_child(title_element);
+        }
         xml_root.add_child(component_element);
 
         if component.team_id > 0 {
@@ -106,16 +144,16 @@ fn dump_table_componentrelation_to_xml(
 
     for component_relation in component_relation_vector {
         let mut component_relation_element = XMLElement::new("ComponentRelation");
-        component_relation_element.add_attribute("Id", component_relation.id.to_string());
+        component_relation_element.add_attribute("Id", convert_from_id_to_address(component_relation.id));
         component_relation_element
             .add_attribute("SortOrder", &component_relation.sort_order.to_string());
 
         let mut component_a_id = XMLElement::new("ComponentAId");
-        component_a_id.add_text(component_relation.component_a_id.to_string());
+        component_a_id.add_text(convert_from_id_to_address(component_relation.component_a_id));
         component_relation_element.add_child(component_a_id);
 
         let mut component_b_id = XMLElement::new("ComponentBId");
-        component_b_id.add_text(component_relation.component_b_id.to_string());
+        component_b_id.add_text(convert_from_id_to_address(component_relation.component_b_id));
         component_relation_element.add_child(component_b_id);
 
         let mut key = XMLElement::new("Key");
@@ -182,7 +220,7 @@ fn retrieve_from_db_and_put_in_xml(
     )?;
     for viewpacket in viewpacket_vector {
         let mut viewpacket_element = XMLElement::new("ViewPacket");
-        viewpacket_element.add_attribute("Id", viewpacket.viewpacket_id.to_string());
+        viewpacket_element.add_attribute("Id", convert_from_id_to_address(viewpacket.viewpacket_id));
         viewpacket_element.add_attribute("ViewType", &viewpacket.view_type);
         viewpacket_element.add_attribute("ViewStyle", &viewpacket.view_style);
         viewpacket_element.add_attribute("SortOrder", &viewpacket.sort_order.to_string());
@@ -196,7 +234,7 @@ fn retrieve_from_db_and_put_in_xml(
         viewpacket_element.add_child(introduction);
 
         let mut component_id = XMLElement::new("ComponentId");
-        component_id.add_text(viewpacket.component_id.to_string());
+        component_id.add_text(convert_from_id_to_address(viewpacket.component_id));
         viewpacket_element.add_child(component_id);
 
         let mut primary_display_key = XMLElement::new("PrimaryDisplayKey");
@@ -222,6 +260,11 @@ mod tests {
     fn setup_test_db() -> Connection {
         let conn = Connection::open_in_memory().unwrap();
         db_create_in_mem_db(&conn);
+        conn.execute(
+            "INSERT INTO document (file_id, filename, title, issue, summary) VALUES (1, 'test_sad.xml', 'Title1', 'Issue1', 'Summary1')",
+            [],
+        )
+        .unwrap();
         conn
     }
 
@@ -257,6 +300,46 @@ mod tests {
     //     assert_eq!(root.name, "SoftwareArchitectureDocumentation");
     //     fs::remove_file(output_file).unwrap();
     // }
+
+    #[test]
+    fn test_dump_document_to_xml() {
+        let conn = setup_test_db();
+        let mut xml_root = XMLElement::new("SoftwareArchitectureDocumentation");
+        dump_document_to_xml(&mut xml_root, &conn).unwrap();
+
+        let mut buffer = Vec::new();
+        xml_root.write(&mut buffer).unwrap();
+        let root = Element::parse(buffer.as_slice()).unwrap();
+
+        let document = root.get_child("Document").expect("Document element missing");
+        assert_eq!(
+            document.get_child("FileId").and_then(|e| e.get_text()).as_deref(),
+            Some("1")
+        );
+        assert_eq!(
+            document.get_child("Title").and_then(|e| e.get_text()).as_deref(),
+            Some("Title1")
+        );
+        assert_eq!(
+            document.get_child("Issue").and_then(|e| e.get_text()).as_deref(),
+            Some("Issue1")
+        );
+        assert_eq!(
+            document.get_child("Summary").and_then(|e| e.get_text()).as_deref(),
+            Some("Summary1")
+        );
+    }
+
+    #[test]
+    fn test_dump_document_to_xml_no_document_row() {
+        let conn = Connection::open_in_memory().unwrap();
+        db_create_in_mem_db(&conn);
+        let mut xml_root = XMLElement::new("SoftwareArchitectureDocumentation");
+
+        let result = dump_document_to_xml(&mut xml_root, &conn);
+
+        assert!(result.is_err());
+    }
 
     #[test]
     fn test_convert_id_to_address() {

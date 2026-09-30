@@ -1,5 +1,14 @@
 # TODO
 
+- Change the viewpacket to behavior reference to be stored in the viewpacket.
+  - Having the reference in the behavior, you might forget to update if the viewpacket id is changed.
+  - Another way could be to have a behavior key that selects all behaviours.
+  - BehaviorDisplayKey+
+  - TODO where do we describe the type of diagram?
+- Add support for use-cases
+- Add support for requirements.
+- Add support for design decisions.
+
 - Change UL '*' to '-'
 
 - Add links to diagram components
@@ -17,6 +26,3 @@
 - generate the allocation mode
 - add relation description to ComponentRelation
 - Be able to limit the level in the primary display.
-- Change the viewpacket to behavior reference to be stored in the viewpacket.
-  - Having the reference in the behavior, you might forget to update if the viewpacket id is changed.
-  - Another way could be to have a behavior key that selects all behaviours.

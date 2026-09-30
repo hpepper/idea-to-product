@@ -18,7 +18,7 @@
 ### Build
 
 * cargo run ../sad_xml_sql/tests/test_sad.xml && cat draft_architecture.md
-* xmllint --valid  test_sad.xml  > t 2>u; head u
+* xmllint --valid  ../sad_xml_sql/tests/test_sad.xml  > t 2>u; head u
 
 ### Overview
 
@@ -340,6 +340,10 @@ See also Choosing the Views(Cle11, p315).
 #### Overview of _sad.xml
 
 ### Fill in usage
+
+* Create a Component `<Component Id="1.0.0.14" Name="BattleResolver">`
+  * Name - the technical name, for example the name read from AWS. Must be unique, so mermaid diagrams always show the Name.
+  * Title - optional, human readable name. When set, it replaces Name in bullet lists and component tables. Two components can share a Title.
 
 * Create a Viewpacket `<ViewPacket Id="1202" ViewType="Module" ViewStyle="Uses" SortOrder="2">`
   * ComponentId - the id of the component you are focusing on.

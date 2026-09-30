@@ -1,10 +1,10 @@
-use crate::models::{Behavior, Component, ComponentRelation, ContextModel, ViewPacket};
+use crate::models::{Behavior, Component, ComponentRelation, ContextModel, Document, ViewPacket};
 
 use rusqlite::{Connection, Result};
 
 pub fn get_component_by_id(db_conn: &Connection, component_id: u64) -> Result<Component> {
     let mut stmt = db_conn.prepare(
-        "SELECT file_id, id, name, purpose, summary, team_id FROM component WHERE id = ?1",
+        "SELECT file_id, id, name, purpose, summary, team_id, title FROM component WHERE id = ?1",
     )?;
     let component = stmt.query_row([component_id], |row| {
         Ok(Component {
@@ -14,14 +14,50 @@ pub fn get_component_by_id(db_conn: &Connection, component_id: u64) -> Result<Co
             purpose: row.get(3)?,
             summary: row.get(4)?,
             team_id: row.get(5)?,
+            title: row.get(6)?,
         })
     })?;
     Ok(component)
 }
 
+
+/// Get a component by its name.
+///
+/// Returns `Err(rusqlite::Error::QueryReturnedNoRows)` when no component with
+/// the given name exists.
+///
+/// # Examples
+///
+/// ```
+/// use rusqlite::Connection;
+/// use sad_xml_sql::{db_create_in_mem_db, get_component_by_name};
+///
+/// let db_conn = Connection::open_in_memory().unwrap();
+/// db_create_in_mem_db(&db_conn);
+/// db_conn
+///     .execute(
+///         "INSERT INTO component (file_id, id, name, purpose, summary, team_id)
+///          VALUES (1, 1, 'ComponentA', 'Purpose', 'Summary', 0)",
+///         [],
+///     )
+///     .unwrap();
+///
+/// // Name exists: `Ok` with the matching component.
+/// match get_component_by_name(&db_conn, "ComponentA".to_string()) {
+///     Ok(component) => assert_eq!(component.name, "ComponentA"),
+///     Err(err) => panic!("expected a component, got an error: {err}"),
+/// }
+///
+/// // Name does not exist: `Err(QueryReturnedNoRows)`.
+/// match get_component_by_name(&db_conn, "NonExistentComponent".to_string()) {
+///     Ok(_) => panic!("expected no component to be found"),
+///     Err(rusqlite::Error::QueryReturnedNoRows) => {}
+///     Err(err) => panic!("expected QueryReturnedNoRows, got: {err}"),
+/// }
+/// ```
 pub fn get_component_by_name(db_conn: &Connection, name: String) -> Result<Component> {
     let mut stmt = db_conn.prepare(
-        "SELECT file_id,id, name, purpose, summary, team_id FROM component WHERE name = ?1",
+        "SELECT file_id,id, name, purpose, summary, team_id, title FROM component WHERE name = ?1",
     )?;
     let component = stmt.query_row([name], |row| {
         Ok(Component {
@@ -31,6 +67,7 @@ pub fn get_component_by_name(db_conn: &Connection, name: String) -> Result<Compo
             purpose: row.get(3)?,
             summary: row.get(4)?,
             team_id: row.get(5)?,
+            title: row.get(6)?,
         })
     })?;
     Ok(component)
@@ -57,7 +94,7 @@ pub fn get_vector_of_component_names_sorted(db_conn: &Connection) -> Result<Vec<
 pub fn get_vector_of_components_sorted_by_name(db_conn: &Connection) -> Result<Vec<Component>> {
     //println!("Preparing statement to fetch components sorted by name");
     let mut stmt = db_conn
-        .prepare("SELECT file_id, id, name, purpose, summary, team_id FROM component ORDER BY name COLLATE NOCASE ASC")
+        .prepare("SELECT file_id, id, name, purpose, summary, team_id, title FROM component ORDER BY name COLLATE NOCASE ASC")
         .unwrap();
     //println!("Statement prepared, querying components...");
     let component_names = stmt
@@ -70,6 +107,7 @@ pub fn get_vector_of_components_sorted_by_name(db_conn: &Connection) -> Result<V
                 purpose: row.get(3)?,
                 summary: row.get(4)?,
                 team_id: row.get(5)?,
+                title: row.get(6)?,
             })
         })
         .unwrap();
@@ -84,7 +122,7 @@ pub fn get_vector_of_components_by_key_sorted_by_name(
     key: &str,
 ) -> Result<Vec<Component>> {
     let mut stmt = db_conn.prepare(
-        "SELECT DISTINCT c.file_id, c.id, c.name, c.purpose, c.summary, c.team_id
+        "SELECT DISTINCT c.file_id, c.id, c.name, c.purpose, c.summary, c.team_id, c.title
          FROM component c
          WHERE c.id IN (
              SELECT component_a_id FROM component_relation WHERE key = ?1
@@ -102,6 +140,7 @@ pub fn get_vector_of_components_by_key_sorted_by_name(
                 purpose: row.get(3)?,
                 summary: row.get(4)?,
                 team_id: row.get(5)?,
+                title: row.get(6)?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -115,7 +154,7 @@ pub fn get_components_vector_by_team_id_sorted_by_name(
     requested_team_id: u64,
 ) -> Result<Vec<Component>> {
     let mut stmt = db_conn
-        .prepare("SELECT file_id, id, name, purpose, summary, team_id FROM component WHERE team_id = ?1 ORDER BY name COLLATE NOCASE ASC")
+        .prepare("SELECT file_id, id, name, purpose, summary, team_id, title FROM component WHERE team_id = ?1 ORDER BY name COLLATE NOCASE ASC")
         .unwrap();
     let component_names = stmt
         .query_map([requested_team_id], |row| {
@@ -126,6 +165,7 @@ pub fn get_components_vector_by_team_id_sorted_by_name(
                 purpose: row.get(3)?,
                 summary: row.get(4)?,
                 team_id: row.get(5)?,
+                title: row.get(6)?,
             })
         })
         .unwrap();
@@ -382,6 +422,21 @@ pub fn get_local_file_id(db_conn: &Connection) -> Result<u64> {
     let mut stmt = db_conn.prepare("SELECT file_id FROM document LIMIT 1")?;
     let file_id: u64 = stmt.query_row([], |row| row.get(0))?;
     Ok(file_id)
+}
+
+pub fn get_document(db_conn: &Connection) -> Result<Document> {
+    // TODO get rid of limit, see get_local_file_id
+    let mut stmt =
+        db_conn.prepare("SELECT file_id, filename, title, issue, summary FROM document LIMIT 1")?;
+    stmt.query_row([], |row| {
+        Ok(Document {
+            file_id: row.get(0)?,
+            filename: row.get(1)?,
+            title: row.get(2)?,
+            issue: row.get(3)?,
+            summary: row.get(4)?,
+        })
+    })
 }
 
 pub fn get_include_url_by_file_id(db_conn: &Connection, file_id: u64) -> Result<String> {
@@ -756,6 +811,13 @@ mod tests {
     }
 
     #[test]
+    fn test_get_component_by_name_not_found() {
+        let conn = setup_test_db();
+        let result = get_component_by_name(&conn, "NonExistentComponent".to_string());
+        assert!(matches!(result, Err(rusqlite::Error::QueryReturnedNoRows)));
+    }
+
+    #[test]
     fn test_get_component_name_by_id() {
         let conn = setup_test_db();
         let name = get_component_name_by_id(&conn, 1);
@@ -945,5 +1007,34 @@ mod tests {
         let conn = setup_test_db();
         let result = get_viewpacket_by_style_and_component_id(&conn, "Decomposition", 999);
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_get_document() {
+        let conn = Connection::open_in_memory().unwrap();
+        crate::db_create_in_mem_db(&conn);
+        conn.execute(
+            "INSERT INTO document (file_id, filename, title, issue, summary) VALUES (1, 'test_sad.xml', 'Title1', 'Issue1', 'Summary1')",
+            [],
+        )
+        .unwrap();
+
+        let document = get_document(&conn).unwrap();
+
+        assert_eq!(document.file_id, 1);
+        assert_eq!(document.filename, "test_sad.xml");
+        assert_eq!(document.title, "Title1");
+        assert_eq!(document.issue, "Issue1");
+        assert_eq!(document.summary, "Summary1");
+    }
+
+    #[test]
+    fn test_get_document_no_rows() {
+        let conn = Connection::open_in_memory().unwrap();
+        crate::db_create_in_mem_db(&conn);
+
+        let result = get_document(&conn);
+
+        assert!(result.is_err());
     }
 }

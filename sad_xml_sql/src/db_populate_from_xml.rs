@@ -4,7 +4,11 @@ use std::io::BufReader;
 use xmltree::{Element, XMLNode};
 use std::path::Path;
 
-use crate::db_dump_to_xml::convert_id_to_address;
+use crate::db_update::{
+    insert_into_component, insert_into_component_relation, insert_into_document,
+    insert_into_view_packet,
+};
+use crate::db_utils::convert_from_address_to_id;
 
 // Requires create_database() to have been called.
 pub fn db_populate_from_xml(db_conn: &Connection, filename: &String) {
@@ -62,25 +66,6 @@ fn load_xml_file(filename: &str) -> Element {
 
     // Parse the XML file
     Element::parse(file).expect("Unable to parse XML")
-}
-
-/// Convert an address of the form "file_id.a.b.c" into a numerical ID.
-fn convert_from_address_to_id(addr: String, location: &str) -> u64 {
-    // TODO: Implement the conversion logic
-    // TODO split "a.b.c" into parts and calculate the id.
-    let parts: Vec<&str> = addr.split('.').collect();
-    if parts.len() == 4 {
-        let alpha: u64 = parts[0].parse().unwrap_or(0);
-        let bravo: u64 = parts[1].parse().unwrap_or(0);
-        let charlie: u64 = parts[2].parse().unwrap_or(0);
-        let delta: u64 = parts[3].parse().unwrap_or(0);
-        return alpha * 256 * 256 * 256 + bravo * 256 * 256 + charlie * 256 + delta;
-    } else {
-        panic!(
-            "!!! Warning: Address '{}' is not in the correct format 'a.b.c.d'. Location: {}",
-            addr, location
-        );
-    }
 }
 
 fn get_file_id_from_include_xml(xml_root: &Element) -> u64 {
@@ -215,26 +200,17 @@ fn populate_db_with_components(db_conn: &Connection, xml_root: &Element, file_id
                         }
                         None => "0.0.0.0".into(),
                     };
+                    let title = component
+                        .get_child("Title")
+                        .and_then(|title_elem| title_elem.get_text())
+                        .unwrap_or_default();
                     let id: u64 =
                         convert_from_address_to_id( id_addr.to_string(), "Component - id");
                     let team_id: u64 = convert_from_address_to_id(
                         team_id.to_string(),
                         "Component - TeamId",
                     );
-                    db_conn
-                        .execute(
-                            "INSERT INTO component (file_id, id, name, purpose, summary, team_id)
-                            VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-                            (
-                                file_id,
-                                id,
-                                &name.to_string(),
-                                &purpose.to_string(),
-                                &summary.to_string(),
-                                team_id,
-                            ),
-                        )
-                        .expect(&format!("Unable to insert data id: {}", convert_id_to_address(id)));
+                    insert_into_component(db_conn, file_id, id, name, &purpose, &summary, team_id, &title);
                 }
             }
             _ => {}
@@ -303,24 +279,19 @@ fn populate_db_with_componentrelations(db_conn: &Connection, xml_root: &Element)
                         let id: u64 = convert_from_address_to_id(id_addr, "ComponentRelation - id");
                         let component_a_id: u64 = convert_from_address_to_id(component_a_addr, "ComponentRelation - ComponentAId");
                         let component_b_id: u64 = convert_from_address_to_id(component_b_addr, "ComponentRelation - ComponentBId");
-                    db_conn
-                        .execute(
-                            "INSERT INTO component_relation (id, sort_order, component_a_id, component_b_id, connection_type, key, property_of_relation, relation_text, relation_description, style)
-                            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
-                            (
-                                id,
-                                sort_order,
-                                component_a_id,
-                                component_b_id,
-                                &connection_type.to_string(),
-                                &key.to_string(),
-                                &property_of_relation.to_string(),
-                                &relation_text.to_string(),
-                                &relation_description.to_string(),
-                                &style.to_string(),
-                            )
-                        )
-                        .expect("Unable to insert data in component_relation");
+                    insert_into_component_relation(
+                        db_conn,
+                        id,
+                        sort_order,
+                        component_a_id,
+                        component_b_id,
+                        &connection_type,
+                        &key,
+                        &property_of_relation,
+                        &relation_text,
+                        &relation_description,
+                        &style,
+                    );
                 }
             }
             _ => {}
@@ -361,13 +332,7 @@ fn populate_db_with_document(db_conn: &Connection, xml_root: &Element, filename:
                         .unwrap_or_else(|| "".to_string().into());
 
                     // TODO also read the members and their roles and put in the member table.
-                    db_conn
-                        .execute(
-                            "INSERT INTO document (file_id, filename, title, issue, summary)
-                            VALUES (?1, ?2, ?3, ?4, ?5)",
-                            (file_id, filename, title, issue, summary),
-                        )
-                        .expect("Unable to insert data into document");
+                    insert_into_document(db_conn, file_id, filename, &title, &issue, &summary);
                 }
             }
             _ => {}
@@ -526,14 +491,14 @@ fn populate_db_with_viewpackets(db_conn: &Connection, xml_root: &Element, file_i
                     if view_style == "Assignment" {
                         if team_addr == "0.0.0.0" {
                             eprintln!(
-                                "!!! Warning: ViewPacket id= {} has viewStyle 'Assignment' but no TeamId assigned.",
+                                "WWW ViewPacket id= {} has viewStyle 'Assignment' but no TeamId assigned.",
                                 viewpacket_addr
                             );
                         }
                     } else {
                         if component_addr == "0.0.0.0" {
                             eprintln!(
-                                "!!! Warning: ViewPacket id= {} has no ComponentId assigned.",
+                                "EEE ViewPacket id= {} has no ComponentId assigned.",
                                 viewpacket_addr
                             );
                         }
@@ -547,25 +512,20 @@ fn populate_db_with_viewpackets(db_conn: &Connection, xml_root: &Element, file_i
                     );
                     let team_id: u64 =
                         convert_from_address_to_id(team_addr, "ViewPacket - Team");
-                    db_conn
-                        .execute(
-                            "INSERT INTO view_packet (component_id, context_model_key, file_id, primary_display_key, introduction, sort_order, team_id, title, view_style, view_type, viewpacket_id)
-                            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
-                            (
-                                component_id,
-                                &context_model_key.to_string(),
-                                file_id,
-                                &primary_display_key.to_string(),
-                                &introduction.to_string(),
-                                sort_order,
-                                team_id,
-                                &title.to_string(),
-                                view_style,
-                                view_type,
-                                viewpacket_id,
-                            )
-                        )
-                        .expect("Unable to insert data");
+                    insert_into_view_packet(
+                        db_conn,
+                        component_id,
+                        &context_model_key,
+                        file_id,
+                        &primary_display_key,
+                        &introduction,
+                        sort_order,
+                        team_id,
+                        &title,
+                        view_style,
+                        view_type,
+                        viewpacket_id,
+                    );
                 }
             }
             _ => {}
