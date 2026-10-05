@@ -20,8 +20,6 @@ use std::collections::HashMap;
 
 use sad_xml_sql::db_create_in_mem_db;
 use sad_xml_sql::db_retrieval::get_component_by_name;
-//use sad_xml_sql::db_update::insert_into_context_model_ignore_duplicates;
-//use sad_xml_sql::models;
 use sad_xml_sql::db_update::{
     insert_into_component, insert_into_component_relation, insert_into_document,
     insert_into_view_packet,
@@ -32,11 +30,7 @@ use sad_xml_sql::db_utils::{
 };
 use sad_xml_sql::dump_db_to_xml;
 
-/// Everything a scan of the AWS account needs: the AWS/Kubernetes clients, the in-memory
-/// database connection, lookup tables built once up front, and the counters used to mint
-/// component/view-packet/relation ids as components are discovered. Bundled into one struct
-/// and passed around as `&mut AppContext` so functions don't each need their own list of
-/// client and counter parameters.
+/// Shared state for one account scan: clients, database, lookup tables and id counters.
 struct AppContext {
     aws_client: Client,
     elb_client: ElbClient,
@@ -44,12 +38,9 @@ struct AppContext {
     route53_client: Route53Client,
     db_conn: Connection,
     elb_dns_name_to_load_balancer: HashMap<String, LoadBalancer>,
-    /// ELB ARN (or, for a non-ARN fallback, the raw hostname) to the component id already
-    /// created for it. Several Route53 records/CloudFront origins commonly alias to the same
-    /// load balancer, and re-running `investigate_elb`'s Kubernetes discovery (an `aws eks
-    /// get-token` shell-out plus a cluster-wide HTTPRoute list) for each one is slow enough to
-    /// look like the program has hung, so a repeat hit reuses the cached component instead.
-    elb_arn_to_component_id: HashMap<String, u64>,
+    /// ELB hostname to its component id. Many records alias the same ELB, and repeating the
+    /// slow Kubernetes discovery for each one looks like a hang.
+    elb_hostname_to_component_id: HashMap<String, u64>,
     type_and_style_to_section_number: HashMap<&'static str, u64>,
     file_id: u64,
     team_id: u64,
@@ -61,7 +52,8 @@ struct AppContext {
     component_relation_count: u64,
 }
 
-/// Lists your CloudFront distributions in the default Region or us-east-1 if a default Region isn't set.
+/// Scan the AWS account's Route53 hosted zones and CloudFront distributions, follow them to
+/// their load balancers and Kubernetes backends, and dump the result as a SAD XML document.
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     // aws-sdk's rustls stack and kube's rustls stack each pull in rustls without installing a
@@ -78,19 +70,19 @@ async fn main() -> Result<(), Error> {
 
     let filtered_namespace = parse_filtered_namespace_arg();
 
-    // Prep the Section numbering for the component numbers.
+    // View packet addresses embed the SAD section number of their view type and style.
     let type_and_style_to_section_number = create_hardcoded_map();
 
-    // Prep the DB set-up
-    let filename = "temporary_sad_aws_account_dump.xml"; //&args[1];
-    let file_id = 99; //&args[2];
+    // TODO: Read the output filename and file id from the command line.
+    let filename = "temporary_sad_aws_account_dump.xml";
+    let file_id = 99;
 
     let team_id = 0;
 
     let db_conn = Connection::open_in_memory().expect("Connecting to the SQLite database failed.");
 
     db_create_in_mem_db(&db_conn);
-    // TOOD get the environment name?
+    // TODO: Include the AWS environment name in the document metadata.
     insert_into_document(
         &db_conn,
         file_id,
@@ -100,16 +92,14 @@ async fn main() -> Result<(), Error> {
         "Dump of AWS account data",
     );
 
-    // AWS prep
+    // CloudFront and Route53 are global services, so us-east-1 is a safe fallback Region.
     let region_provider = RegionProviderChain::default_provider().or_else("us-east-1");
     let config = aws_config::defaults(BehaviorVersion::latest())
         .region(region_provider)
         .load()
         .await;
 
-    // Resolve credentials once, up front, so an expired SSO session or missing configuration
-    // produces one clear, actionable message instead of a raw SDK error nested several layers
-    // deep the first time an AWS call happens to need them.
+    // Fail early with a clear message instead of a nested SDK error on the first AWS request.
     if let Some(credentials_provider) = config.credentials_provider() {
         if let Err(err) = credentials_provider.provide_credentials().await {
             eprintln!("{}", describe_aws_auth_error(&err));
@@ -131,7 +121,7 @@ async fn main() -> Result<(), Error> {
         route53_client,
         db_conn,
         elb_dns_name_to_load_balancer,
-        elb_arn_to_component_id: HashMap::new(),
+        elb_hostname_to_component_id: HashMap::new(),
         type_and_style_to_section_number,
         file_id,
         team_id,
@@ -141,16 +131,15 @@ async fn main() -> Result<(), Error> {
         component_relation_count: 1,
     };
 
-    // Itterate over the route53
     itterate_route53_instances(&mut ctx).await;
 
-    // TODO change this to work on a single cloudfrount distribution
+    // TODO: Support scanning a single CloudFront distribution.
 
     let aws_cloudfront_response = ctx.aws_client.list_distributions().send().await?;
-    // Itterate through the cloudfron distributions.
     if let Some(distribution_list) = aws_cloudfront_response.distribution_list() {
         for distribution in distribution_list.items() {
-            insert_cloudfront_structure(&mut ctx, distribution.domain_name(), distribution.id()).await;
+            insert_cloudfront_structure(&mut ctx, distribution.domain_name(), distribution.id())
+                .await;
         }
     }
 
@@ -158,9 +147,7 @@ async fn main() -> Result<(), Error> {
     Ok(())
 }
 
-/// Parse `--namespace <name>` (or `--namespace=<name>`) from the command line. Only Kubernetes
-/// HTTPRoutes in this namespace are investigated; defaults to "" (no filter) when the flag
-/// isn't given.
+/// Parse `--namespace <name>` or `--namespace=<name>`. Returns "" (no filter) when absent.
 fn parse_filtered_namespace_arg() -> String {
     let args: Vec<String> = std::env::args().collect();
     for (index, arg) in args.iter().enumerate() {
@@ -183,7 +170,7 @@ async fn insert_cloudfront_structure(
     cloudfront_domain_name: &str,
     distribution_id: &str,
 ) {
-    println!("Id: {cloudfront_domain_name}");
+    println!("DDD Cloudfront id: {cloudfront_domain_name}");
 
     if get_component_by_name(&ctx.db_conn, cloudfront_domain_name.to_string()).is_ok() {
         println!(
@@ -193,7 +180,6 @@ async fn insert_cloudfront_structure(
         return;
     }
 
-    // create a component for the CloudFront distribution and add it to the database
     let component_addr = format!("{}.0.0.{}", ctx.file_id, ctx.component_count);
     let distribution_component_id =
         convert_from_address_to_id(component_addr, "main.rs: cloudfront_structure()");
@@ -210,7 +196,7 @@ async fn insert_cloudfront_structure(
     );
     ctx.component_count += 1;
 
-    // TODO create a viewpacket, should this be moved outside the if?
+    // TODO: Decide whether view packet creation belongs outside the duplicate check above.
     let view_packet_addr = format!(
         "{}.{}.{}.{}",
         ctx.file_id,
@@ -244,10 +230,7 @@ async fn insert_cloudfront_structure(
     );
     ctx.view_packet_count += 1;
 
-    // Fetch the full distribution (aliases, origins, WebACL, behaviors) by id. The CloudFront
-    // domain name (`cloudfront_domain_name`, e.g. `d111111abcdef8.cloudfront.net`) is a separate
-    // identifier from the distribution id and doesn't encode it, so the id has to come from the
-    // caller instead of being derived from the domain name.
+    // The domain name does not encode the distribution id, so the caller supplies it.
     let distribution_config = match ctx
         .aws_client
         .get_distribution()
@@ -277,8 +260,7 @@ async fn insert_cloudfront_structure(
         }
     };
 
-    // get list of aliases and create components for each alias and add them to the database
-    // TODO put in sub function.
+    // TODO: Move alias handling into its own function.
     if let Some(aliases) = distribution_config.aliases() {
         for alias in aliases.items() {
             let component_addr = format!("{}.0.0.{}", ctx.file_id, ctx.component_count);
@@ -297,9 +279,10 @@ async fn insert_cloudfront_structure(
             );
             ctx.component_count += 1;
 
-            // TODO create a component relation between the distribution and the alias
-            let relation_addr =
-                format!("{}.{}.{}.{}", ctx.file_id, 0, 2, ctx.component_relation_count);
+            let relation_addr = format!(
+                "{}.{}.{}.{}",
+                ctx.file_id, 0, 2, ctx.component_relation_count
+            );
             let relation_id =
                 convert_from_address_to_id(relation_addr, "main.rs: cloudfront_structure()");
             let relation_sort_order = 0;
@@ -320,7 +303,8 @@ async fn insert_cloudfront_structure(
         }
     }
 
-    // if the web_acl is not empty then create it as a component and add it to the database
+    // Requests pass through the WebACL before reaching an origin, so an attached WebACL
+    // becomes the upstream component that the origins connect to.
     let web_acl_id = distribution_config.web_acl_id().unwrap_or("");
     let upstream_component_id = if web_acl_id != "" {
         let web_acl_name = web_acl_id.split('/').nth(2).unwrap_or("Unknown");
@@ -343,9 +327,10 @@ async fn insert_cloudfront_structure(
         );
         ctx.component_count += 1;
 
-        // create a component relation between the distribution and the web_acl
-        let relation_addr =
-            format!("{}.{}.{}.{}", ctx.file_id, 0, 2, ctx.component_relation_count);
+        let relation_addr = format!(
+            "{}.{}.{}.{}",
+            ctx.file_id, 0, 2, ctx.component_relation_count
+        );
         let relation_id =
             convert_from_address_to_id(relation_addr, "main.rs: cloudfront_structure()");
         let relation_sort_order = 0;
@@ -368,7 +353,8 @@ async fn insert_cloudfront_structure(
         distribution_component_id
     };
 
-    // create map for origin id to domain id
+    // Cache behaviors reference origins by origin id, so map each origin id to the component
+    // id that the behavior relations connect to.
     let mut map_origin_id_to_domain_component_id: HashMap<String, u64> = HashMap::new();
     if let Some(origins) = distribution_config.origins() {
         for origin in origins.items() {
@@ -376,17 +362,30 @@ async fn insert_cloudfront_structure(
             let domain_name = origin.domain_name();
 
             let origin_type = if origin.s3_origin_config().is_some() {
-                // S3 origin: bucket-backed distribution origin.
                 "s3 bucket"
             } else if origin.vpc_origin_config.is_some() {
-                // VpcOriginConfig: origin lives inside a VPC and is not publicly exposed. CloudFront connects to it privately through a "VPC origin" resource (AWS's newer feature, GA 2024) instead of going over the public internet. Instead of DomainName + ports directly on the origin entry, you reference a VpcOriginId pointing at a VPC origin resource that wraps a private ALB/NLB/EC2 instance.
+                // A VPC origin is not publicly exposed. CloudFront reaches it privately through a
+                // VPC origin resource (GA 2024) that wraps a private ALB, NLB or EC2 instance.
                 "load balancer"
             } else if origin.custom_origin_config.is_some() {
-                // CustomOriginConfig: origin is reachable over the public internet (e.g. a public ALB, a DNS name of a third-party server). CloudFront connects to it via its DomainName, using standard internet routing.
+                // A custom origin is reachable over the public internet by its domain name, for
+                // example a public ALB or a third-party server.
                 "public access"
             } else {
                 "unknown origin"
             };
+
+            // A VPC origin is the ELB itself, so let the cache behaviors connect straight to the
+            // ELB component instead of creating a separate origin component for it.
+            if origin.vpc_origin_config().is_some() {
+                investigate_elb_by_hostname(ctx, upstream_component_id, domain_name, &display_key)
+                    .await;
+                if let Some(&elb_component_id) = ctx.elb_hostname_to_component_id.get(domain_name) {
+                    map_origin_id_to_domain_component_id
+                        .insert(origin.id().to_string(), elb_component_id);
+                    continue;
+                }
+            }
 
             let component_addr = format!("{}.0.0.{}", ctx.file_id, ctx.component_count);
             let origin_component_id =
@@ -407,27 +406,22 @@ async fn insert_cloudfront_structure(
             map_origin_id_to_domain_component_id
                 .insert(origin.id().to_string(), origin_component_id);
 
-            // TODO figure out where the lb hooks up: k8s-preproductioninte-16ba1cd511
-            // If it contains S3OriginConfig it is an S3 bucket.
-            // If it contains CustomOriginConfig is that an ALB?
-            // If it container VpcOriginConfig is that an ELB?
-            if origin.vpc_origin_config().is_some() {
-                investigate_elb_by_hostname(ctx, origin_component_id, domain_name, &display_key)
-                    .await;
-            }
+            // TODO: Find where load balancer k8s-preproductioninte-16ba1cd511 connects. A custom
+            // origin can also point at a public ALB, which is not followed to its ELB yet.
         }
     };
 
-    // handle if there is a default
+    // The default cache behavior handles requests that match no cache behavior path pattern.
     if distribution_config.default_cache_behavior().is_some() {
         let default_cache_behavior = distribution_config.default_cache_behavior().unwrap();
         let target_origin_id = default_cache_behavior.target_origin_id();
         if let Some(origin_component_id) =
             map_origin_id_to_domain_component_id.get(target_origin_id)
         {
-            // create a component relation between the distribution and the origin
-            let relation_addr =
-                format!("{}.{}.{}.{}", ctx.file_id, 0, 2, ctx.component_relation_count);
+            let relation_addr = format!(
+                "{}.{}.{}.{}",
+                ctx.file_id, 0, 2, ctx.component_relation_count
+            );
             let relation_id =
                 convert_from_address_to_id(relation_addr, "main.rs: cloudfront_structure()");
             let relation_sort_order = 0;
@@ -453,7 +447,6 @@ async fn insert_cloudfront_structure(
         }
     }
 
-    // handle the behaviors
     if let Some(cache_behaviors) = distribution_config.cache_behaviors() {
         for cache_behavior in cache_behaviors.items() {
             let target_origin_id = cache_behavior.target_origin_id();
@@ -461,9 +454,10 @@ async fn insert_cloudfront_structure(
             if let Some(origin_component_id) =
                 map_origin_id_to_domain_component_id.get(target_origin_id)
             {
-                // create a component relation between the distribution and the origin
-                let relation_addr =
-                    format!("{}.{}.{}.{}", ctx.file_id, 0, 2, ctx.component_relation_count);
+                let relation_addr = format!(
+                    "{}.{}.{}.{}",
+                    ctx.file_id, 0, 2, ctx.component_relation_count
+                );
                 let relation_id =
                     convert_from_address_to_id(relation_addr, "main.rs: cloudfront_structure()");
                 let relation_sort_order = 0;
@@ -526,11 +520,10 @@ async fn itterate_route53_instances(ctx: &mut AppContext) {
         };
         let summary = format!("{} Route53 Hosted Zone ({})", zone_kind, zone_id);
 
-        // create a component for the hosted zone and add it to the database
         let component_addr = format!("{}.0.0.{}", ctx.file_id, ctx.component_count);
         let hosted_zone_component_id =
             convert_from_address_to_id(component_addr, "main.rs: itterate_route53_instances()");
-        let component_title = format!("Route53 {}",zone_name );
+        let component_title = format!("Route53 {}", zone_name);
         insert_into_component(
             &ctx.db_conn,
             ctx.file_id,
@@ -543,7 +536,6 @@ async fn itterate_route53_instances(ctx: &mut AppContext) {
         );
         ctx.component_count += 1;
 
-        // create a view packet for the hosted zone
         let view_packet_addr = format!(
             "{}.{}.{}.{}",
             ctx.file_id,
@@ -577,15 +569,12 @@ async fn itterate_route53_instances(ctx: &mut AppContext) {
         );
         ctx.view_packet_count += 1;
 
-        // itterate over the Type A records for the hosted_zone
         itterate_route53_records(ctx, &display_key, zone_id, hosted_zone_component_id).await;
     }
 }
 
-/// Fetch every Type A resource record set for a Route53 hosted zone and add a component
-/// (related to the hosted zone component) for each. `ListResourceRecordSets` has no SDK
-/// paginator, so continuation is done manually via `next_record_name`/`next_record_type`, as
-/// AWS's own docs describe.
+/// Add a component for each Type A record in a hosted zone. `ListResourceRecordSets` has no
+/// SDK paginator, so pagination is manual.
 async fn itterate_route53_records(
     ctx: &mut AppContext,
     display_key: &str,
@@ -623,17 +612,16 @@ async fn itterate_route53_records(
             .iter()
             .filter(|record_set| record_set.r#type() == &RrType::A)
         {
-            // Route53 returns wildcard labels DNS-escaped (e.g. `\052.example.com` instead of
-            // `*.example.com`), so unescape it back to `*` for display/storage.
+            // Route53 returns wildcard labels DNS-escaped (`\052.example.com` instead of
+            // `*.example.com`), so restore the `*` for display and storage.
             let record_name = record_set.name().replace("\\052", "*");
             let target_dns_name = match record_set.alias_target() {
                 Some(alias_target) => {
-                    // Route53 alias targets are FQDNs and come back with a trailing dot (e.g.
-                    // `d7lazk7sjwhv3.cloudfront.net.`), but CloudFront's own `domain_name()`
-                    // never has one, so strip it here for every downstream comparison/lookup.
+                    // Route53 alias targets are FQDNs with a trailing dot (`XXX.cloudfront.net.`),
+                    // which the CloudFront and ELB lookups do not expect.
                     let dns_name = alias_target.dns_name().trim_end_matches('.');
                     if dns_name.contains(".execute-api.") {
-                        println!("DDD API Gateway");
+                        println!("TODO implement API Gateway");
                     } else if dns_name.contains(".cloudfront.net") {
                         println!("DDD CloudFront Distribution");
 
@@ -643,16 +631,22 @@ async fn itterate_route53_records(
                             }
                             None => {
                                 println!(
-                                    "WWW No CloudFront distribution found with domain name '{}'. Location: main.rs: itterate_route53_records()",
+                                    "TODO implement external CloudFront. No CloudFront distribution found with domain name '{}'. Location: main.rs: itterate_route53_records()",
                                     dns_name
                                 );
                             }
                         }
                     } else if dns_name.contains(".elb.") {
-                        println!("DDD Elastic Load Balancer");
-                        investigate_elb_by_hostname(ctx, hosted_zone_component_id, dns_name, display_key).await;
+                        println!("DDD Elastic Load Balancer: {}", dns_name);
+                        investigate_elb_by_hostname(
+                            ctx,
+                            hosted_zone_component_id,
+                            dns_name,
+                            display_key,
+                        )
+                        .await;
                     } else {
-                        println!("DDD Unknown AWS Resource");
+                        println!("EEE Unknown AWS Resource");
                     };
                     dns_name
                 }
@@ -667,10 +661,12 @@ async fn itterate_route53_records(
                 };
 
             if let Some(existing_component_id) = existing_component_option {
-                let relation_addr =
-                    format!("{}.{}.{}.{}", ctx.file_id, 0, 2, ctx.component_relation_count);
+                let relation_addr = format!(
+                    "{}.{}.{}.{}",
+                    ctx.file_id, 0, 2, ctx.component_relation_count
+                );
                 let relation_id = convert_from_address_to_id(
-                    relation_addr,
+                    relation_addr.clone(),
                     "main.rs: itterate_route53_records()",
                 );
                 let relation_sort_order = 0;
@@ -690,7 +686,7 @@ async fn itterate_route53_records(
                 ctx.component_relation_count += 1;
             } else {
                 println!(
-                    "DDD No existing component found for alias target '{}', skipping component relation for record '{}'",
+                    "WWW No existing component found for alias target '{}', skipping component relation for record '{}'",
                     target_dns_name, record_name
                 );
             }
@@ -705,10 +701,7 @@ async fn itterate_route53_records(
     }
 }
 
-/// Look up a CloudFront distribution's id from its domain name (e.g.
-/// `d111111abcdef8.cloudfront.net`). A Route53 alias target only gives the domain name, but
-/// `get_distribution` needs the id, so this paginates through `list_distributions` until a
-/// matching domain name turns up.
+/// Look up a CloudFront distribution id from its domain name (e.g. `XXX.cloudfront.net`).
 async fn find_cloudfront_distribution_id(aws_client: &Client, domain_name: &str) -> Option<String> {
     let mut distributions = aws_client
         .list_distributions()
@@ -735,9 +728,7 @@ async fn find_cloudfront_distribution_id(aws_client: &Client, domain_name: &str)
     None
 }
 
-/// Walk an AWS SDK error's source chain looking for common auth failure signatures (an
-/// expired/invalid SSO session, or no credentials at all) and return an actionable message
-/// telling the user what to run, instead of the raw, deeply nested SDK error.
+/// Turn an expired SSO session or missing credentials error into an actionable message.
 fn describe_aws_auth_error(err: &(dyn std::error::Error + 'static)) -> String {
     let mut current: Option<&(dyn std::error::Error + 'static)> = Some(err);
     while let Some(error) = current {
@@ -757,9 +748,7 @@ fn describe_aws_auth_error(err: &(dyn std::error::Error + 'static)) -> String {
     format!("Failed to load AWS credentials: {}", err)
 }
 
-/// Fetch every Elastic Load Balancer (ALB/NLB/GWLB) in the account once and index it by
-/// DNS name (lowercased), so origins can be matched to their load balancer without an
-/// API call per origin.
+/// Index all load balancers by lowercased DNS name to avoid one API request per origin.
 async fn build_elb_dns_name_map(elb_client: &ElbClient) -> HashMap<String, LoadBalancer> {
     let mut dns_name_to_load_balancer = HashMap::new();
     let mut load_balancers = elb_client
@@ -778,17 +767,16 @@ async fn build_elb_dns_name_map(elb_client: &ElbClient) -> HashMap<String, LoadB
     dns_name_to_load_balancer
 }
 
-/// Resolve an ELB's ARN from its DNS name (case-insensitively, matching how
-/// `build_elb_dns_name_map` indexes `ctx.elb_dns_name_to_load_balancer`), then hand off to
-/// `investigate_elb`. Falls back to the hostname itself when no load balancer is found, so the
-/// caller still gets a best-effort component instead of silently dropping the origin.
 async fn investigate_elb_by_hostname(
     ctx: &mut AppContext,
     origin_component_id: u64,
     hostname: &str,
     display_key: &str,
 ) {
-    let elb_arn = match ctx.elb_dns_name_to_load_balancer.get(&hostname.to_lowercase()) {
+    let elb_arn = match ctx
+        .elb_dns_name_to_load_balancer
+        .get(&hostname.to_lowercase())
+    {
         Some(load_balancer) => load_balancer
             .load_balancer_arn()
             .unwrap_or(hostname)
@@ -802,57 +790,33 @@ async fn investigate_elb_by_hostname(
         }
     };
 
-    investigate_elb(ctx, origin_component_id, &elb_arn, display_key).await;
+    investigate_elb(ctx, origin_component_id, hostname, &elb_arn, display_key).await;
 }
 
-/// Which AWS Load Balancer Controller resource owns an ELB, identified by which stack tag was
-/// found on it. The two tags don't just point at different Kubernetes resource types, they use
-/// different tag-value grammars: `service.k8s.aws/stack` (Gateway API) is always
-/// `namespace/name`, but `ingress.k8s.aws/stack` is `namespace/name` only for a standalone
-/// Ingress; when the ALB is shared across Ingresses via `alb.ingress.kubernetes.io/group.name`,
-/// the value is just the group name with no namespace.
+/// Kubernetes resource type that owns an ELB, based on its stack tag.
+/// `service.k8s.aws/stack` is `namespace/name`. `ingress.k8s.aws/stack` is a bare group name
+/// when the ALB is shared by an ingress group.
 #[derive(Clone, Copy)]
 enum K8sBackendKind {
     Gateway,
     Ingress,
 }
 
-/// Add the ELB behind a CloudFront VPC origin as a component related to the origin
-/// component. `elb_arn` identifies the load balancer, resolved by the caller (typically
-/// `investigate_elb_by_hostname`, from the origin's domain name). If `elb_arn` is a real ARN,
-/// its tags are fetched to recover the Kubernetes Service/Ingress that owns it, when the ELB
-/// was created by the AWS Load Balancer Controller.
+/// Add an ELB component related to the origin component, and follow its tags to the owning
+/// Kubernetes Gateway or Ingress.
 async fn investigate_elb(
     ctx: &mut AppContext,
     origin_component_id: u64,
+    elb_hostname: &str,
     elb_arn: &str,
     display_key: &str,
 ) {
-    // This ELB has already been investigated (a common case: several Route53 records or
-    // CloudFront origins alias to the same load balancer), so reuse its component and just
-    // connect this origin to it, instead of re-describing it and re-running the (slow)
-    // Kubernetes ingress discovery again.
-    if let Some(&elb_component_id) = ctx.elb_arn_to_component_id.get(elb_arn) {
+    if let Some(&elb_component_id) = ctx.elb_hostname_to_component_id.get(elb_hostname) {
+        // TODO: Print elb_component_id in dotted address format.
         println!(
             "DDD ELB '{}' already investigated, reusing existing component. Location: main.rs: investigate_elb()",
             elb_arn
         );
-        let relation_addr = format!("{}.{}.{}.{}", ctx.file_id, 0, 2, ctx.component_relation_count);
-        let relation_id = convert_from_address_to_id(relation_addr, "main.rs: investigate_elb()");
-        insert_into_component_relation(
-            &ctx.db_conn,
-            relation_id,
-            0,
-            origin_component_id,
-            elb_component_id,
-            "connect",
-            display_key,
-            "",
-            "",
-            "",
-            "",
-        );
-        ctx.component_relation_count += 1;
         return;
     }
 
@@ -920,7 +884,6 @@ async fn investigate_elb(
                     .iter()
                     .flat_map(|description| description.tags())
                 {
-                    //println!("DDD tag: {:?}  value: {:?}", tag.key(), tag.value());
                     match tag.key() {
                         Some("ingress.k8s.aws/stack") => {
                             k8s_stack = tag.value().unwrap_or("").to_string();
@@ -941,9 +904,7 @@ async fn investigate_elb(
                         Some("service.k8s.aws/resource") => {
                             k8s_resource = tag.value().unwrap_or("").to_string()
                         }
-                        _ => {
-                            //println!("DDD unhandled tag key: {:?}", tag.key())
-                        }
+                        _ => {}
                     }
                 }
             }
@@ -960,12 +921,6 @@ async fn investigate_elb(
     } else {
         println!("EEE elb_arn not an ARN: {}", elb_arn);
     }
-
-    let component_name = if elb_name.is_empty() {
-        elb_arn.rsplit('/').next().unwrap_or(elb_arn).to_string()
-    } else {
-        elb_name
-    };
 
     let summary = {
         let mut details = Vec::new();
@@ -985,51 +940,28 @@ async fn investigate_elb(
         }
     };
 
-    // create a component for the ELB behind the VPC origin and add it to the database
     let component_addr = format!("{}.0.0.{}", ctx.file_id, ctx.component_count);
     let elb_component_id = convert_from_address_to_id(component_addr, "main.rs: investigate_elb()");
-    let component_title = format!("ELB {}", component_name);
+    let title_name = if elb_name.is_empty() {
+        elb_arn.rsplit('/').next().unwrap_or(elb_arn).to_string()
+    } else {
+        elb_name
+    };
+    let component_title = format!("ELB {}", title_name);
     insert_into_component(
         &ctx.db_conn,
         ctx.file_id,
         elb_component_id,
-        &component_name,
+        &elb_hostname,
         "",
         &summary,
         ctx.team_id,
         &component_title,
     );
     ctx.component_count += 1;
-    ctx.elb_arn_to_component_id
-        .insert(elb_arn.to_string(), elb_component_id);
+    ctx.elb_hostname_to_component_id
+        .insert(elb_hostname.to_string(), elb_component_id);
 
-    // create a component relation between the origin and the ELB
-    let relation_addr = format!("{}.{}.{}.{}", ctx.file_id, 0, 2, ctx.component_relation_count);
-    let relation_id = convert_from_address_to_id(relation_addr, "main.rs: investigate_elb()");
-    let relation_sort_order = 0;
-    insert_into_component_relation(
-        &ctx.db_conn,
-        relation_id,
-        relation_sort_order,
-        origin_component_id,
-        elb_component_id,
-        "connect",
-        display_key,
-        "",
-        "",
-        "",
-        "",
-    );
-    ctx.component_relation_count += 1;
-
-    // Connect to the Kubernetes API server of the EKS cluster that owns this ELB (identified by
-    // the `elbv2.k8s.aws/cluster` tag), then dispatch to the discovery path that matches which
-    // AWS Load Balancer Controller resource actually owns it: `K8sBackendKind::Gateway` stacks are
-    // investigated via Gateway API HTTPRoutes, `K8sBackendKind::Ingress` stacks via classic
-    // `networking.k8s.io/v1` Ingresses. The cluster's endpoint and CA certificate come from
-    // `eks:DescribeCluster`; the bearer token is minted by shelling out to `aws eks get-token`,
-    // since it's a short-lived (~15 minute) presigned STS token rather than something an API call
-    // can hand back directly.
     println!("DDD investigate_k8s_ingresses for k8s_stack: {}", k8s_stack);
 
     let Some(backend_kind) = k8s_backend_kind else {
@@ -1045,20 +977,33 @@ async fn investigate_elb(
 
     match backend_kind {
         K8sBackendKind::Gateway => {
-            investigate_gateway_http_routes(ctx, elb_component_id, display_key, k8s_client, &k8s_stack)
-                .await;
+            println!("DDD ELB '{}' Looking for gateways", elb_arn);
+
+            investigate_gateway_http_routes(
+                ctx,
+                elb_component_id,
+                display_key,
+                k8s_client,
+                &k8s_stack,
+            )
+            .await;
         }
         K8sBackendKind::Ingress => {
-            investigate_ingress_backends(ctx, elb_component_id, display_key, k8s_client, &k8s_stack)
-                .await;
+            println!("DDD ELB '{}' Looking for ingress", elb_arn);
+            investigate_ingress_backends(
+                ctx,
+                elb_component_id,
+                display_key,
+                k8s_client,
+                &k8s_stack,
+            )
+            .await;
         }
     }
 }
 
-/// Add a Gateway API stack's HTTPRoutes as components related to the ELB component. HTTPRoute
-/// isn't a core Kubernetes type known to `k8s-openapi`, so it's fetched as a `DynamicObject`
-/// keyed by its `gateway.networking.k8s.io/v1` GVK. `k8s_stack` (from `service.k8s.aws/stack`)
-/// is always `namespace/name`.
+/// Add a Gateway and its HTTPRoute backends as components related to the ELB component.
+/// `k8s-openapi` has no HTTPRoute type, so routes are read as `DynamicObject`.
 async fn investigate_gateway_http_routes(
     ctx: &mut AppContext,
     elb_component_id: u64,
@@ -1066,18 +1011,71 @@ async fn investigate_gateway_http_routes(
     k8s_client: K8sClient,
     k8s_stack: &str,
 ) {
-    let (elb_namespace, elb_container_name) = k8s_stack.split_once("/").unwrap_or(("", k8s_stack));
-    if elb_namespace.is_empty() {
+    let (gateway_namespace, gateway_name) = k8s_stack.split_once("/").unwrap_or(("", k8s_stack));
+    if gateway_namespace.is_empty() {
+        // TODO: Panic here, since every Gateway API stack tag is `namespace/name`.
         println!("EEE k8s_stack could not be split on '/': {}", k8s_stack)
     };
 
-    //  ###
-    //   #     #    #   ####   #####   ######   ####    ####
-    //   #     ##   #  #    #  #    #  #       #       #
-    //   #     # #  #  #       #    #  #####    ####    ####
-    //   #     #  # #  #  ###  #####   #            #       #
-    //   #     #   ##  #    #  #   #   #       #    #  #    #
-    //  ###    #    #   ####   #    #  ######   ####    ####
+    // Several ELBs can front the same Gateway, so the Gateway component is keyed by its unique
+    // name and reused on a repeat hit.
+    let gateway_component_name = format!("{}-Gateway", k8s_stack);
+    let gateway_component_id =
+        match get_component_by_name(&ctx.db_conn, gateway_component_name.clone()) {
+            Ok(component) => component.id,
+            Err(rusqlite::Error::QueryReturnedNoRows) => {
+                let component_addr = format!("{}.0.0.{}", ctx.file_id, ctx.component_count);
+                let gateway_id = convert_from_address_to_id(
+                    component_addr,
+                    "main.rs: investigate_gateway_http_routes()",
+                );
+                let summary = format!("Gateway: {}", k8s_stack);
+                let component_title = format!("Gateway {}", gateway_name);
+                insert_into_component(
+                    &ctx.db_conn,
+                    ctx.file_id,
+                    gateway_id,
+                    &gateway_component_name,
+                    "",
+                    &summary,
+                    ctx.team_id,
+                    &component_title,
+                );
+                ctx.component_count += 1;
+
+                // TODO: The relation is only created with the Gateway component, so a second ELB
+                // fronting the same Gateway gets no relation. Check whether that case exists.
+                let relation_addr = format!(
+                    "{}.{}.{}.{}",
+                    ctx.file_id, 0, 2, ctx.component_relation_count
+                );
+                let relation_id = convert_from_address_to_id(
+                    relation_addr.clone(),
+                    "main.rs: investigate_gateway_http_routes()",
+                );
+                println!(
+                    "DDD Adding component relation {} between ELB and Gateway '{}'",
+                    relation_addr, k8s_stack
+                );
+                insert_into_component_relation(
+                    &ctx.db_conn,
+                    relation_id,
+                    0,
+                    elb_component_id,
+                    gateway_id,
+                    "connect",
+                    display_key,
+                    "",
+                    "",
+                    "",
+                    "",
+                );
+                ctx.component_relation_count += 1;
+
+                gateway_id
+            }
+            Err(err) => panic!("expected a component, got an error: {err}"),
+        };
 
     let http_route_resource = ApiResource::from_gvk_with_plural(
         &GroupVersionKind::gvk("gateway.networking.k8s.io", "v1", "HTTPRoute"),
@@ -1103,19 +1101,11 @@ async fn investigate_gateway_http_routes(
             .unwrap_or("default");
         let meta_name = http_route.metadata.name.as_deref().unwrap_or("Unknown");
 
-        /*
-        println!(
-            "DDD httproute meta_ns: {} meta_name: {}",
-            namespace, meta_name
-        );
-         */
-
         if ctx.filtered_namespace.is_empty() || meata_namespace == ctx.filtered_namespace {
             println!(
                 "DDD httproute meta_ns: {} meta_name: {}",
                 meata_namespace, meta_name
             );
-            // get all hostnames under spec.hostnames
             let mut hostnames: Vec<&str> = http_route.data["spec"]["hostnames"]
                 .as_array()
                 .map(|hostnames| {
@@ -1129,7 +1119,7 @@ async fn investigate_gateway_http_routes(
                 hostnames.push("TODO fix empty hostnames");
             }
 
-            // get parent_name spec.parentRefs[].name and parent_namespace spec.parentRefs[].namespace
+            // A parentRef without a namespace refers to the HTTPRoute's own namespace.
             let parent_refs: Vec<(&str, &str)> = http_route.data["spec"]["parentRefs"]
                 .as_array()
                 .map(|parent_refs| {
@@ -1145,14 +1135,14 @@ async fn investigate_gateway_http_routes(
                 })
                 .unwrap_or_default();
 
-            // TODO verify the parent_refs ns is the elb ns, and parent_name is the name of the ingress
-
             let correct_ns_and_container = if let Some((parent_namespace, parent_container_name)) =
                 parent_refs.first()
             {
+                // The stack tag names the Service in front of the Gateway, which NGINX Gateway
+                // Fabric names `<gateway>-nginx`.
                 let parent_full_container_name = format!("{}-nginx", parent_container_name);
-                if parent_full_container_name == elb_container_name
-                    && *parent_namespace == elb_namespace
+                if parent_full_container_name == gateway_name
+                    && *parent_namespace == gateway_namespace
                 {
                     println!("DDD NS and container names fit");
                     true
@@ -1168,13 +1158,10 @@ async fn investigate_gateway_http_routes(
             };
 
             if correct_ns_and_container {
-                // The HTTPRoute parentRefs references the same container name and namespace as the ELB, so this is the correct httproute.
-
                 println!("DDD Correct HTTPRoute found.");
 
-                // get backend_ref_name spec.rules[].backendRefs[].name and its kind
-                // spec.rules[].backendRefs[].kind (defaults to "Service" per the Gateway API spec
-                // when omitted). There can actually be multiple backendrefs according to the json.
+                // A rule can have several backendRefs. A backendRef without a kind is a Service,
+                // per the Gateway API spec.
                 let backend_refs: Vec<(&str, &str)> = http_route.data["spec"]["rules"]
                     .as_array()
                     .map(|rules| {
@@ -1210,7 +1197,7 @@ async fn investigate_gateway_http_routes(
                     } else {
                         record_backend_relation(
                             ctx,
-                            elb_component_id,
+                            gateway_component_id,
                             display_key,
                             backend_kind,
                             backend_name,
@@ -1223,36 +1210,28 @@ async fn investigate_gateway_http_routes(
     }
 }
 
-/// Add a classic-Ingress stack's routes as components related to the ELB component, using the
-/// typed `networking.k8s.io/v1 Ingress` (a well-known core type, unlike `HTTPRoute`). Matching
-/// depends on `ingress.k8s.aws/stack`'s grammar: `k8s_stack` is `namespace/name` for a
-/// standalone Ingress, but just the IngressGroup name (no namespace) when the ALB is shared
-/// across Ingresses via the `alb.ingress.kubernetes.io/group.name` annotation, since a group can
-/// span multiple namespaces. Every `(host, backend)` pair from `spec.rules[].http.paths[]` is
-/// recorded, unlike the Gateway path's "first backend wins": path-based routing (`/api` to one
-/// Service, `/` to another, on the same host) is common in classic Ingress and collapsing it
-/// would lose real topology.
+/// Add the Ingresses of an ALB ingress group and their Service backends as components
+/// related to the ELB component.
 async fn investigate_ingress_backends(
     ctx: &mut AppContext,
     elb_component_id: u64,
     display_key: &str,
     k8s_client: K8sClient,
-    k8s_stack: &str,
+    ingress_group_name: &str,
 ) {
+    let mut found_ingress_for_groupname = false;
+
     let ingresses: Api<Ingress> = Api::all(k8s_client);
     let ingress_list = match ingresses.list(&ListParams::default()).await {
         Ok(list) => list,
         Err(err) => {
             println!(
-                "EEE Listing Ingresses for stack '{}' failed: {}. Location: main.rs: investigate_ingress_backends()",
-                k8s_stack, err
+                "EEE Listing Ingresses failed: {}. Location: main.rs: investigate_ingress_backends()",
+                err
             );
             return;
         }
     };
-
-    let standalone_namespace_and_name = k8s_stack.split_once('/');
-    let mut matched_any = false;
 
     for ingress in ingress_list {
         let ingress_namespace = ingress.metadata.namespace.as_deref().unwrap_or("default");
@@ -1262,26 +1241,74 @@ async fn investigate_ingress_backends(
             continue;
         }
 
-        let stack_matches = match standalone_namespace_and_name {
-            Some((namespace, name)) => ingress_namespace == namespace && ingress_name == name,
-            None => ingress
-                .metadata
-                .annotations
-                .as_ref()
-                .and_then(|annotations| {
-                    annotations.get("alb.ingress.kubernetes.io/group.name")
-                })
-                .is_some_and(|group_name| group_name == k8s_stack),
-        };
-        if !stack_matches {
+        if !ingress
+            .metadata
+            .annotations
+            .as_ref()
+            .and_then(|annotations| annotations.get("alb.ingress.kubernetes.io/group.name"))
+            .is_some_and(|group_name| group_name == ingress_group_name)
+        {
             continue;
         }
-        matched_any = true;
 
-        println!(
-            "DDD Ingress {}/{} matches stack '{}'",
-            ingress_namespace, ingress_name, k8s_stack
-        );
+        found_ingress_for_groupname = true;
+
+        // Keyed by namespace/name so a repeat hit reuses the existing Ingress component.
+        let ingress_component_name = format!("{}/{}-Ingress", ingress_namespace, ingress_name);
+        let ingress_component_id =
+            match get_component_by_name(&ctx.db_conn, ingress_component_name.clone()) {
+                Ok(component) => component.id,
+                Err(rusqlite::Error::QueryReturnedNoRows) => {
+                    let component_addr = format!("{}.0.0.{}", ctx.file_id, ctx.component_count);
+                    let ingress_id = convert_from_address_to_id(
+                        component_addr,
+                        "main.rs: investigate_ingress_backends()",
+                    );
+                    let summary = format!("Ingress: {}/{}", ingress_namespace, ingress_name);
+                    let component_title = format!("Ingress {}", ingress_name);
+                    insert_into_component(
+                        &ctx.db_conn,
+                        ctx.file_id,
+                        ingress_id,
+                        &ingress_component_name,
+                        "",
+                        &summary,
+                        ctx.team_id,
+                        &component_title,
+                    );
+                    ctx.component_count += 1;
+
+                    let relation_addr = format!(
+                        "{}.{}.{}.{}",
+                        ctx.file_id, 0, 2, ctx.component_relation_count
+                    );
+                    let relation_id = convert_from_address_to_id(
+                        relation_addr.clone(),
+                        "main.rs: investigate_ingress_backends()",
+                    );
+                    println!(
+                        "DDD Adding component relation {} between ELB and Ingress '{}/{}'",
+                        relation_addr, ingress_namespace, ingress_name
+                    );
+                    insert_into_component_relation(
+                        &ctx.db_conn,
+                        relation_id,
+                        0,
+                        elb_component_id,
+                        ingress_id,
+                        "connect",
+                        display_key,
+                        "",
+                        "",
+                        "",
+                        "",
+                    );
+                    ctx.component_relation_count += 1;
+
+                    ingress_id
+                }
+                Err(err) => panic!("expected a component, got an error: {err}"),
+            };
 
         let Some(rules) = ingress.spec.as_ref().and_then(|spec| spec.rules.as_ref()) else {
             continue;
@@ -1300,7 +1327,7 @@ async fn investigate_ingress_backends(
                     Some(service_backend) => {
                         record_backend_relation(
                             ctx,
-                            elb_component_id,
+                            ingress_component_id,
                             display_key,
                             "Service",
                             &service_backend.name,
@@ -1318,21 +1345,18 @@ async fn investigate_ingress_backends(
         }
     }
 
-    if !matched_any {
+    if !found_ingress_for_groupname {
         println!(
-            "WWW No Ingress found matching stack '{}'. Location: main.rs: investigate_ingress_backends()",
-            k8s_stack
+            "WWW No Ingress found for the ingress group name: '{}'. Location: main.rs: investigate_ingress_backends()",
+            ingress_group_name
         );
     }
 }
 
-/// Look up (or create) the component for a Kubernetes Service backend, then add one relation
-/// per hostname connecting it to the ELB component. Shared by both the Gateway API (HTTPRoute)
-/// and classic Ingress discovery paths, since both ultimately resolve to "this hostname on the
-/// ELB is routed to this Service."
+/// Get or create a backend component and relate it to the upstream component once per hostname.
 fn record_backend_relation(
     ctx: &mut AppContext,
-    elb_component_id: u64,
+    parrent_component_id: u64,
     display_key: &str,
     backend_kind: &str,
     backend_name: &str,
@@ -1349,7 +1373,7 @@ fn record_backend_relation(
                 convert_from_address_to_id(component_addr, "main.rs: record_backend_relation()");
 
             let summary = format!("{}: {}", backend_name, backend_kind);
-            // TODO figure out what type of backend this is.
+            // TODO: Determine the component type of the backend.
             let component_title = format!("{} {}", backend_kind, backend_name);
             insert_into_component(
                 &ctx.db_conn,
@@ -1368,7 +1392,10 @@ fn record_backend_relation(
     };
 
     for hostname in hostnames.iter().copied() {
-        let relation_addr = format!("{}.{}.{}.{}", ctx.file_id, 0, 2, ctx.component_relation_count);
+        let relation_addr = format!(
+            "{}.{}.{}.{}",
+            ctx.file_id, 0, 2, ctx.component_relation_count
+        );
         let relation_id =
             convert_from_address_to_id(relation_addr.clone(), "main.rs: record_backend_relation()");
         println!(
@@ -1379,7 +1406,7 @@ fn record_backend_relation(
             &ctx.db_conn,
             relation_id,
             0,
-            elb_component_id,
+            parrent_component_id,
             backend_component_id,
             "connect",
             display_key,
@@ -1392,11 +1419,7 @@ fn record_backend_relation(
     }
 }
 
-/// Build a `kube::Client` for an EKS cluster's API server. The endpoint and CA certificate
-/// come from `eks:DescribeCluster`; the bearer token is minted by shelling out to
-/// `aws eks get-token`, since it's a short-lived (~15 minute) presigned STS token rather than
-/// something an API call can hand back directly. Returns `None` (after printing a warning) if
-/// `k8s_cluster_name` is empty or on any failure along the way.
+/// Build a `kube::Client` for an EKS cluster. Returns `None` with a warning on any failure.
 async fn build_k8s_client(eks_client: &EksClient, k8s_cluster_name: &str) -> Option<K8sClient> {
     if k8s_cluster_name.is_empty() {
         println!("DDD EKS cluster name not defined, skipped build_k8s_client");
@@ -1492,10 +1515,7 @@ async fn build_k8s_client(eks_client: &EksClient, k8s_cluster_name: &str) -> Opt
     let mut k8s_config = K8sConfig::new(cluster_url);
     k8s_config.root_cert = Some(root_cert);
     k8s_config.auth_info.token = Some(SecretString::from(bearer_token));
-    // `kube`'s default Config has no connect/read timeout at all, so an EKS cluster whose API
-    // endpoint isn't reachable from here (e.g. a private endpoint with no VPN into that VPC)
-    // hangs forever instead of failing like an unreachable one that at least gets a fast
-    // connection-refused. Bound both so a dead cluster surfaces as a warning, not a hang.
+    // `kube` has no default timeouts, so an unreachable private endpoint hangs forever.
     k8s_config.connect_timeout = Some(std::time::Duration::from_secs(10));
     k8s_config.read_timeout = Some(std::time::Duration::from_secs(30));
 
@@ -1511,9 +1531,7 @@ async fn build_k8s_client(eks_client: &EksClient, k8s_cluster_name: &str) -> Opt
     }
 }
 
-/// Get a short-lived Kubernetes bearer token for an EKS cluster by shelling out to
-/// `aws eks get-token`, which mints it as a presigned STS `GetCallerIdentity` request (the
-/// `aws-iam-authenticator` scheme) rather than something an AWS API call returns directly.
+/// Get an EKS bearer token via `aws eks get-token`. No AWS API returns one directly.
 fn get_eks_bearer_token(cluster_name: &str) -> Result<String, String> {
     let output = std::process::Command::new("aws")
         .args([

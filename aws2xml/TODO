@@ -1,0 +1,15 @@
+Please plan how to avoid investigating the same elb address twice in the same viewpacket.
+When an elb address is first seen a component is created for it.
+The first time the elb component is seen, in a unique viewpacket, it must be investigated.
+Use the sad_xml_sql to look up if the elb_component has already been handled in the view packet
+An elb can either connect to ingress or to k8s gateways
+
+
+add tracing/OTLP so the function calls can be followed in the trace
+
+Figure out what uses the 'internet-facing' nginx-gateway 
+
+Next step is to attach the platform-service to whatever platform-container
+
+later also do deployements, including the vpc(s) etc.
+

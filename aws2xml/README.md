@@ -28,13 +28,47 @@ The goal is to explore the AWS environment and write a swarcdoc XML so it is pos
 
 ### Overview
 
+Access options:
+
+```mermaid
+graph LR;
+  route53---ELBe
+  ELBe---ingress
+  ingress---httproute
+  httproute---service
+  service---container
+
+  cloudfront---webacl
+  webacl---LB
+  LB---ELBi[internal ELB]
+  ELBi---httprti[HTTPRoute internal]
+  httprti---service
+```
+
 - Get list of route53 zones
   - aws route53 list-hosted-zones
     - aws route53 list-resource-record-sets --hosted-zone-id XXX
+      - jq '.ResourceRecordSets[] | select(.Type == "A")' XXX | grep DNSName | sort -u
+        - cloudfronts seems to reference cloudfronts owned by AWS
+          - aws apigateway get-domain-names --query "items[?distributionDomainName=='REDACTED.cloudfront.net']"
+        - execute-api.REGION.amazonaws.com - seems to refer to apigateways
+          - aws apigateway get-domain-names
+            - aws apigateway get-base-path-mappings --domain-name <domainName>
+              - aws apigateway get-rest-api --rest-api-id <restApiId>
+          - aws apigatewayv2 get-domain-name
       - Search for '.elb'
-        - aws elbv2 describe-tags --resource-arns 
-          - ingress.k8s.aws/stack - This tag has an ingress backend.
-          - service.k8s.aws/stack - this has a gateway backend.
+        - aws2xml creates one ELB component per hostname and investigates it once per viewpacket.
+          - An ELB counts as investigated when the database has an ELB->Gateway or ELB->Ingress relation with the viewpacket's display key.
+          - An Ingress backend Service with the label `gateway.networking.k8s.io/gateway-name` is a Gateway. aws2xml follows it into the Gateway's HTTPRoutes (ELB->Ingress->Gateway->Service).
+          - `--namespace` filters HTTPRoutes and plain Ingress backends, not the Ingress itself.
+        - aws elbv2 describe-load-balancers --query "LoadBalancers[?DNSName=='<DNSName>']"
+          - aws elbv2 describe-tags --resource-arns <LoadBalancerArn>
+            - ingress.k8s.aws/stack - This tag has an ingress backend.
+              - Find the containers in the ingress group
+                - kna get ingress -A -o jsonpath='{range .items[?(@.metadata.annotations.alb\.ingress\.kubernetes\.io/group\.name=="<INGRESS_GROUP_NAME>")]}{.metadata.namespace}/{.metadata.name}{"\n"}{end}'
+            - service.k8s.aws/stack - this has a gateway backend.
+              - These are in Gateway API/Gateways in lenz
+
 - Get a list of all cloudfront entries
   - aws cloudfront list-distributions
     - Origins is where the data is comming from.
