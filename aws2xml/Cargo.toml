@@ -11,9 +11,17 @@ aws-sdk-eks = "1.149.0"
 aws-sdk-elasticloadbalancingv2 = "1.126.0"
 aws-sdk-route53 = "1.126.0"
 base64 = "0.22"
+chrono = { version = "0.4", features = ["serde"] }
 http = "1"
 k8s-openapi = { version = "0.28.0", features = ["latest"] }
 kube = { version = "4.2.0", default-features = false, features = ["client", "rustls-tls", "ring"] }
+log = "0.4"
+opentelemetry = { version = "0.31.0", features = ["trace", "logs", "metrics"] }
+opentelemetry-appender-log = "0.31.0"
+opentelemetry-otlp = { version = "0.31.0", features = ["trace", "logs", "grpc-tonic", "metrics"] }
+opentelemetry_sdk = { version = "0.31.0", features = ["trace", "logs", "metrics", "rt-tokio"] }
+opentelemetry-semantic-conventions = { version = "0.31.0", features = ["semconv_experimental"] }
+opentelemetry-stdout = "0.31.0"
 pem = "3"
 rusqlite = { version = "0.35.0", features = ["bundled"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"] }
@@ -21,4 +29,7 @@ sad_xml_sql = { path = "../sad_xml_sql" }
 secrecy = "0.10"
 serde_json = "1.0.151"
 tokio = { version = "1.53.1", features = ["full"] }
+tracing = "0.1.44"
+tracing-opentelemetry = "0.32"
+tracing-subscriber = { version = "0.3.23", default-features = false, features = ["registry", "std"] }
 

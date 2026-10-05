@@ -10,6 +10,31 @@ The goal is to explore the AWS environment and write a swarcdoc XML so it is pos
 
 - [AWS SDK for Rust Documentation](https://docs.aws.amazon.com/sdk-for-rust/)
 
+## Logging and telemetry
+
+aws2xml prints one line per message to stderr and sends the same message to an OTLP backend.
+Start the local backend with `docker compose up -d`, then view logs in Grafana at http://localhost:3000 (Explore, Loki, `service_name="aws2xml"`).
+
+Environment variables:
+
+- `AWS2XML_LOG_LEVEL`: minimum severity, one of `debug`, `info`, `warn`, `error`. Defaults to `info`.
+- `OTLP_LOGGING_BACKEND_URL`: OTLP gRPC endpoint for logs. Defaults to `http://localhost:4317`.
+- `OTLP_METRICS_BACKEND_URL`: OTLP gRPC endpoint for metrics. Defaults to `http://localhost:4317`.
+- `OTLP_TRACE_BACKEND_URL`: OTLP gRPC endpoint for traces. Defaults to `http://localhost:4317`.
+
+With the local compose stack, set the three `OTLP_*` variables to `http://127.0.0.1:4319` (the collector).
+[tst_gen.sh](tst_gen.sh) does this for you.
+
+### Traces
+
+Each run produces one trace with the root span `run`.
+Every AWS and Kubernetes investigation function has its own child span, tagged with its arguments.
+Spans from dependencies such as the AWS SDK are filtered out.
+
+- Log messages appear as events inside the span that produced them.
+- Warnings and errors mark their span as failed.
+- View traces in Grafana: Explore, Tempo, Search, `service.name = aws2xml`.
+
 ## Development
 
 ### Adding modules

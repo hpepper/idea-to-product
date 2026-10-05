@@ -1,7 +1,7 @@
 use aws_config::BehaviorVersion;
 use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_cloudfront::config::ProvideCredentials;
-use aws_sdk_cloudfront::{Client, Error};
+use aws_sdk_cloudfront::Client;
 use aws_sdk_eks::Client as EksClient;
 use aws_sdk_elasticloadbalancingv2::Client as ElbClient;
 use aws_sdk_elasticloadbalancingv2::types::LoadBalancer;
@@ -30,6 +30,28 @@ use sad_xml_sql::db_utils::{
 };
 use sad_xml_sql::dump_db_to_xml;
 
+
+use aws2xml::{emit_log, init_logger, init_metrics, init_tracer, service_log};
+use opentelemetry::{
+    KeyValue,
+    trace::{Span, Status, Tracer},
+};
+use opentelemetry::trace::TracerProvider as _;
+use opentelemetry::metrics::MeterProvider as _;
+use opentelemetry::logs::Severity;
+use opentelemetry_sdk::logs::SdkLoggerProvider;
+use opentelemetry_sdk::metrics::SdkMeterProvider;
+use opentelemetry_sdk::trace::SdkTracerProvider;
+use std::sync::{Arc, OnceLock};
+use tracing::Level;
+use tracing_opentelemetry::OpenTelemetrySpanExt as _;
+use tracing_subscriber::filter::Targets;
+use tracing_subscriber::prelude::*;
+
+static LOG_PROVIDER: OnceLock<SdkLoggerProvider> = OnceLock::new();
+static TRACER_PROVIDER: OnceLock<SdkTracerProvider> = OnceLock::new();
+static METER_PROVIDER: OnceLock<SdkMeterProvider> = OnceLock::new();
+
 /// Shared state for one account scan: clients, database, lookup tables and id counters.
 struct AppContext {
     aws_client: Client,
@@ -52,10 +74,100 @@ struct AppContext {
     component_relation_count: u64,
 }
 
+
+/// Messages below this severity are dropped.
+/// Set with `AWS2XML_LOG_LEVEL` (debug, info, warn, error); defaults to info.
+static MIN_LOG_SEVERITY: OnceLock<Severity> = OnceLock::new();
+
+fn read_min_log_severity() -> Severity {
+    match std::env::var("AWS2XML_LOG_LEVEL")
+        .unwrap_or_default()
+        .to_lowercase()
+        .as_str()
+    {
+        "debug" => Severity::Debug,
+        "warn" => Severity::Warn,
+        "error" => Severity::Error,
+        _ => Severity::Info,
+    }
+}
+
+/// Print one readable line to stderr and send the message to the OTel log backend.
+/// Messages are only printed until `main` has stored the logger in `LOG_PROVIDER`.
+fn log_at(severity: Severity, msg: impl Into<String>) {
+    if severity < *MIN_LOG_SEVERITY.get_or_init(read_min_log_severity) {
+        return;
+    }
+    let msg = msg.into();
+    eprintln!("{} {}", severity.name(), msg);
+    // The event shows the message inside the current span in Tempo. Warnings mark the span as
+    // failed so skipped branches stand out; error events do that automatically.
+    match severity {
+        Severity::Debug => tracing::debug!("{msg}"),
+        Severity::Warn => {
+            tracing::warn!("{msg}");
+            tracing::Span::current().set_status(Status::error(msg.clone()));
+        }
+        Severity::Error => tracing::error!("{msg}"),
+        _ => tracing::info!("{msg}"),
+    }
+    if let Some(p) = LOG_PROVIDER.get() {
+        service_log(p, severity, msg);
+    }
+}
+
+fn log_debug(msg: impl Into<String>) {
+    log_at(Severity::Debug, msg);
+}
+
+fn log_info(msg: impl Into<String>) {
+    log_at(Severity::Info, msg);
+}
+
+fn log_warn(msg: impl Into<String>) {
+    log_at(Severity::Warn, msg);
+}
+
+fn log_error(msg: impl Into<String>) {
+    log_at(Severity::Error, msg);
+}
+
+/// Export the `#[tracing::instrument]` spans of this crate through OTel.
+/// Spans from dependencies such as the AWS SDK are filtered out to keep traces readable.
+fn init_tracing() {
+    let provider = match init_tracer("aws2xml", env!("CARGO_PKG_VERSION")) {
+        Ok(provider) => provider,
+        Err(err) => {
+            log_warn(format!("Starting the OTel tracer failed, continuing without traces: {err}"));
+            return;
+        }
+    };
+    let only_this_crate = Targets::new().with_target("aws2xml", Level::TRACE);
+    let otel_layer = tracing_opentelemetry::layer()
+        .with_tracer(provider.tracer("aws2xml"))
+        .with_filter(only_this_crate);
+    tracing_subscriber::registry().with(otel_layer).init();
+    let _ = TRACER_PROVIDER.set(provider);
+}
+
+/// Flush batched spans and log records; without this the last ones before exit are lost.
+fn shutdown_telemetry() {
+    if let Some(p) = TRACER_PROVIDER.get() {
+        if let Err(err) = p.shutdown() {
+            eprintln!("ERROR Shutting down the OTel tracer failed: {err}");
+        }
+    }
+    if let Some(p) = LOG_PROVIDER.get() {
+        if let Err(err) = p.shutdown() {
+            eprintln!("ERROR Shutting down the OTel logger failed: {err}");
+        }
+    }
+}
+
 /// Scan the AWS account's Route53 hosted zones and CloudFront distributions, follow them to
 /// their load balancers and Kubernetes backends, and dump the result as a SAD XML document.
 #[tokio::main]
-async fn main() -> Result<(), Error> {
+async fn main() {
     // aws-sdk's rustls stack and kube's rustls stack each pull in rustls without installing a
     // process-wide crypto provider, so install one explicitly before any TLS connection is made.
     rustls::crypto::ring::default_provider()
@@ -65,9 +177,31 @@ async fn main() -> Result<(), Error> {
     if std::env::args().any(|arg| arg == "version") {
         let version = env!("CARGO_PKG_VERSION");
         println!("Version: {}", version);
-        return Ok(());
+        return;
     }
 
+    let _ = LOG_PROVIDER.set(init_logger("aws2xml", env!("CARGO_PKG_VERSION")));
+    init_tracing();
+    let result = run().await;
+    finish_run(result);
+}
+
+/// Flush telemetry, then exit with status 1 if `run` failed.
+/// Exiting here instead of inside `run` lets the root span close and be exported.
+fn finish_run(result: Result<(), Box<dyn std::error::Error>>) {
+    if let Err(err) = &result {
+        log_error(err.to_string());
+    }
+    shutdown_telemetry();
+    if result.is_err() {
+        std::process::exit(1);
+    }
+}
+
+/// The account scan itself, split from `main` so that every early return still reaches
+/// `shutdown_telemetry`. Its span is the root of the trace.
+#[tracing::instrument(skip_all, err)]
+async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let filtered_namespace = parse_filtered_namespace_arg();
 
     // View packet addresses embed the SAD section number of their view type and style.
@@ -102,8 +236,7 @@ async fn main() -> Result<(), Error> {
     // Fail early with a clear message instead of a nested SDK error on the first AWS request.
     if let Some(credentials_provider) = config.credentials_provider() {
         if let Err(err) = credentials_provider.provide_credentials().await {
-            eprintln!("{}", describe_aws_auth_error(&err));
-            std::process::exit(1);
+            return Err(describe_aws_auth_error(&err).into());
         }
     }
 
@@ -165,18 +298,19 @@ fn parse_filtered_namespace_arg() -> String {
 
 /// Walk the CloudFront distributions and add their structure (distribution, aliases, WebACL,
 /// origins and their ELBs, and cache behaviors) to the database as components and relations.
+#[tracing::instrument(skip(ctx))]
 async fn insert_cloudfront_structure(
     ctx: &mut AppContext,
     cloudfront_domain_name: &str,
     distribution_id: &str,
 ) {
-    println!("DDD Cloudfront id: {cloudfront_domain_name}");
+    log_debug(format!("Cloudfront id: {cloudfront_domain_name}"));
 
     if get_component_by_name(&ctx.db_conn, cloudfront_domain_name.to_string()).is_ok() {
-        println!(
-            "DDD CloudFront distribution '{}' already has a component, skipping duplicate creation.",
+        log_debug(format!(
+            "CloudFront distribution '{}' already has a component, skipping duplicate creation.",
             cloudfront_domain_name
-        );
+        ));
         return;
     }
 
@@ -244,18 +378,18 @@ async fn insert_cloudfront_structure(
         {
             Some(distribution_config) => distribution_config.clone(),
             None => {
-                println!(
-                    "WWW CloudFront distribution '{}' has no distribution config. Location: main.rs: cloudfront_structure()",
+                log_warn(format!(
+                    "CloudFront distribution '{}' has no distribution config. Location: main.rs: cloudfront_structure()",
                     distribution_id
-                );
+                ));
                 return;
             }
         },
         Err(err) => {
-            println!(
-                "WWW Getting CloudFront distribution '{}' failed: {}. Location: main.rs: cloudfront_structure()",
+            log_warn(format!(
+                "Getting CloudFront distribution '{}' failed: {}. Location: main.rs: cloudfront_structure()",
                 distribution_id, err
-            );
+            ));
             return;
         }
     };
@@ -440,10 +574,10 @@ async fn insert_cloudfront_structure(
             );
             ctx.component_relation_count += 1;
         } else {
-            println!(
-                "WWW Origin id '{}' not found in map. Location: main.rs: cloudfront_structure()",
+            log_warn(format!(
+                "Origin id '{}' not found in map. Location: main.rs: cloudfront_structure()",
                 target_origin_id
-            );
+            ));
         }
     }
 
@@ -476,10 +610,10 @@ async fn insert_cloudfront_structure(
                 );
                 ctx.component_relation_count += 1;
             } else {
-                println!(
-                    "WWW Origin id '{}' not found in map. Location: main.rs: cloudfront_structure()",
+                log_warn(format!(
+                    "Origin id '{}' not found in map. Location: main.rs: cloudfront_structure()",
                     target_origin_id
-                );
+                ));
             }
         }
     }
@@ -487,6 +621,7 @@ async fn insert_cloudfront_structure(
 
 /// Fetch every Route53 hosted zone in the account (paginated via `marker`/`next_marker`) and
 /// add a component and a view packet for each.
+#[tracing::instrument(skip_all)]
 async fn itterate_route53_instances(ctx: &mut AppContext) {
     let mut hosted_zones = ctx
         .route53_client
@@ -499,10 +634,10 @@ async fn itterate_route53_instances(ctx: &mut AppContext) {
         let hosted_zone = match hosted_zone {
             Ok(hosted_zone) => hosted_zone,
             Err(err) => {
-                println!(
-                    "WWW Listing Route53 hosted zones failed: {}. Location: main.rs: itterate_route53_instances()",
+                log_warn(format!(
+                    "Listing Route53 hosted zones failed: {}. Location: main.rs: itterate_route53_instances()",
                     err
-                );
+                ));
                 return;
             }
         };
@@ -575,6 +710,7 @@ async fn itterate_route53_instances(ctx: &mut AppContext) {
 
 /// Add a component for each Type A record in a hosted zone. `ListResourceRecordSets` has no
 /// SDK paginator, so pagination is manual.
+#[tracing::instrument(skip(ctx))]
 async fn itterate_route53_records(
     ctx: &mut AppContext,
     display_key: &str,
@@ -599,10 +735,10 @@ async fn itterate_route53_records(
         let response = match request.send().await {
             Ok(response) => response,
             Err(err) => {
-                println!(
-                    "WWW Listing resource record sets for hosted zone '{}' failed: {}. Location: main.rs: itterate_route53_records()",
+                log_warn(format!(
+                    "Listing resource record sets for hosted zone '{}' failed: {}. Location: main.rs: itterate_route53_records()",
                     hosted_zone_id, err
-                );
+                ));
                 return;
             }
         };
@@ -621,23 +757,23 @@ async fn itterate_route53_records(
                     // which the CloudFront and ELB lookups do not expect.
                     let dns_name = alias_target.dns_name().trim_end_matches('.');
                     if dns_name.contains(".execute-api.") {
-                        println!("TODO implement API Gateway");
+                        log_warn("TODO implement API Gateway");
                     } else if dns_name.contains(".cloudfront.net") {
-                        println!("DDD CloudFront Distribution");
+                        log_debug("CloudFront Distribution");
 
                         match find_cloudfront_distribution_id(&ctx.aws_client, dns_name).await {
                             Some(distribution_id) => {
                                 insert_cloudfront_structure(ctx, dns_name, &distribution_id).await;
                             }
                             None => {
-                                println!(
+                                log_warn(format!(
                                     "TODO implement external CloudFront. No CloudFront distribution found with domain name '{}'. Location: main.rs: itterate_route53_records()",
                                     dns_name
-                                );
+                                ));
                             }
                         }
                     } else if dns_name.contains(".elb.") {
-                        println!("DDD Elastic Load Balancer: {}", dns_name);
+                        log_debug(format!("Elastic Load Balancer: {}", dns_name));
                         investigate_elb_by_hostname(
                             ctx,
                             hosted_zone_component_id,
@@ -646,7 +782,7 @@ async fn itterate_route53_records(
                         )
                         .await;
                     } else {
-                        println!("EEE Unknown AWS Resource");
+                        log_error("Unknown AWS Resource");
                     };
                     dns_name
                 }
@@ -685,10 +821,10 @@ async fn itterate_route53_records(
                 );
                 ctx.component_relation_count += 1;
             } else {
-                println!(
-                    "WWW No existing component found for alias target '{}', skipping component relation for record '{}'",
+                log_warn(format!(
+                    "No existing component found for alias target '{}', skipping component relation for record '{}'",
                     target_dns_name, record_name
-                );
+                ));
             }
         }
 
@@ -702,6 +838,7 @@ async fn itterate_route53_records(
 }
 
 /// Look up a CloudFront distribution id from its domain name (e.g. `XXX.cloudfront.net`).
+#[tracing::instrument(skip(aws_client))]
 async fn find_cloudfront_distribution_id(aws_client: &Client, domain_name: &str) -> Option<String> {
     let mut distributions = aws_client
         .list_distributions()
@@ -713,10 +850,10 @@ async fn find_cloudfront_distribution_id(aws_client: &Client, domain_name: &str)
         let distribution = match distribution {
             Ok(distribution) => distribution,
             Err(err) => {
-                println!(
-                    "WWW Listing CloudFront distributions failed: {}. Location: main.rs: find_cloudfront_distribution_id()",
+                log_warn(format!(
+                    "Listing CloudFront distributions failed: {}. Location: main.rs: find_cloudfront_distribution_id()",
                     err
-                );
+                ));
                 return None;
             }
         };
@@ -749,6 +886,7 @@ fn describe_aws_auth_error(err: &(dyn std::error::Error + 'static)) -> String {
 }
 
 /// Index all load balancers by lowercased DNS name to avoid one API request per origin.
+#[tracing::instrument(skip_all)]
 async fn build_elb_dns_name_map(elb_client: &ElbClient) -> HashMap<String, LoadBalancer> {
     let mut dns_name_to_load_balancer = HashMap::new();
     let mut load_balancers = elb_client
@@ -767,6 +905,7 @@ async fn build_elb_dns_name_map(elb_client: &ElbClient) -> HashMap<String, LoadB
     dns_name_to_load_balancer
 }
 
+#[tracing::instrument(skip(ctx))]
 async fn investigate_elb_by_hostname(
     ctx: &mut AppContext,
     origin_component_id: u64,
@@ -782,10 +921,10 @@ async fn investigate_elb_by_hostname(
             .unwrap_or(hostname)
             .to_string(),
         None => {
-            println!(
-                "WWW No load balancer found with DNS name '{}'. Location: main.rs: investigate_elb_by_hostname()",
+            log_warn(format!(
+                "No load balancer found with DNS name '{}'. Location: main.rs: investigate_elb_by_hostname()",
                 hostname
-            );
+            ));
             hostname.to_string()
         }
     };
@@ -804,6 +943,7 @@ enum K8sBackendKind {
 
 /// Add an ELB component related to the origin component, and follow its tags to the owning
 /// Kubernetes Gateway or Ingress.
+#[tracing::instrument(skip(ctx))]
 async fn investigate_elb(
     ctx: &mut AppContext,
     origin_component_id: u64,
@@ -813,10 +953,10 @@ async fn investigate_elb(
 ) {
     if let Some(&elb_component_id) = ctx.elb_hostname_to_component_id.get(elb_hostname) {
         // TODO: Print elb_component_id in dotted address format.
-        println!(
-            "DDD ELB '{}' already investigated, reusing existing component. Location: main.rs: investigate_elb()",
+        log_debug(format!(
+            "ELB '{}' already investigated, reusing existing component. Location: main.rs: investigate_elb()",
             elb_arn
-        );
+        ));
         return;
     }
 
@@ -830,7 +970,7 @@ async fn investigate_elb(
     let mut elb_scheme = String::new();
     let mut elb_state = String::new();
 
-    println!("DDD elb_arn: {}", elb_arn);
+    log_debug(format!("elb_arn: {}", elb_arn));
 
     if elb_arn.starts_with("arn:") {
         match ctx
@@ -857,17 +997,17 @@ async fn investigate_elb(
                         }
                     }
                 } else {
-                    println!(
-                        "WWW No load balancer found for ARN '{}'. Location: main.rs: investigate_elb()",
+                    log_warn(format!(
+                        "No load balancer found for ARN '{}'. Location: main.rs: investigate_elb()",
                         elb_arn
-                    );
+                    ));
                 }
             }
             Err(err) => {
-                println!(
-                    "WWW Describing load balancer '{}' failed: {}. Location: main.rs: investigate_elb()",
+                log_warn(format!(
+                    "Describing load balancer '{}' failed: {}. Location: main.rs: investigate_elb()",
                     elb_arn, err
-                );
+                ));
             }
         }
 
@@ -888,12 +1028,12 @@ async fn investigate_elb(
                         Some("ingress.k8s.aws/stack") => {
                             k8s_stack = tag.value().unwrap_or("").to_string();
                             k8s_backend_kind = Some(K8sBackendKind::Ingress);
-                            println!("DDD ingress.k8s.aws/stack: {}", k8s_stack)
+                            log_debug(format!("ingress.k8s.aws/stack: {}", k8s_stack))
                         }
                         Some("service.k8s.aws/stack") => {
                             k8s_stack = tag.value().unwrap_or("").to_string();
                             k8s_backend_kind = Some(K8sBackendKind::Gateway);
-                            println!("DDD service.k8s.aws/stack: {}", k8s_stack)
+                            log_debug(format!("service.k8s.aws/stack: {}", k8s_stack))
                         }
                         Some("elbv2.k8s.aws/cluster") => {
                             k8s_cluster = tag.value().unwrap_or("").to_string()
@@ -909,17 +1049,17 @@ async fn investigate_elb(
                 }
             }
             Err(err) => {
-                println!(
-                    "WWW Describing tags for '{}' failed: {}. Location: main.rs: investigate_elb()",
+                log_warn(format!(
+                    "Describing tags for '{}' failed: {}. Location: main.rs: investigate_elb()",
                     elb_arn, err
-                );
+                ));
             }
         }
         if k8s_stack.is_empty() {
-            println!("WWW k8s_stack is empty for elb_arn: {}", elb_arn)
+            log_warn(format!("k8s_stack is empty for elb_arn: {}", elb_arn))
         }
     } else {
-        println!("EEE elb_arn not an ARN: {}", elb_arn);
+        log_error(format!("elb_arn not an ARN: {}", elb_arn));
     }
 
     let summary = {
@@ -962,12 +1102,10 @@ async fn investigate_elb(
     ctx.elb_hostname_to_component_id
         .insert(elb_hostname.to_string(), elb_component_id);
 
-    println!("DDD investigate_k8s_ingresses for k8s_stack: {}", k8s_stack);
+    log_debug(format!("investigate_k8s_ingresses for k8s_stack: {}", k8s_stack));
 
     let Some(backend_kind) = k8s_backend_kind else {
-        println!(
-            "WWW No ingress.k8s.aws/stack or service.k8s.aws/stack tag found, skipping Kubernetes ingress investigation. Location: main.rs: investigate_elb()"
-        );
+        log_warn("No ingress.k8s.aws/stack or service.k8s.aws/stack tag found, skipping Kubernetes ingress investigation. Location: main.rs: investigate_elb()");
         return;
     };
 
@@ -977,7 +1115,7 @@ async fn investigate_elb(
 
     match backend_kind {
         K8sBackendKind::Gateway => {
-            println!("DDD ELB '{}' Looking for gateways", elb_arn);
+            log_debug(format!("ELB '{}' Looking for gateways", elb_arn));
 
             investigate_gateway_http_routes(
                 ctx,
@@ -989,7 +1127,7 @@ async fn investigate_elb(
             .await;
         }
         K8sBackendKind::Ingress => {
-            println!("DDD ELB '{}' Looking for ingress", elb_arn);
+            log_debug(format!("ELB '{}' Looking for ingress", elb_arn));
             investigate_ingress_backends(
                 ctx,
                 elb_component_id,
@@ -1004,6 +1142,7 @@ async fn investigate_elb(
 
 /// Add a Gateway and its HTTPRoute backends as components related to the ELB component.
 /// `k8s-openapi` has no HTTPRoute type, so routes are read as `DynamicObject`.
+#[tracing::instrument(skip(ctx, k8s_client))]
 async fn investigate_gateway_http_routes(
     ctx: &mut AppContext,
     elb_component_id: u64,
@@ -1014,7 +1153,7 @@ async fn investigate_gateway_http_routes(
     let (gateway_namespace, gateway_name) = k8s_stack.split_once("/").unwrap_or(("", k8s_stack));
     if gateway_namespace.is_empty() {
         // TODO: Panic here, since every Gateway API stack tag is `namespace/name`.
-        println!("EEE k8s_stack could not be split on '/': {}", k8s_stack)
+        log_error(format!("k8s_stack could not be split on '/': {}", k8s_stack))
     };
 
     // Several ELBs can front the same Gateway, so the Gateway component is keyed by its unique
@@ -1053,10 +1192,10 @@ async fn investigate_gateway_http_routes(
                     relation_addr.clone(),
                     "main.rs: investigate_gateway_http_routes()",
                 );
-                println!(
-                    "DDD Adding component relation {} between ELB and Gateway '{}'",
+                log_debug(format!(
+                    "Adding component relation {} between ELB and Gateway '{}'",
                     relation_addr, k8s_stack
-                );
+                ));
                 insert_into_component_relation(
                     &ctx.db_conn,
                     relation_id,
@@ -1085,10 +1224,10 @@ async fn investigate_gateway_http_routes(
     let http_route_list = match http_routes.list(&ListParams::default()).await {
         Ok(list) => list,
         Err(err) => {
-            println!(
-                "EEE Listing HTTPRoutes for stack '{}' failed: {}. Location: main.rs: investigate_gateway_http_routes()",
+            log_error(format!(
+                "Listing HTTPRoutes for stack '{}' failed: {}. Location: main.rs: investigate_gateway_http_routes()",
                 k8s_stack, err
-            );
+            ));
             return;
         }
     };
@@ -1102,10 +1241,10 @@ async fn investigate_gateway_http_routes(
         let meta_name = http_route.metadata.name.as_deref().unwrap_or("Unknown");
 
         if ctx.filtered_namespace.is_empty() || meata_namespace == ctx.filtered_namespace {
-            println!(
-                "DDD httproute meta_ns: {} meta_name: {}",
+            log_debug(format!(
+                "httproute meta_ns: {} meta_name: {}",
                 meata_namespace, meta_name
-            );
+            ));
             let mut hostnames: Vec<&str> = http_route.data["spec"]["hostnames"]
                 .as_array()
                 .map(|hostnames| {
@@ -1144,13 +1283,13 @@ async fn investigate_gateway_http_routes(
                 if parent_full_container_name == gateway_name
                     && *parent_namespace == gateway_namespace
                 {
-                    println!("DDD NS and container names fit");
+                    log_debug("NS and container names fit");
                     true
                 } else {
-                    println!(
-                        "DDD NS and container names doe NOT fit. parent NS {}, parent_container name: {}",
+                    log_debug(format!(
+                        "NS and container names doe NOT fit. parent NS {}, parent_container name: {}",
                         parent_namespace, parent_full_container_name
-                    );
+                    ));
                     false
                 }
             } else {
@@ -1158,7 +1297,7 @@ async fn investigate_gateway_http_routes(
             };
 
             if correct_ns_and_container {
-                println!("DDD Correct HTTPRoute found.");
+                log_debug("Correct HTTPRoute found.");
 
                 // A rule can have several backendRefs. A backendRef without a kind is a Service,
                 // per the Gateway API spec.
@@ -1178,22 +1317,22 @@ async fn investigate_gateway_http_routes(
                     })
                     .unwrap_or_default();
 
-                println!(
-                    "DDD httproute {} backend_refs: {:?}",
+                log_debug(format!(
+                    "httproute {} backend_refs: {:?}",
                     meta_name, backend_refs
-                );
+                ));
                 if backend_refs.len() > 1 {
-                    println!(
-                        "WWW backendRefs has more than one entry, actual: {}",
+                    log_warn(format!(
+                        "backendRefs has more than one entry, actual: {}",
                         backend_refs.len()
-                    );
+                    ));
                 }
                 if let Some((backend_kind, backend_name)) = backend_refs.first() {
                     if *backend_kind != "Service" {
-                        println!(
-                            "EEE unexpected backendRefs kind(expected Service) found: {} for name: {}",
+                        log_error(format!(
+                            "unexpected backendRefs kind(expected Service) found: {} for name: {}",
                             backend_kind, backend_name
-                        );
+                        ));
                     } else {
                         record_backend_relation(
                             ctx,
@@ -1212,6 +1351,7 @@ async fn investigate_gateway_http_routes(
 
 /// Add the Ingresses of an ALB ingress group and their Service backends as components
 /// related to the ELB component.
+#[tracing::instrument(skip(ctx, k8s_client))]
 async fn investigate_ingress_backends(
     ctx: &mut AppContext,
     elb_component_id: u64,
@@ -1225,10 +1365,10 @@ async fn investigate_ingress_backends(
     let ingress_list = match ingresses.list(&ListParams::default()).await {
         Ok(list) => list,
         Err(err) => {
-            println!(
-                "EEE Listing Ingresses failed: {}. Location: main.rs: investigate_ingress_backends()",
+            log_error(format!(
+                "Listing Ingresses failed: {}. Location: main.rs: investigate_ingress_backends()",
                 err
-            );
+            ));
             return;
         }
     };
@@ -1286,10 +1426,10 @@ async fn investigate_ingress_backends(
                         relation_addr.clone(),
                         "main.rs: investigate_ingress_backends()",
                     );
-                    println!(
-                        "DDD Adding component relation {} between ELB and Ingress '{}/{}'",
+                    log_debug(format!(
+                        "Adding component relation {} between ELB and Ingress '{}/{}'",
                         relation_addr, ingress_namespace, ingress_name
-                    );
+                    ));
                     insert_into_component_relation(
                         &ctx.db_conn,
                         relation_id,
@@ -1335,10 +1475,10 @@ async fn investigate_ingress_backends(
                         );
                     }
                     None => {
-                        println!(
-                            "EEE Ingress {}/{} path backend has no Service (a custom resource backend?), skipping. Location: main.rs: investigate_ingress_backends()",
+                        log_error(format!(
+                            "Ingress {}/{} path backend has no Service (a custom resource backend?), skipping. Location: main.rs: investigate_ingress_backends()",
                             ingress_namespace, ingress_name
-                        );
+                        ));
                     }
                 }
             }
@@ -1346,14 +1486,15 @@ async fn investigate_ingress_backends(
     }
 
     if !found_ingress_for_groupname {
-        println!(
-            "WWW No Ingress found for the ingress group name: '{}'. Location: main.rs: investigate_ingress_backends()",
+        log_warn(format!(
+            "No Ingress found for the ingress group name: '{}'. Location: main.rs: investigate_ingress_backends()",
             ingress_group_name
-        );
+        ));
     }
 }
 
 /// Get or create a backend component and relate it to the upstream component once per hostname.
+#[tracing::instrument(skip(ctx))]
 fn record_backend_relation(
     ctx: &mut AppContext,
     parrent_component_id: u64,
@@ -1398,10 +1539,10 @@ fn record_backend_relation(
         );
         let relation_id =
             convert_from_address_to_id(relation_addr.clone(), "main.rs: record_backend_relation()");
-        println!(
-            "DDD Adding component relation for component id: {} hostname: '{}'",
+        log_debug(format!(
+            "Adding component relation for component id: {} hostname: '{}'",
             relation_addr, hostname
-        );
+        ));
         insert_into_component_relation(
             &ctx.db_conn,
             relation_id,
@@ -1420,9 +1561,10 @@ fn record_backend_relation(
 }
 
 /// Build a `kube::Client` for an EKS cluster. Returns `None` with a warning on any failure.
+#[tracing::instrument(skip(eks_client))]
 async fn build_k8s_client(eks_client: &EksClient, k8s_cluster_name: &str) -> Option<K8sClient> {
     if k8s_cluster_name.is_empty() {
-        println!("DDD EKS cluster name not defined, skipped build_k8s_client");
+        log_debug("EKS cluster name not defined, skipped build_k8s_client");
         return None;
     }
 
@@ -1435,54 +1577,54 @@ async fn build_k8s_client(eks_client: &EksClient, k8s_cluster_name: &str) -> Opt
         Ok(response) => match response.cluster() {
             Some(cluster) => cluster.clone(),
             None => {
-                println!(
-                    "WWW EKS cluster '{}' not found. Location: main.rs: build_k8s_client()",
+                log_warn(format!(
+                    "EKS cluster '{}' not found. Location: main.rs: build_k8s_client()",
                     k8s_cluster_name
-                );
+                ));
                 return None;
             }
         },
         Err(err) => {
-            println!(
-                "WWW Describing EKS cluster '{}' failed: {}. Location: main.rs: build_k8s_client()",
+            log_warn(format!(
+                "Describing EKS cluster '{}' failed: {}. Location: main.rs: build_k8s_client()",
                 k8s_cluster_name, err
-            );
+            ));
             return None;
         }
     };
 
     let Some(endpoint) = cluster.endpoint() else {
-        println!(
-            "WWW EKS cluster '{}' has no API endpoint. Location: main.rs: build_k8s_client()",
+        log_warn(format!(
+            "EKS cluster '{}' has no API endpoint. Location: main.rs: build_k8s_client()",
             k8s_cluster_name
-        );
+        ));
         return None;
     };
     let cluster_url: http::Uri = match endpoint.parse() {
         Ok(url) => url,
         Err(err) => {
-            println!(
-                "WWW Parsing endpoint '{}' for cluster '{}' failed: {}. Location: main.rs: build_k8s_client()",
+            log_warn(format!(
+                "Parsing endpoint '{}' for cluster '{}' failed: {}. Location: main.rs: build_k8s_client()",
                 endpoint, k8s_cluster_name, err
-            );
+            ));
             return None;
         }
     };
 
     let Some(ca_data) = cluster.certificate_authority().and_then(|ca| ca.data()) else {
-        println!(
-            "WWW EKS cluster '{}' has no certificate authority data. Location: main.rs: build_k8s_client()",
+        log_warn(format!(
+            "EKS cluster '{}' has no certificate authority data. Location: main.rs: build_k8s_client()",
             k8s_cluster_name
-        );
+        ));
         return None;
     };
     let ca_pem = match base64::engine::general_purpose::STANDARD.decode(ca_data) {
         Ok(pem) => pem,
         Err(err) => {
-            println!(
-                "WWW Decoding certificate authority data for '{}' failed: {}. Location: main.rs: build_k8s_client()",
+            log_warn(format!(
+                "Decoding certificate authority data for '{}' failed: {}. Location: main.rs: build_k8s_client()",
                 k8s_cluster_name, err
-            );
+            ));
             return None;
         }
     };
@@ -1493,10 +1635,10 @@ async fn build_k8s_client(eks_client: &EksClient, k8s_cluster_name: &str) -> Opt
             .map(|pem| pem.into_contents())
             .collect::<Vec<Vec<u8>>>(),
         Err(err) => {
-            println!(
-                "WWW Parsing certificate authority data for '{}' failed: {}. Location: main.rs: build_k8s_client()",
+            log_warn(format!(
+                "Parsing certificate authority data for '{}' failed: {}. Location: main.rs: build_k8s_client()",
                 k8s_cluster_name, err
-            );
+            ));
             return None;
         }
     };
@@ -1504,10 +1646,10 @@ async fn build_k8s_client(eks_client: &EksClient, k8s_cluster_name: &str) -> Opt
     let bearer_token = match get_eks_bearer_token(k8s_cluster_name) {
         Ok(token) => token,
         Err(err) => {
-            println!(
-                "WWW Getting a bearer token for EKS cluster '{}' failed: {}. Location: main.rs: build_k8s_client()",
+            log_warn(format!(
+                "Getting a bearer token for EKS cluster '{}' failed: {}. Location: main.rs: build_k8s_client()",
                 k8s_cluster_name, err
-            );
+            ));
             return None;
         }
     };
@@ -1522,16 +1664,17 @@ async fn build_k8s_client(eks_client: &EksClient, k8s_cluster_name: &str) -> Opt
     match K8sClient::try_from(k8s_config) {
         Ok(client) => Some(client),
         Err(err) => {
-            println!(
-                "WWW Building a Kubernetes client for '{}' failed: {}. Location: main.rs: build_k8s_client()",
+            log_warn(format!(
+                "Building a Kubernetes client for '{}' failed: {}. Location: main.rs: build_k8s_client()",
                 k8s_cluster_name, err
-            );
+            ));
             None
         }
     }
 }
 
 /// Get an EKS bearer token via `aws eks get-token`. No AWS API returns one directly.
+#[tracing::instrument(err)]
 fn get_eks_bearer_token(cluster_name: &str) -> Result<String, String> {
     let output = std::process::Command::new("aws")
         .args([

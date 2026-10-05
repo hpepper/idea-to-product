@@ -1,0 +1,45 @@
+services:
+
+  otel-lgtm:
+    image: grafana/otel-lgtm
+    ports:
+      - "127.0.0.1:3000:3000"   # Grafana UI  (admin / admin)
+      #- "4317:4317"   # OTLP gRPC endpoint
+      #- "4318:4318"   # OTLP HTTP endpoint
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  nats:
+    image: nats:latest
+    ports:
+      - "127.0.0.1:4222:4222"
+
+
+  # ── Jaeger ───────────────────────────────────────────────────────────────
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "127.0.0.1:16686:16686"  # Jaeger UI
+      - "4327:4317"    # OTLP gRPC (host 4327 → jaeger 4317)
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+
+
+  # ── OpenTelemetry Collector ───────────────────────────────────────────────
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    depends_on:
+      otel-lgtm:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    ports:
+      - "127.0.0.1:4319:4317"   # OTLP gRPC (host 4319 → collector 4317, avoids clash with otel-lgtm)
+      - "127.0.0.1:4320:4318"   # OTLP HTTP (host 4320 → collector 4318)
