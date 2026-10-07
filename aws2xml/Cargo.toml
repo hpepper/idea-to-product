@@ -32,4 +32,5 @@ tokio = { version = "1.53.1", features = ["full"] }
 tracing = "0.1.44"
 tracing-opentelemetry = "0.32"
 tracing-subscriber = { version = "0.3.23", default-features = false, features = ["registry", "std"] }
+aws-sdk-apigateway = "1.120.0"
 

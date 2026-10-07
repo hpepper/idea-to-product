@@ -141,6 +141,19 @@ pub fn insert_into_component_relation(
         .expect("Unable to insert data in component_relation");
 }
 
+/// Insert a team into the `team` table.
+///
+/// ### Panics
+/// Panics if the insert fails, for example when `id` is already in use.
+pub fn insert_into_team(db_conn: &Connection, id: u64, name: &str, description: &str) {
+    db_conn
+        .execute(
+            "INSERT INTO team (id, name, description) VALUES (?1, ?2, ?3)",
+            (id, name, description),
+        )
+        .expect(&format!("Unable to insert team id: {}", convert_id_to_address(id)));
+}
+
 pub fn update_component_by_id(db_conn: &Connection, component: &Component) {
     db_conn
         .execute(

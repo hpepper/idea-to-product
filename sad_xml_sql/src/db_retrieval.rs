@@ -1,4 +1,4 @@
-use crate::models::{Behavior, Component, ComponentRelation, ContextModel, Document, ViewPacket};
+use crate::models::{Behavior, Component, ComponentRelation, ContextModel, Document, Team, ViewPacket};
 
 use rusqlite::{Connection, Result};
 
@@ -71,6 +71,32 @@ pub fn get_component_by_name(db_conn: &Connection, name: String) -> Result<Compo
         })
     })?;
     Ok(component)
+}
+
+/// Look up a team by its exact name.
+/// Returns `Err(QueryReturnedNoRows)` when no team has that name.
+pub fn get_team_by_name(db_conn: &Connection, name: &str) -> Result<Team> {
+    let mut stmt = db_conn.prepare("SELECT id, name, description FROM team WHERE name = ?1")?;
+    stmt.query_row([name], |row| {
+        Ok(Team {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            description: row.get::<_, Option<String>>(2)?.unwrap_or_default(),
+        })
+    })
+}
+
+pub fn get_vector_of_teams_sorted_by_name(db_conn: &Connection) -> Result<Vec<Team>> {
+    let mut stmt = db_conn
+        .prepare("SELECT id, name, description FROM team ORDER BY name COLLATE NOCASE ASC")?;
+    let teams = stmt.query_map([], |row| {
+        Ok(Team {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            description: row.get::<_, Option<String>>(2)?.unwrap_or_default(),
+        })
+    })?;
+    teams.collect()
 }
 
 pub fn get_component_name_by_id(db_conn: &Connection, component_id: u64) -> String {

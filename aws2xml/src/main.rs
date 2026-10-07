@@ -1,5 +1,7 @@
 use aws_config::BehaviorVersion;
 use aws_config::meta::region::RegionProviderChain;
+use aws_sdk_apigateway::Client as ApiGatewayClient;
+use aws_sdk_apigateway::types::RestApi;
 use aws_sdk_cloudfront::config::ProvideCredentials;
 use aws_sdk_cloudfront::Client;
 use aws_sdk_eks::Client as EksClient;
@@ -19,10 +21,10 @@ use rusqlite::Connection;
 use std::collections::HashMap;
 
 use sad_xml_sql::db_create_in_mem_db;
-use sad_xml_sql::db_retrieval::get_component_by_name;
+use sad_xml_sql::db_retrieval::{get_component_by_name, get_team_by_name};
 use sad_xml_sql::db_update::{
     insert_into_component, insert_into_component_relation, insert_into_document,
-    insert_into_view_packet,
+    insert_into_team, insert_into_view_packet,
 };
 use sad_xml_sql::db_utils::{
     CNC_VIEW_TYPE, CNC_VIEW_TYPE_STYLE_CLIENTSERVER, convert_from_address_to_id,
@@ -55,6 +57,7 @@ static METER_PROVIDER: OnceLock<SdkMeterProvider> = OnceLock::new();
 /// Shared state for one account scan: clients, database, lookup tables and id counters.
 struct AppContext {
     aws_client: Client,
+    apigateway_client: ApiGatewayClient,
     elb_client: ElbClient,
     eks_client: EksClient,
     route53_client: Route53Client,
@@ -72,6 +75,7 @@ struct AppContext {
     component_count: u64,
     view_packet_count: u64,
     component_relation_count: u64,
+    team_count: u64,
 }
 
 
@@ -241,6 +245,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let aws_client = Client::new(&config);
+    let apigateway_client = ApiGatewayClient::new(&config);
     let elb_client = ElbClient::new(&config);
     let eks_client = EksClient::new(&config);
     let route53_client = Route53Client::new(&config);
@@ -249,6 +254,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut ctx = AppContext {
         aws_client,
+        apigateway_client,
         elb_client,
         eks_client,
         route53_client,
@@ -262,6 +268,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         component_count: 1,
         view_packet_count: 1,
         component_relation_count: 1,
+        team_count: 1,
     };
 
     itterate_route53_instances(&mut ctx).await;
@@ -276,8 +283,80 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    let mut rest_api_pages = ctx.apigateway_client.get_rest_apis().into_paginator().send();
+    let mut rest_apis = Vec::new();
+    while let Some(page) = rest_api_pages.next().await {
+        rest_apis.extend_from_slice(page?.items());
+    }
+    for rest_api in &rest_apis {
+        insert_apigateway_structure(&mut ctx, rest_api);
+    }
+
     dump_db_to_xml(&ctx.db_conn, filename).expect("Dumping the database to XML failed.");
     Ok(())
+}
+
+/// Add an API Gateway v1 REST API as a component, unless a component with its id exists.
+/// The `squad` tag, when present, assigns the component to that team.
+#[tracing::instrument(skip_all, fields(rest_api_id = rest_api.id()))]
+fn insert_apigateway_structure(ctx: &mut AppContext, rest_api: &RestApi) {
+    let Some(rest_api_id) = rest_api.id() else {
+        log_warn("API Gateway REST API without an id, skipping.");
+        return;
+    };
+
+    if get_component_by_name(&ctx.db_conn, rest_api_id.to_string()).is_ok() {
+        log_debug(format!(
+            "API Gateway '{rest_api_id}' already has a component, skipping duplicate creation."
+        ));
+        return;
+    }
+
+    let endpoint_types = rest_api
+        .endpoint_configuration()
+        .map(|configuration| {
+            configuration
+                .types()
+                .iter()
+                .map(|endpoint_type| endpoint_type.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        })
+        .unwrap_or_default();
+    let summary = format!("AWS GW: Endpoint types: {endpoint_types}");
+
+    let team_id = match rest_api.tags().and_then(|tags| tags.get("squad")) {
+        Some(squad) => get_or_create_team_id(ctx, squad),
+        None => ctx.team_id,
+    };
+
+    let component_addr = format!("{}.0.0.{}", ctx.file_id, ctx.component_count);
+    let component_id =
+        convert_from_address_to_id(component_addr, "main.rs: insert_apigateway_structure()");
+    insert_into_component(
+        &ctx.db_conn,
+        ctx.file_id,
+        component_id,
+        rest_api_id,
+        "API Gateway",
+        &summary,
+        team_id,
+        rest_api.name().unwrap_or_default(),
+    );
+    ctx.component_count += 1;
+}
+
+/// Return the id of the team named `team_name`, inserting the team first if it is missing.
+fn get_or_create_team_id(ctx: &mut AppContext, team_name: &str) -> u64 {
+    if let Ok(team) = get_team_by_name(&ctx.db_conn, team_name) {
+        return team.id;
+    }
+    // Team addresses use section 0.3, matching the SAD XML layout (for example "1.0.3.1").
+    let team_addr = format!("{}.0.3.{}", ctx.file_id, ctx.team_count);
+    let team_id = convert_from_address_to_id(team_addr, "main.rs: get_or_create_team_id()");
+    insert_into_team(&ctx.db_conn, team_id, team_name, "");
+    ctx.team_count += 1;
+    team_id
 }
 
 /// Parse `--namespace <name>` or `--namespace=<name>`. Returns "" (no filter) when absent.
@@ -306,6 +385,7 @@ async fn insert_cloudfront_structure(
 ) {
     log_debug(format!("Cloudfront id: {cloudfront_domain_name}"));
 
+    // TODO change this so that the component is only skipped if it has been visited for the current display key.
     if get_component_by_name(&ctx.db_conn, cloudfront_domain_name.to_string()).is_ok() {
         log_debug(format!(
             "CloudFront distribution '{}' already has a component, skipping duplicate creation.",
@@ -437,8 +517,8 @@ async fn insert_cloudfront_structure(
         }
     }
 
-    // Requests pass through the WebACL before reaching an origin, so an attached WebACL
-    // becomes the upstream component that the origins connect to.
+    // Requests pass through the WebACL before reaching an origin, 
+    // so an attached WebACL becomes the upstream component that the origins connect to.
     let web_acl_id = distribution_config.web_acl_id().unwrap_or("");
     let upstream_component_id = if web_acl_id != "" {
         let web_acl_name = web_acl_id.split('/').nth(2).unwrap_or("Unknown");
@@ -487,8 +567,8 @@ async fn insert_cloudfront_structure(
         distribution_component_id
     };
 
-    // Cache behaviors reference origins by origin id, so map each origin id to the component
-    // id that the behavior relations connect to.
+    // Cache behaviors reference origins by origin id, 
+    // so map each origin id to the component id that the behavior relations connect to.
     let mut map_origin_id_to_domain_component_id: HashMap<String, u64> = HashMap::new();
     if let Some(origins) = distribution_config.origins() {
         for origin in origins.items() {

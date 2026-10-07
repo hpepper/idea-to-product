@@ -94,6 +94,14 @@ graph LR;
             - service.k8s.aws/stack - this has a gateway backend.
               - These are in Gateway API/Gateways in lenz
 
+- Get a list of all API Gateway v1 REST APIs
+  - aws apigateway get-rest-apis
+    - aws2xml creates one component per REST API, named by its `id` and titled by its `name`.
+    - The component summary lists `endpointConfiguration.types`.
+    - A `squad` tag assigns the component to the team of that name.
+      aws2xml creates the team when the team does not exist.
+    - The IAM identity needs `apigateway:GET` on `/restapis`.
+
 - Get a list of all cloudfront entries
   - aws cloudfront list-distributions
     - Origins is where the data is comming from.
@@ -124,6 +132,16 @@ graph LR;
 - With an Ingress, you create a Kubernetes Ingress object and the controller provisions an ALB (Layer 7 only).
   - limited to HTTP/HTTPS
 - With the Gateway API, you create GatewayClass, Gateway, and route objects (HTTPRoute, GRPCRoute, TCPRoute, UDPRoute)
+
+#### Overview API gateway
+
+
+- aws apigateway get-rest-apis
+  - REST APIs (API Gateway v1)
+  - aws apigateway get-resources --rest-api-id <api-id> --embed methods
+  - aws apigateway get-integration --rest-api-id <api-id> --resource-id <res-id> --http-method GET
+- aws apigatewayv2 get-apis
+  - HTTP and WebSocket APIs (API Gateway v2)
 
 #### Overview notes
 

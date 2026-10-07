@@ -8,6 +8,7 @@ use crate::db_retrieval::{
     get_vector_of_behaviors_sorted_by_key_and_order,
     get_vector_of_component_relations_sorted_by_key_and_order,
     get_vector_of_components_sorted_by_name,
+    get_vector_of_teams_sorted_by_name,
     get_viewpacket_vector_by_type_and_style_sorted_by_order,
 };
 
@@ -29,6 +30,7 @@ pub fn dump_db_to_xml(db_conn: &Connection, output_file: &str) -> Result<(), std
     println!("DDD Dumped components");
     dump_table_componentrelation_to_xml(&mut xml_root, db_conn).expect("Failed to dump component relations");
     dump_table_behavior_to_xml(&mut xml_root, db_conn).expect("Failed to dump behaviors");
+    dump_table_team_to_xml(&mut xml_root, db_conn).expect("Failed to dump teams");
     // TODO dump_table_requirement_to_xml(&mut xml_root, db_conn)?;
     xml_root.write(file)?;
     Ok(())
@@ -124,13 +126,32 @@ fn dump_table_component_to_xml(
             title_element.add_text(component.title.clone());
             component_element.add_child(title_element);
         }
-        xml_root.add_child(component_element);
-
+        // The XML reader expects <TeamId> inside <Component>, as an "a.b.c.d" address.
         if component.team_id > 0 {
             let mut team_id_element = XMLElement::new("TeamId");
-            team_id_element.add_text(component.team_id.to_string());
-            xml_root.add_child(team_id_element);
+            team_id_element.add_text(convert_from_id_to_address(component.team_id));
+            component_element.add_child(team_id_element);
         }
+        xml_root.add_child(component_element);
+    }
+    Ok(())
+}
+
+fn dump_table_team_to_xml(
+    xml_root: &mut XMLElement,
+    db_conn: &Connection,
+) -> Result<(), rusqlite::Error> {
+    for team in get_vector_of_teams_sorted_by_name(db_conn)? {
+        let mut team_element = XMLElement::new("Team");
+        team_element.add_attribute("Id", convert_from_id_to_address(team.id));
+        team_element.add_attribute("Name", &team.name);
+
+        // The XML reader requires <Description>, even when it is empty.
+        let mut description = XMLElement::new("Description");
+        description.add_text(team.description.clone());
+        team_element.add_child(description);
+
+        xml_root.add_child(team_element);
     }
     Ok(())
 }
@@ -275,6 +296,39 @@ mod tests {
         let _ = dump_db_to_xml(&conn, output_file);
         assert!(fs::metadata(output_file).is_ok());
         fs::remove_file(output_file).unwrap();
+    }
+
+    #[test]
+    fn test_dump_db_to_xml_writes_team_and_component_team_id() {
+        let conn = setup_test_db();
+        let team_id = crate::convert_from_address_to_id("1.0.3.1".to_string(), "test");
+        crate::insert_into_team(&conn, team_id, "Squad A", "");
+        crate::insert_into_component(&conn, 1, 1, "ComponentA", "Purpose", "Summary", team_id, "");
+        let output_file = "test_output_team.xml";
+        dump_db_to_xml(&conn, output_file).unwrap();
+        let xml_content = fs::read_to_string(output_file).unwrap();
+        fs::remove_file(output_file).unwrap();
+
+        let root = Element::parse(xml_content.as_bytes()).unwrap();
+        let team = root.get_child("Team").expect("missing <Team>");
+        assert_eq!(team.attributes["Id"], "1.0.3.1");
+        assert_eq!(team.attributes["Name"], "Squad A");
+        assert!(team.get_child("Description").is_some());
+        let component = root.get_child("Component").expect("missing <Component>");
+        let component_team_id = component.get_child("TeamId").expect("missing <TeamId>");
+        assert_eq!(component_team_id.get_text().unwrap(), "1.0.3.1");
+        assert!(root.get_child("TeamId").is_none());
+
+        // The dump loads back with the component still pointing at an existing team.
+        fs::write(output_file, &xml_content).unwrap();
+        let reloaded_conn = Connection::open_in_memory().unwrap();
+        db_create_in_mem_db(&reloaded_conn);
+        crate::db_populate_from_xml(&reloaded_conn, &output_file.to_string());
+        fs::remove_file(output_file).unwrap();
+        let component = crate::get_component_by_name(&reloaded_conn, "ComponentA".to_string()).unwrap();
+        assert_eq!(component.team_id, team_id);
+        let team = crate::get_team_by_name(&reloaded_conn, "Squad A").unwrap();
+        assert_eq!(team.id, team_id);
     }
 
     #[test]
