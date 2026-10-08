@@ -4,6 +4,7 @@ use aws_sdk_apigateway::Client as ApiGatewayClient;
 use aws_sdk_apigateway::types::RestApi;
 use aws_sdk_cloudfront::config::ProvideCredentials;
 use aws_sdk_cloudfront::Client;
+use aws_sdk_cloudfront::types::{EventType, FunctionAssociation, FunctionAssociations};
 use aws_sdk_eks::Client as EksClient;
 use aws_sdk_elasticloadbalancingv2::Client as ElbClient;
 use aws_sdk_elasticloadbalancingv2::types::LoadBalancer;
@@ -18,7 +19,7 @@ use secrecy::SecretString;
 
 use rusqlite::Connection;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use sad_xml_sql::db_create_in_mem_db;
 use sad_xml_sql::db_retrieval::{get_component_by_name, get_team_by_name};
@@ -625,34 +626,26 @@ async fn insert_cloudfront_structure(
         }
     };
 
+    // A function shared by several cache behaviors becomes one component, and an edge shared by
+    // those behaviors is inserted only once.
+    let mut function_arn_to_component_id: HashMap<String, u64> = HashMap::new();
+    let mut inserted_relations: HashSet<(u64, u64, String)> = HashSet::new();
+
     // The default cache behavior handles requests that match no cache behavior path pattern.
-    if distribution_config.default_cache_behavior().is_some() {
-        let default_cache_behavior = distribution_config.default_cache_behavior().unwrap();
+    if let Some(default_cache_behavior) = distribution_config.default_cache_behavior() {
         let target_origin_id = default_cache_behavior.target_origin_id();
-        if let Some(origin_component_id) =
-            map_origin_id_to_domain_component_id.get(target_origin_id)
+        if let Some(&origin_component_id) = map_origin_id_to_domain_component_id.get(target_origin_id)
         {
-            let relation_addr = format!(
-                "{}.{}.{}.{}",
-                ctx.file_id, 0, 2, ctx.component_relation_count
-            );
-            let relation_id =
-                convert_from_address_to_id(relation_addr, "main.rs: cloudfront_structure()");
-            let relation_sort_order = 0;
-            insert_into_component_relation(
-                &ctx.db_conn,
-                relation_id,
-                relation_sort_order,
+            insert_cache_behavior_relations(
+                ctx,
                 upstream_component_id,
-                *origin_component_id,
-                "connect",
-                &display_key,
-                "",
+                origin_component_id,
+                default_cache_behavior.function_associations(),
                 "default",
-                "",
-                "",
+                &display_key,
+                &mut function_arn_to_component_id,
+                &mut inserted_relations,
             );
-            ctx.component_relation_count += 1;
         } else {
             log_warn(format!(
                 "Origin id '{}' not found in map. Location: main.rs: cloudfront_structure()",
@@ -664,31 +657,19 @@ async fn insert_cloudfront_structure(
     if let Some(cache_behaviors) = distribution_config.cache_behaviors() {
         for cache_behavior in cache_behaviors.items() {
             let target_origin_id = cache_behavior.target_origin_id();
-            let path_pattern = cache_behavior.path_pattern();
-            if let Some(origin_component_id) =
+            if let Some(&origin_component_id) =
                 map_origin_id_to_domain_component_id.get(target_origin_id)
             {
-                let relation_addr = format!(
-                    "{}.{}.{}.{}",
-                    ctx.file_id, 0, 2, ctx.component_relation_count
-                );
-                let relation_id =
-                    convert_from_address_to_id(relation_addr, "main.rs: cloudfront_structure()");
-                let relation_sort_order = 0;
-                insert_into_component_relation(
-                    &ctx.db_conn,
-                    relation_id,
-                    relation_sort_order,
+                insert_cache_behavior_relations(
+                    ctx,
                     upstream_component_id,
-                    *origin_component_id,
-                    "connect",
+                    origin_component_id,
+                    cache_behavior.function_associations(),
+                    cache_behavior.path_pattern(),
                     &display_key,
-                    "",
-                    path_pattern,
-                    "",
-                    "",
+                    &mut function_arn_to_component_id,
+                    &mut inserted_relations,
                 );
-                ctx.component_relation_count += 1;
             } else {
                 log_warn(format!(
                     "Origin id '{}' not found in map. Location: main.rs: cloudfront_structure()",
@@ -697,6 +678,129 @@ async fn insert_cloudfront_structure(
             }
         }
     }
+}
+
+/// Insert the relations for one cache behavior.
+/// Without CloudFront Functions the upstream component connects straight to the origin.
+/// With CloudFront Functions the relations chain through each function in request order:
+/// upstream -> viewer-request function -> viewer-response function -> origin.
+/// The path pattern labels the final edge into the origin, and the event type labels the edge
+/// into each function.
+#[allow(clippy::too_many_arguments)]
+fn insert_cache_behavior_relations(
+    ctx: &mut AppContext,
+    upstream_component_id: u64,
+    origin_component_id: u64,
+    function_associations: Option<&FunctionAssociations>,
+    path_pattern: &str,
+    display_key: &str,
+    function_arn_to_component_id: &mut HashMap<String, u64>,
+    inserted_relations: &mut HashSet<(u64, u64, String)>,
+) {
+    let mut sorted_functions: Vec<&FunctionAssociation> = function_associations
+        .map(|associations| associations.items().iter().collect())
+        .unwrap_or_default();
+    // The API does not guarantee the order of the associations.
+    sorted_functions.sort_by_key(|function| match function.event_type() {
+        EventType::ViewerRequest => 0,
+        EventType::ViewerResponse => 1,
+        _ => 2,
+    });
+
+    let mut previous_component_id = upstream_component_id;
+    for function in sorted_functions {
+        let function_component_id =
+            get_or_create_cloudfront_function_component(ctx, function, function_arn_to_component_id);
+        insert_cloudfront_relation(
+            ctx,
+            previous_component_id,
+            function_component_id,
+            display_key,
+            function.event_type().as_str(),
+            "",
+            inserted_relations,
+        );
+        previous_component_id = function_component_id;
+    }
+
+    insert_cloudfront_relation(
+        ctx,
+        previous_component_id,
+        origin_component_id,
+        display_key,
+        "",
+        path_pattern,
+        inserted_relations,
+    );
+}
+
+/// Return the component id for a CloudFront Function, creating the component on first sight.
+fn get_or_create_cloudfront_function_component(
+    ctx: &mut AppContext,
+    function: &FunctionAssociation,
+    function_arn_to_component_id: &mut HashMap<String, u64>,
+) -> u64 {
+    let function_arn = function.function_arn();
+    if let Some(&function_component_id) = function_arn_to_component_id.get(function_arn) {
+        return function_component_id;
+    }
+
+    // The ARN format is `arn:aws:cloudfront::<account>:function/<name>`.
+    let function_name = function_arn.rsplit('/').next().unwrap_or(function_arn);
+    let component_addr = format!("{}.0.0.{}", ctx.file_id, ctx.component_count);
+    let function_component_id =
+        convert_from_address_to_id(component_addr, "main.rs: cloudfront_structure()");
+    let summary = format!("CloudFront Function: {}", function_arn);
+    let component_title = format!("CF function {}", function_name);
+    insert_into_component(
+        &ctx.db_conn,
+        ctx.file_id,
+        function_component_id,
+        function_name,
+        "CloudFront Function",
+        &summary,
+        ctx.team_id,
+        &component_title,
+    );
+    ctx.component_count += 1;
+    function_arn_to_component_id.insert(function_arn.to_string(), function_component_id);
+    function_component_id
+}
+
+/// Insert a "connect" relation unless the same edge with the same text already exists.
+fn insert_cloudfront_relation(
+    ctx: &mut AppContext,
+    component_a_id: u64,
+    component_b_id: u64,
+    display_key: &str,
+    property_of_relation: &str,
+    relation_text: &str,
+    inserted_relations: &mut HashSet<(u64, u64, String)>,
+) {
+    if !inserted_relations.insert((component_a_id, component_b_id, relation_text.to_string())) {
+        return;
+    }
+
+    let relation_addr = format!(
+        "{}.{}.{}.{}",
+        ctx.file_id, 0, 2, ctx.component_relation_count
+    );
+    let relation_id = convert_from_address_to_id(relation_addr, "main.rs: cloudfront_structure()");
+    let relation_sort_order = 0;
+    insert_into_component_relation(
+        &ctx.db_conn,
+        relation_id,
+        relation_sort_order,
+        component_a_id,
+        component_b_id,
+        "connect",
+        display_key,
+        property_of_relation,
+        relation_text,
+        "",
+        "",
+    );
+    ctx.component_relation_count += 1;
 }
 
 /// Fetch every Route53 hosted zone in the account (paginated via `marker`/`next_marker`) and

@@ -202,7 +202,7 @@ graph LR;
 - Related requirements: [Discovery](#discovery), [Output](#output).
 - Preconditions: Same as [UC-01](#uc-01-generate-cnc-viewpacket-for-a-route-53-record).
 - Goal in context: Document the request path from a CloudFront distribution to its origins.
-- Successful end conditions: The XML holds one CnC ClientServer viewpacket for the distribution, including the WAF web ACL when present.
+- Successful end conditions: The XML holds one CnC ClientServer viewpacket for the distribution, including the WAF web ACL and CloudFront Functions when present.
 - Failed end conditions: The distribution is listed in the unresolved entry-point report.
 - Primary actor(s): DevOps engineer.
 - Secondary actor(s): AWS API, Kubernetes API.
@@ -212,9 +212,10 @@ graph LR;
 - Main flow:
   - step 1: aws2xml lists the CloudFront distributions.
   - step 2: aws2xml records the web ACL and the origins of each distribution.
-  - step 3: aws2xml follows each origin to the container, as in UC-01 step 3.
+  - step 3: aws2xml places each CloudFront Function of a cache behavior between the web ACL and the origin, in request order.
+  - step 4: aws2xml follows each origin to the container, as in UC-01 step 3.
 - Exceptions:
-  - step 3 exception: The origin is outside the account. aws2xml records the origin as an external component.
+  - step 4 exception: The origin is outside the account. aws2xml records the origin as an external component.
 - Priority: Must.
 - Business rules: Each ELB is investigated once per viewpacket.
 - Special requirements: Read-only access.

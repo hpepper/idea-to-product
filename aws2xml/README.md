@@ -127,6 +127,20 @@ graph LR;
 - aws apigateway get-rest-apis > apigateway.json
   - aws apigateway get-resources --rest-api-id REDACTED
 
+#### Overview of cloudfront
+
+
+Cache behaviors can have CloudFront Functions attached.
+CloudFront runs these functions on the viewer request and the viewer response.
+aws2xml creates one component per function and chains the relations in request order:
+upstream (distribution or WebACL), viewer-request function, viewer-response function, origin.
+The edge into a function carries the event type, and the edge into the origin carries the path pattern.
+The function data comes from `get-distribution`, so no extra IAM permission is needed.
+
+aws cloudfront get-distribution-config --id REDACTED | jq -r '.DistributionConfig | (.CacheBehaviors.Items[]?, (.DefaultCacheBehavior + {PathPattern:"DEFAULT"}))
+  | [.PathPattern, .TargetOriginId, ((.FunctionAssociations.Items // []) | map(.EventType + ":" + (.FunctionARN|split("/")[-1])) | join(","))] | @tsv'
+
+
 #### Overview of ingress vs Gateway
 
 - With an Ingress, you create a Kubernetes Ingress object and the controller provisions an ALB (Layer 7 only).
