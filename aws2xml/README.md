@@ -80,6 +80,9 @@ graph LR;
           - aws apigateway get-domain-names
             - aws apigateway get-base-path-mappings --domain-name <domainName>
               - aws apigateway get-rest-api --rest-api-id <restApiId>
+            - aws2xml follows these steps for `d-XXX.execute-api.REGION.amazonaws.com` alias targets.
+              It queries the Region in the DNS name and links the hosted zone to each mapped REST API.
+            - aws2xml follows v1 base path mappings only, so v2 API mappings get no relation.
           - aws apigatewayv2 get-domain-name
       - Search for '.elb'
         - aws2xml creates one ELB component per hostname and investigates it once per viewpacket.
@@ -100,7 +103,7 @@ graph LR;
     - The component summary lists `endpointConfiguration.types`.
     - A `squad` tag assigns the component to the team of that name.
       aws2xml creates the team when the team does not exist.
-    - The IAM identity needs `apigateway:GET` on `/restapis`.
+    - The IAM identity needs `apigateway:GET` on `/restapis`, `/domainnames`, and `/domainnames/*/basepathmappings`.
 
 - Get a list of all cloudfront entries
   - aws cloudfront list-distributions

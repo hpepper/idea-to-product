@@ -1,6 +1,7 @@
 use aws_config::BehaviorVersion;
 use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_apigateway::Client as ApiGatewayClient;
+use aws_sdk_apigateway::config::Region;
 use aws_sdk_apigateway::types::RestApi;
 use aws_sdk_cloudfront::config::ProvideCredentials;
 use aws_sdk_cloudfront::Client;
@@ -334,6 +335,8 @@ fn insert_apigateway_structure(ctx: &mut AppContext, rest_api: &RestApi) {
     let component_addr = format!("{}.0.0.{}", ctx.file_id, ctx.component_count);
     let component_id =
         convert_from_address_to_id(component_addr, "main.rs: insert_apigateway_structure()");
+    // TODO refactor the way the name is retrieved I don't like the unwrap thing(It was llm generated)
+    let component_title = format!("API GW {}", rest_api.name().unwrap_or_default());
     insert_into_component(
         &ctx.db_conn,
         ctx.file_id,
@@ -342,7 +345,7 @@ fn insert_apigateway_structure(ctx: &mut AppContext, rest_api: &RestApi) {
         "API Gateway",
         &summary,
         team_id,
-        rest_api.name().unwrap_or_default(),
+        &component_title,
     );
     ctx.component_count += 1;
 }
@@ -935,13 +938,25 @@ async fn itterate_route53_records(
             // Route53 returns wildcard labels DNS-escaped (`\052.example.com` instead of
             // `*.example.com`), so restore the `*` for display and storage.
             let record_name = record_set.name().replace("\\052", "*");
-            let target_dns_name = match record_set.alias_target() {
+            // Names of the components the record points to. Most targets are stored under their
+            // DNS name, but API Gateway components are stored under their REST API id.
+            let target_component_names: Vec<String> = match record_set.alias_target() {
                 Some(alias_target) => {
                     // Route53 alias targets are FQDNs with a trailing dot (`XXX.cloudfront.net.`),
                     // which the CloudFront and ELB lookups do not expect.
                     let dns_name = alias_target.dns_name().trim_end_matches('.');
                     if dns_name.contains(".execute-api.") {
-                        log_warn("TODO implement API Gateway");
+                        log_debug(format!("API Gateway: {}", dns_name));
+                        let rest_apis =
+                            find_rest_apis_by_regional_domain_name(&ctx.apigateway_client, dns_name)
+                                .await;
+                        for rest_api in &rest_apis {
+                            insert_apigateway_structure(ctx, rest_api);
+                        }
+                        rest_apis
+                            .iter()
+                            .filter_map(|rest_api| rest_api.id().map(String::from))
+                            .collect()
                     } else if dns_name.contains(".cloudfront.net") {
                         log_debug("CloudFront Distribution");
 
@@ -956,6 +971,7 @@ async fn itterate_route53_records(
                                 ));
                             }
                         }
+                        vec![dns_name.to_string()]
                     } else if dns_name.contains(".elb.") {
                         log_debug(format!("Elastic Load Balancer: {}", dns_name));
                         investigate_elb_by_hostname(
@@ -965,50 +981,53 @@ async fn itterate_route53_records(
                             display_key,
                         )
                         .await;
+                        vec![dns_name.to_string()]
                     } else {
                         log_error("Unknown AWS Resource");
-                    };
-                    dns_name
+                        vec![dns_name.to_string()]
+                    }
                 }
-                None => "",
+                None => vec![String::new()],
             };
 
-            let existing_component_option =
-                match get_component_by_name(&ctx.db_conn, target_dns_name.to_string()) {
-                    Ok(component) => Some(component.id),
-                    Err(rusqlite::Error::QueryReturnedNoRows) => None,
-                    Err(err) => panic!("expected a component, got an error: {err}"),
-                };
+            for target_component_name in &target_component_names {
+                let existing_component_option =
+                    match get_component_by_name(&ctx.db_conn, target_component_name.clone()) {
+                        Ok(component) => Some(component.id),
+                        Err(rusqlite::Error::QueryReturnedNoRows) => None,
+                        Err(err) => panic!("expected a component, got an error: {err}"),
+                    };
 
-            if let Some(existing_component_id) = existing_component_option {
-                let relation_addr = format!(
-                    "{}.{}.{}.{}",
-                    ctx.file_id, 0, 2, ctx.component_relation_count
-                );
-                let relation_id = convert_from_address_to_id(
-                    relation_addr.clone(),
-                    "main.rs: itterate_route53_records()",
-                );
-                let relation_sort_order = 0;
-                insert_into_component_relation(
-                    &ctx.db_conn,
-                    relation_id,
-                    relation_sort_order,
-                    hosted_zone_component_id,
-                    existing_component_id,
-                    "connect",
-                    display_key,
-                    "",
-                    &record_name,
-                    "",
-                    "",
-                );
-                ctx.component_relation_count += 1;
-            } else {
-                log_warn(format!(
-                    "No existing component found for alias target '{}', skipping component relation for record '{}'",
-                    target_dns_name, record_name
-                ));
+                if let Some(existing_component_id) = existing_component_option {
+                    let relation_addr = format!(
+                        "{}.{}.{}.{}",
+                        ctx.file_id, 0, 2, ctx.component_relation_count
+                    );
+                    let relation_id = convert_from_address_to_id(
+                        relation_addr.clone(),
+                        "main.rs: itterate_route53_records()",
+                    );
+                    let relation_sort_order = 0;
+                    insert_into_component_relation(
+                        &ctx.db_conn,
+                        relation_id,
+                        relation_sort_order,
+                        hosted_zone_component_id,
+                        existing_component_id,
+                        "connect",
+                        display_key,
+                        "",
+                        &record_name,
+                        "",
+                        "",
+                    );
+                    ctx.component_relation_count += 1;
+                } else {
+                    log_warn(format!(
+                        "No existing component found for alias target '{}', skipping component relation for record '{}'",
+                        target_component_name, record_name
+                    ));
+                }
             }
         }
 
@@ -1047,6 +1066,123 @@ async fn find_cloudfront_distribution_id(aws_client: &Client, domain_name: &str)
     }
 
     None
+}
+
+/// Return the REST APIs mapped to the API Gateway custom domain name whose regional domain name
+/// is `regional_domain_name` (e.g. `d-XXX.execute-api.us-west-2.amazonaws.com`).
+/// Only API Gateway v1 base path mappings are followed, so HTTP and WebSocket APIs (v2) are not
+/// found. Returns an empty list when the lookup fails or nothing is mapped.
+#[tracing::instrument(skip(apigateway_client))]
+async fn find_rest_apis_by_regional_domain_name(
+    apigateway_client: &ApiGatewayClient,
+    regional_domain_name: &str,
+) -> Vec<RestApi> {
+    let Some(region) = regional_domain_name
+        .split('.')
+        .skip_while(|label| *label != "execute-api")
+        .nth(1)
+    else {
+        log_warn(format!(
+            "No Region found in API Gateway domain name '{}'. Location: main.rs: find_rest_apis_by_regional_domain_name()",
+            regional_domain_name
+        ));
+        return Vec::new();
+    };
+    // The custom domain name only exists in the Region named in its DNS name, which can differ
+    // from the Region of the default client.
+    let regional_client = ApiGatewayClient::from_conf(
+        apigateway_client
+            .config()
+            .to_builder()
+            .region(Region::new(region.to_string()))
+            .build(),
+    );
+
+    let mut custom_domain_name = None;
+    let mut domain_names = regional_client
+        .get_domain_names()
+        .into_paginator()
+        .items()
+        .send();
+    while let Some(domain_name) = domain_names.next().await {
+        match domain_name {
+            Ok(domain_name) if domain_name.regional_domain_name() == Some(regional_domain_name) => {
+                custom_domain_name = domain_name.domain_name().map(String::from);
+                break;
+            }
+            Ok(_) => {}
+            Err(err) => {
+                log_warn(format!(
+                    "Listing API Gateway domain names failed: {}. Location: main.rs: find_rest_apis_by_regional_domain_name()",
+                    err
+                ));
+                return Vec::new();
+            }
+        }
+    }
+    let Some(custom_domain_name) = custom_domain_name else {
+        log_warn(format!(
+            "No API Gateway custom domain name found for '{}'. Location: main.rs: find_rest_apis_by_regional_domain_name()",
+            regional_domain_name
+        ));
+        return Vec::new();
+    };
+
+    let mut rest_api_ids = HashSet::new();
+    let mut base_path_mappings = regional_client
+        .get_base_path_mappings()
+        .domain_name(&custom_domain_name)
+        .into_paginator()
+        .items()
+        .send();
+    while let Some(base_path_mapping) = base_path_mappings.next().await {
+        match base_path_mapping {
+            Ok(base_path_mapping) => {
+                if let Some(rest_api_id) = base_path_mapping.rest_api_id() {
+                    rest_api_ids.insert(rest_api_id.to_string());
+                }
+            }
+            Err(err) => {
+                log_warn(format!(
+                    "Listing base path mappings for '{}' failed: {}. Location: main.rs: find_rest_apis_by_regional_domain_name()",
+                    custom_domain_name, err
+                ));
+                return Vec::new();
+            }
+        }
+    }
+    if rest_api_ids.is_empty() {
+        log_warn(format!(
+            "Custom domain name '{}' has no REST API base path mappings. It may map to an API Gateway v2 API. Location: main.rs: find_rest_apis_by_regional_domain_name()",
+            custom_domain_name
+        ));
+        return Vec::new();
+    }
+
+    // GetRestApis returns the same RestApi type that insert_apigateway_structure() takes, which
+    // GetRestApi does not.
+    let mut rest_apis = Vec::new();
+    let mut all_rest_apis = regional_client
+        .get_rest_apis()
+        .into_paginator()
+        .items()
+        .send();
+    while let Some(rest_api) = all_rest_apis.next().await {
+        match rest_api {
+            Ok(rest_api) if rest_api.id().is_some_and(|id| rest_api_ids.contains(id)) => {
+                rest_apis.push(rest_api);
+            }
+            Ok(_) => {}
+            Err(err) => {
+                log_warn(format!(
+                    "Listing API Gateway REST APIs failed: {}. Location: main.rs: find_rest_apis_by_regional_domain_name()",
+                    err
+                ));
+                break;
+            }
+        }
+    }
+    rest_apis
 }
 
 /// Turn an expired SSO session or missing credentials error into an actionable message.

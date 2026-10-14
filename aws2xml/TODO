@@ -1,15 +1,38 @@
+- Add API resources
+
+Get list of API gw
+  ❯ jq '.ResourceRecordSets[] | select(.Type == "A")' na_02_route53_records.json| grep DNSName | sort -u
+ 
+
+Add a function that can look up a componentID and key in componentRelations
+
+
+Number of spans: the default batch queue holds 2048 spans. A large account with many records could exceed that, and spans past the limit are dropped. If that happens, raise max_queue_size in init_tracer.
+AWS SDK spans: the AWS SDK emits its own tracing spans. The layer from step 2 picks them up automatically, so each describe_load_balancers request appears as a child span. Filter them out with EnvFilter if they are too noisy.
+Trace IDs on log records: messages sent through service_log probably won't carry the trace ID, because a tracing span doesn't set the current OTel context automatically. If you want to jump from a Loki log line to its trace, replace service_log with opentelemetry-appender-tracing later. I'd treat that as a separate change
+
+
 Please plan how to avoid investigating the same elb address twice in the same viewpacket.
 When an elb address is first seen a component is created for it.
 The first time the elb component is seen, in a unique viewpacket, it must be investigated.
 Use the sad_xml_sql to look up if the elb_component has already been handled in the view packet
 An elb can either connect to ingress or to k8s gateways
 
+- Create a struct the will hold information on components that needs to be handled in other view packets
+  - e.g. lambdas included in the CnC-ClientServer Viewpacket also needs to appear in a Uses Viewpacket for Using X version of NodeJS. (It would probably be usefull to have it in the used-by viewpacket tp make it simpler to identify who still uses NodeJS 14 etc.)
+  - Also figure out a way to generate the Allocation-Deployment view packets.
+  - And Team descriptions.
 
-add tracing/OTLP so the function calls can be followed in the trace
+- Later figure out a way to go through the source code to extract the information for Allocation-Installation View packets.
 
 Figure out what uses the 'internet-facing' nginx-gateway 
 
-Next step is to attach the platform-service to whatever platform-container
+AWS VPC
+  - including zones
+AWS DB
 
-later also do deployements, including the vpc(s) etc.
+Kubernetes investigations
+  - Next step is to attach the platform-service to whatever platform-container
+  - later also do deployements, including the vpc(s) etc.
 
+Think about how to do the allocation-deployments
