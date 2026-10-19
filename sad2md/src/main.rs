@@ -929,17 +929,17 @@ fn render_graphical_primary_display(
                             let link_annotation = if component_relation.relation_text.is_empty() {
                                 "".to_string()
                             } else {
-                                format!("|{}|", component_relation.relation_text)
+                                format!("|\"{}\"|", escape_mermaid_label(&component_relation.relation_text))
                             };
 
                             markdown_file
                                 .write(
                                     &format!(
-                                        "    {}[{}]---{link_annotation}{}[{}]\n",
+                                        "    {}[\"{}\"]---{link_annotation}{}[\"{}\"]\n",
                                         linkable_component_a_name,
-                                        component_a_display_name,
+                                        escape_mermaid_label(&component_a_display_name),
                                         linkable_component_b_name,
-                                        component_b.display_name()
+                                        escape_mermaid_label(component_b.display_name())
                                     )
                                     .as_bytes(),
                                 )
@@ -1003,17 +1003,17 @@ fn render_graphical_primary_display_by_key(
                         let link_annotation = if component_relation.relation_text.is_empty() {
                             "".to_string()
                         } else {
-                            format!("|{}|", component_relation.relation_text)
+                            format!("|\"{}\"|", escape_mermaid_label(&component_relation.relation_text))
                         };
 
                         markdown_file
                             .write(
                                 &format!(
-                                    "    {}[{}]---{link_annotation}{}[{}]\n",
+                                    "    {}[\"{}\"]---{link_annotation}{}[\"{}\"]\n",
                                     linkable_component_a_name,
-                                    component_a_display_name,
+                                    escape_mermaid_label(&component_a_display_name),
                                     linkable_component_b_name,
-                                    component_b.display_name()
+                                    escape_mermaid_label(component_b.display_name())
                                 )
                                 .as_bytes(),
                             )
@@ -1071,7 +1071,7 @@ fn render_graphical_layered_display(
             .write(
                 &format!(
                     "    {}[\"{}\"]\n",
-                    linkable_component_a_name, component_a_display_name
+                    linkable_component_a_name, escape_mermaid_label(&component_a_display_name)
                 )
                 .as_bytes(),
             )
@@ -1116,7 +1116,7 @@ fn render_graphical_layered_display(
                                 .write(
                                     &format!(
                                         "    {}[\"{}\"]\n",
-                                        linkable_component_b_name, component_b.display_name()
+                                        linkable_component_b_name, escape_mermaid_label(component_b.display_name())
                                     )
                                     .as_bytes(),
                                 )
@@ -1155,7 +1155,7 @@ fn render_graphical_layered_display(
                         .write(
                             &format!(
                                 "    {}[\"{}\"]\n",
-                                linkable_component_a_name, component_a_display_name
+                                linkable_component_a_name, escape_mermaid_label(&component_a_display_name)
                             )
                             .as_bytes(),
                         )
@@ -1265,17 +1265,17 @@ fn render_graphical_context_diagram(
                             let link_annotation = if component_relation.relation_text.is_empty() {
                                 "".to_string()
                             } else {
-                                format!("|{}|", component_relation.relation_text)
+                                format!("|\"{}\"|", escape_mermaid_label(&component_relation.relation_text))
                             };
 
                             markdown_file
                                 .write(
                                     &format!(
-                                        "    {}[{}]---{link_annotation}{}(({}))\n",
+                                        "    {}[\"{}\"]---{link_annotation}{}((\"{}\"))\n",
                                         linkable_component_b_name,
-                                        component_b.display_name(),
+                                        escape_mermaid_label(component_b.display_name()),
                                         linkable_component_a_name,
-                                        component_a_display_name
+                                        escape_mermaid_label(&component_a_display_name)
                                     )
                                     .as_bytes(),
                                 )
@@ -1619,7 +1619,7 @@ fn render_graphical_deployment_display(
                             .write(
                                 &format!(
                                     "    subgraph {}[\"{}\"]\n",
-                                    linkable_component_a_name, component_a_display_name
+                                    linkable_component_a_name, escape_mermaid_label(&component_a_display_name)
                                 )
                                 .as_bytes(),
                             )
@@ -1628,7 +1628,7 @@ fn render_graphical_deployment_display(
                             .write(
                                 &format!(
                                     "      {}[\"{}\"]\n",
-                                    linkable_component_b_name, component_b_display_name
+                                    linkable_component_b_name, escape_mermaid_label(&component_b_display_name)
                                 )
                                 .as_bytes(),
                             )
@@ -1639,7 +1639,7 @@ fn render_graphical_deployment_display(
                     }
                     CONNECTION_TYPE_DEPLOYMENT_CONNECT => {
                         let connection_text = if ! component_relation.relation_text.is_empty() {
-                            format!("|{}|", component_relation.relation_text)
+                            format!("|\"{}\"|", escape_mermaid_label(&component_relation.relation_text))
                         } else {
                             "".to_string()
                         };
@@ -1789,8 +1789,20 @@ fn render_graphical_all_behaviors_for_viewpacket(
     }
 }
 
+/// Turn a component name into a Mermaid node id.
+/// Characters outside letters, digits, `_`, `-` and `.` become `_`, because Mermaid reads
+/// characters such as `/`, `{` and `(` as node shape syntax.
 fn make_mermaid_linkable_text(text: String) -> String {
     text.replace(" ", "")
+        .chars()
+        .map(|c| if c.is_alphanumeric() || matches!(c, '_' | '-' | '.') { c } else { '_' })
+        .collect()
+}
+
+/// Escape text for a quoted Mermaid label (`["..."]` or `|"..."|`).
+/// Inside quotes only `"` ends the label, so it becomes the `#quot;` entity.
+fn escape_mermaid_label(text: &str) -> String {
+    text.replace('"', "#quot;")
 }
 
 fn make_markdown_linkable_text(text: String) -> String {

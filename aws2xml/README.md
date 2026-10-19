@@ -76,19 +76,15 @@ graph LR;
       - jq '.ResourceRecordSets[] | select(.Type == "A")' XXX | grep DNSName | sort -u
         - cloudfronts seems to reference cloudfronts owned by AWS
           - aws apigateway get-domain-names --query "items[?distributionDomainName=='REDACTED.cloudfront.net']"
-        - execute-api.REGION.amazonaws.com - seems to refer to apigateways
+            - execute-api.REGION.amazonaws.com - seems to refer to apigateways
           - aws apigateway get-domain-names
             - aws apigateway get-base-path-mappings --domain-name <domainName>
               - aws apigateway get-rest-api --rest-api-id <restApiId>
-            - aws2xml follows these steps for `d-XXX.execute-api.REGION.amazonaws.com` alias targets.
-              It queries the Region in the DNS name and links the hosted zone to each mapped REST API.
-            - aws2xml follows v1 base path mappings only, so v2 API mappings get no relation.
+                - returns metadata about the API as a whole: its name, ID, description, endpoint type (EDGE, REGIONAL, or PRIVATE), resource policy, tags, API key source, binary media types, and so on. It’s one object describing the API container.
+              - aws apigateway get-resources --rest-api-id <restApiId>
+                - returns the API’s structure: a list of every resource (URL path) and the HTTP methods defined on each.
           - aws apigatewayv2 get-domain-name
       - Search for '.elb'
-        - aws2xml creates one ELB component per hostname and investigates it once per viewpacket.
-          - An ELB counts as investigated when the database has an ELB->Gateway or ELB->Ingress relation with the viewpacket's display key.
-          - An Ingress backend Service with the label `gateway.networking.k8s.io/gateway-name` is a Gateway. aws2xml follows it into the Gateway's HTTPRoutes (ELB->Ingress->Gateway->Service).
-          - `--namespace` filters HTTPRoutes and plain Ingress backends, not the Ingress itself.
         - aws elbv2 describe-load-balancers --query "LoadBalancers[?DNSName=='<DNSName>']"
           - aws elbv2 describe-tags --resource-arns <LoadBalancerArn>
             - ingress.k8s.aws/stack - This tag has an ingress backend.
@@ -96,14 +92,6 @@ graph LR;
                 - kna get ingress -A -o jsonpath='{range .items[?(@.metadata.annotations.alb\.ingress\.kubernetes\.io/group\.name=="<INGRESS_GROUP_NAME>")]}{.metadata.namespace}/{.metadata.name}{"\n"}{end}'
             - service.k8s.aws/stack - this has a gateway backend.
               - These are in Gateway API/Gateways in lenz
-
-- Get a list of all API Gateway v1 REST APIs
-  - aws apigateway get-rest-apis
-    - aws2xml creates one component per REST API, named by its `id` and titled by its `name`.
-    - The component summary lists `endpointConfiguration.types`.
-    - A `squad` tag assigns the component to the team of that name.
-      aws2xml creates the team when the team does not exist.
-    - The IAM identity needs `apigateway:GET` on `/restapis`, `/domainnames`, and `/domainnames/*/basepathmappings`.
 
 - Get a list of all cloudfront entries
   - aws cloudfront list-distributions

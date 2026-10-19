@@ -68,6 +68,9 @@ struct AppContext {
     /// ELB hostname to its component id. Many records alias the same ELB, and repeating the
     /// slow Kubernetes discovery for each one looks like a hang.
     elb_hostname_to_component_id: HashMap<String, u64>,
+    /// Region to (REST API id to its base paths). Base path mappings hang off custom domain
+    /// names, so finding the mappings of one REST API means listing all of them in its Region.
+    region_to_rest_api_base_paths: HashMap<String, HashMap<String, Vec<String>>>,
     type_and_style_to_section_number: HashMap<&'static str, u64>,
     file_id: u64,
     team_id: u64,
@@ -263,6 +266,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         db_conn,
         elb_dns_name_to_load_balancer,
         elb_hostname_to_component_id: HashMap::new(),
+        region_to_rest_api_base_paths: HashMap::new(),
         type_and_style_to_section_number,
         file_id,
         team_id,
@@ -290,8 +294,9 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     while let Some(page) = rest_api_pages.next().await {
         rest_apis.extend_from_slice(page?.items());
     }
+    let apigateway_client = ctx.apigateway_client.clone();
     for rest_api in &rest_apis {
-        insert_apigateway_structure(&mut ctx, rest_api);
+        insert_apigateway_structure(&mut ctx, &apigateway_client, rest_api).await;
     }
 
     dump_db_to_xml(&ctx.db_conn, filename).expect("Dumping the database to XML failed.");
@@ -300,8 +305,13 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
 /// Add an API Gateway v1 REST API as a component, unless a component with its id exists.
 /// The `squad` tag, when present, assigns the component to that team.
+/// `apigateway_client` must target the Region of the REST API.
 #[tracing::instrument(skip_all, fields(rest_api_id = rest_api.id()))]
-fn insert_apigateway_structure(ctx: &mut AppContext, rest_api: &RestApi) {
+async fn insert_apigateway_structure(
+    ctx: &mut AppContext,
+    apigateway_client: &ApiGatewayClient,
+    rest_api: &RestApi,
+) {
     let Some(rest_api_id) = rest_api.id() else {
         log_warn("API Gateway REST API without an id, skipping.");
         return;
@@ -336,7 +346,8 @@ fn insert_apigateway_structure(ctx: &mut AppContext, rest_api: &RestApi) {
     let component_id =
         convert_from_address_to_id(component_addr, "main.rs: insert_apigateway_structure()");
     // TODO refactor the way the name is retrieved I don't like the unwrap thing(It was llm generated)
-    let component_title = format!("API GW {}", rest_api.name().unwrap_or_default());
+    let rest_api_name = rest_api.name().unwrap_or_default();
+    let component_title = format!("API GW {rest_api_name}");
     insert_into_component(
         &ctx.db_conn,
         ctx.file_id,
@@ -348,6 +359,295 @@ fn insert_apigateway_structure(ctx: &mut AppContext, rest_api: &RestApi) {
         &component_title,
     );
     ctx.component_count += 1;
+
+    // The resource relations need a view packet to belong to, as the CloudFront relations do.
+    let view_packet_addr = format!(
+        "{}.{}.{}.{}",
+        ctx.file_id,
+        ctx.type_and_style_to_section_number[CNC_VIEW_TYPE_STYLE_CLIENTSERVER],
+        ctx.type_and_style_to_section_number[CNC_VIEW_TYPE],
+        ctx.view_packet_count
+    );
+    let view_packet_id =
+        convert_from_address_to_id(view_packet_addr, "main.rs: insert_apigateway_structure()");
+    let display_key = format!(
+        "{}{}{}",
+        CNC_VIEW_TYPE, CNC_VIEW_TYPE_STYLE_CLIENTSERVER, ctx.view_packet_count
+    );
+    insert_into_view_packet(
+        &ctx.db_conn,
+        component_id,
+        "",
+        ctx.file_id,
+        &display_key,
+        "TODO fill out introduction",
+        0,
+        team_id,
+        &component_title,
+        CNC_VIEW_TYPE_STYLE_CLIENTSERVER,
+        CNC_VIEW_TYPE,
+        view_packet_id,
+    );
+    ctx.view_packet_count += 1;
+
+    let mut base_paths = find_base_paths_for_rest_api(ctx, apigateway_client, rest_api_id).await;
+    if base_paths.is_empty() {
+        log_debug(format!(
+            "API Gateway '{rest_api_id}' has no base path mappings, linking its resources as 'default'."
+        ));
+        base_paths.push("default".to_string());
+    }
+
+    insert_apigateway_resource_components(
+        ctx,
+        apigateway_client,
+        rest_api_id,
+        component_id,
+        team_id,
+        &display_key,
+        &base_paths,
+    )
+    .await;
+}
+
+/// Add a component for each resource of a REST API that has at least one method, and link the
+/// API Gateway component to it once per base path, with the base path as the relation text.
+/// Each method with a Lambda integration links the resource to a Lambda function component,
+/// with the HTTP method as the relation text.
+/// Resources without methods, such as a bare root `/`, only group child paths and are skipped.
+#[allow(clippy::too_many_arguments)]
+#[tracing::instrument(skip(ctx, apigateway_client, display_key))]
+async fn insert_apigateway_resource_components(
+    ctx: &mut AppContext,
+    apigateway_client: &ApiGatewayClient,
+    rest_api_id: &str,
+    apigateway_component_id: u64,
+    team_id: u64,
+    display_key: &str,
+    base_paths: &[String],
+) {
+    let mut inserted_relations: HashSet<(u64, u64, String)> = HashSet::new();
+    let mut resources = apigateway_client
+        .get_resources()
+        .rest_api_id(rest_api_id)
+        .embed("methods")
+        .into_paginator()
+        .items()
+        .send();
+    while let Some(resource) = resources.next().await {
+        let resource = match resource {
+            Ok(resource) => resource,
+            Err(err) => {
+                log_warn(format!(
+                    "Listing resources for API Gateway '{}' failed: {}. Location: main.rs: insert_apigateway_resource_components()",
+                    rest_api_id, err
+                ));
+                return;
+            }
+        };
+        let (Some(resource_id), Some(resource_methods)) = (resource.id(), resource.resource_methods())
+        else {
+            continue;
+        };
+        if resource_methods.is_empty() {
+            continue;
+        }
+
+        let mut methods: Vec<String> = resource_methods
+            .iter()
+            .map(|(http_method, method)| {
+                format!("{} ({})", http_method, method.authorization_type().unwrap_or("unknown"))
+            })
+            .collect();
+        // HashMap order is random, and a stable summary keeps the XML output diffable.
+        methods.sort();
+        let resource_path = resource.path().unwrap_or(resource_id);
+        let summary = format!("API GW resource: Methods: {}", methods.join(", "));
+
+        let component_addr = format!("{}.0.0.{}", ctx.file_id, ctx.component_count);
+        let resource_component_id = convert_from_address_to_id(
+            component_addr,
+            "main.rs: insert_apigateway_resource_components()",
+        );
+        // Resource ids are only unique within one REST API.
+        let component_name = format!("{rest_api_id}/{resource_id}");
+        insert_into_component(
+            &ctx.db_conn,
+            ctx.file_id,
+            resource_component_id,
+            &component_name,
+            "API Gateway Resource",
+            &summary,
+            team_id,
+            resource_path,
+        );
+        ctx.component_count += 1;
+
+        for base_path in base_paths {
+            insert_connect_relation(
+                ctx,
+                apigateway_component_id,
+                resource_component_id,
+                display_key,
+                "",
+                base_path,
+                &mut inserted_relations,
+            );
+        }
+
+        let mut sorted_methods: Vec<_> = resource_methods.iter().collect();
+        sorted_methods.sort_by_key(|(http_method, _)| http_method.as_str());
+        for (http_method, method) in sorted_methods {
+            let Some(function_arn) = method
+                .method_integration()
+                .and_then(|integration| integration.uri())
+                .and_then(lambda_function_arn_from_integration_uri)
+            else {
+                continue;
+            };
+            let lambda_component_id = get_or_create_lambda_component(ctx, function_arn, team_id);
+            insert_connect_relation(
+                ctx,
+                resource_component_id,
+                lambda_component_id,
+                display_key,
+                "",
+                http_method,
+                &mut inserted_relations,
+            );
+        }
+    }
+}
+
+/// Return the Lambda function ARN from an API Gateway Lambda integration URI, which has the
+/// form `arn:aws:apigateway:<region>:lambda:path/2015-03-31/functions/<function arn>/invocations`.
+/// Returns `None` for other integrations, and for ARNs built from stage variables, which are
+/// only resolved at request time.
+fn lambda_function_arn_from_integration_uri(uri: &str) -> Option<&str> {
+    let function_arn = uri
+        .split_once(":lambda:path/")?
+        .1
+        .split_once("/functions/")?
+        .1
+        .strip_suffix("/invocations")?;
+    if function_arn.contains("${") {
+        log_debug(format!(
+            "Lambda integration URI '{uri}' uses stage variables, skipping."
+        ));
+        return None;
+    }
+    Some(function_arn)
+}
+
+/// Return the component id for a Lambda function, creating the component on first sight.
+/// The ARN is the component name, because function names are only unique per Region.
+fn get_or_create_lambda_component(ctx: &mut AppContext, function_arn: &str, team_id: u64) -> u64 {
+    if let Ok(component) = get_component_by_name(&ctx.db_conn, function_arn.to_string()) {
+        return component.id;
+    }
+
+    // The ARN format is `arn:aws:lambda:<region>:<account>:function:<name>[:<alias or version>]`.
+    let function_name = function_arn
+        .split_once(":function:")
+        .map_or(function_arn, |(_, name)| name);
+    let component_addr = format!("{}.0.0.{}", ctx.file_id, ctx.component_count);
+    let lambda_component_id =
+        convert_from_address_to_id(component_addr, "main.rs: get_or_create_lambda_component()");
+    let summary = format!("Lambda function: {function_arn}");
+    let component_title = format!("Lambda {function_name}");
+    insert_into_component(
+        &ctx.db_conn,
+        ctx.file_id,
+        lambda_component_id,
+        function_arn,
+        "Lambda Function",
+        &summary,
+        team_id,
+        &component_title,
+    );
+    ctx.component_count += 1;
+    lambda_component_id
+}
+
+/// Return the base paths that map custom domain names to `rest_api_id`.
+/// API Gateway shows the empty base path as `(none)`, which becomes `default`.
+async fn find_base_paths_for_rest_api(
+    ctx: &mut AppContext,
+    apigateway_client: &ApiGatewayClient,
+    rest_api_id: &str,
+) -> Vec<String> {
+    let region = apigateway_client
+        .config()
+        .region()
+        .map(|region| region.to_string())
+        .unwrap_or_default();
+    if !ctx.region_to_rest_api_base_paths.contains_key(&region) {
+        let rest_api_base_paths = build_rest_api_base_path_map(apigateway_client).await;
+        ctx.region_to_rest_api_base_paths
+            .insert(region.clone(), rest_api_base_paths);
+    }
+    ctx.region_to_rest_api_base_paths[&region]
+        .get(rest_api_id)
+        .cloned()
+        .unwrap_or_default()
+}
+
+/// Map each REST API id in the client's Region to the base paths of its mappings.
+async fn build_rest_api_base_path_map(
+    apigateway_client: &ApiGatewayClient,
+) -> HashMap<String, Vec<String>> {
+    let mut rest_api_base_paths: HashMap<String, Vec<String>> = HashMap::new();
+    let mut domain_names = apigateway_client
+        .get_domain_names()
+        .into_paginator()
+        .items()
+        .send();
+    while let Some(domain_name) = domain_names.next().await {
+        let domain_name = match domain_name {
+            Ok(domain_name) => domain_name,
+            Err(err) => {
+                log_warn(format!(
+                    "Listing API Gateway domain names failed: {}. Location: main.rs: build_rest_api_base_path_map()",
+                    err
+                ));
+                break;
+            }
+        };
+        let Some(custom_domain_name) = domain_name.domain_name() else {
+            continue;
+        };
+        let mut base_path_mappings = apigateway_client
+            .get_base_path_mappings()
+            .domain_name(custom_domain_name)
+            .into_paginator()
+            .items()
+            .send();
+        while let Some(base_path_mapping) = base_path_mappings.next().await {
+            match base_path_mapping {
+                Ok(base_path_mapping) => {
+                    let Some(rest_api_id) = base_path_mapping.rest_api_id() else {
+                        continue;
+                    };
+                    let base_path = match base_path_mapping.base_path() {
+                        None | Some("(none)") => "default",
+                        Some(base_path) => base_path,
+                    };
+                    let base_paths = rest_api_base_paths.entry(rest_api_id.to_string()).or_default();
+                    if !base_paths.iter().any(|existing| existing == base_path) {
+                        base_paths.push(base_path.to_string());
+                    }
+                }
+                Err(err) => {
+                    log_warn(format!(
+                        "Listing base path mappings for '{}' failed: {}. Location: main.rs: build_rest_api_base_path_map()",
+                        custom_domain_name, err
+                    ));
+                    break;
+                }
+            }
+        }
+    }
+    rest_api_base_paths
 }
 
 /// Return the id of the team named `team_name`, inserting the team first if it is missing.
@@ -714,7 +1014,7 @@ fn insert_cache_behavior_relations(
     for function in sorted_functions {
         let function_component_id =
             get_or_create_cloudfront_function_component(ctx, function, function_arn_to_component_id);
-        insert_cloudfront_relation(
+        insert_connect_relation(
             ctx,
             previous_component_id,
             function_component_id,
@@ -726,7 +1026,7 @@ fn insert_cache_behavior_relations(
         previous_component_id = function_component_id;
     }
 
-    insert_cloudfront_relation(
+    insert_connect_relation(
         ctx,
         previous_component_id,
         origin_component_id,
@@ -771,7 +1071,7 @@ fn get_or_create_cloudfront_function_component(
 }
 
 /// Insert a "connect" relation unless the same edge with the same text already exists.
-fn insert_cloudfront_relation(
+fn insert_connect_relation(
     ctx: &mut AppContext,
     component_a_id: u64,
     component_b_id: u64,
@@ -788,7 +1088,7 @@ fn insert_cloudfront_relation(
         "{}.{}.{}.{}",
         ctx.file_id, 0, 2, ctx.component_relation_count
     );
-    let relation_id = convert_from_address_to_id(relation_addr, "main.rs: cloudfront_structure()");
+    let relation_id = convert_from_address_to_id(relation_addr, "main.rs: insert_connect_relation()");
     let relation_sort_order = 0;
     insert_into_component_relation(
         &ctx.db_conn,
@@ -947,12 +1247,24 @@ async fn itterate_route53_records(
                     let dns_name = alias_target.dns_name().trim_end_matches('.');
                     if dns_name.contains(".execute-api.") {
                         log_debug(format!("API Gateway: {}", dns_name));
-                        let rest_apis =
-                            find_rest_apis_by_regional_domain_name(&ctx.apigateway_client, dns_name)
+                        let rest_apis = match regional_apigateway_client(
+                            &ctx.apigateway_client,
+                            dns_name,
+                        ) {
+                            Some(regional_client) => {
+                                let rest_apis = find_rest_apis_by_regional_domain_name(
+                                    &regional_client,
+                                    dns_name,
+                                )
                                 .await;
-                        for rest_api in &rest_apis {
-                            insert_apigateway_structure(ctx, rest_api);
-                        }
+                                for rest_api in &rest_apis {
+                                    insert_apigateway_structure(ctx, &regional_client, rest_api)
+                                        .await;
+                                }
+                                rest_apis
+                            }
+                            None => Vec::new(),
+                        };
                         rest_apis
                             .iter()
                             .filter_map(|rest_api| rest_api.id().map(String::from))
@@ -1068,36 +1380,43 @@ async fn find_cloudfront_distribution_id(aws_client: &Client, domain_name: &str)
     None
 }
 
-/// Return the REST APIs mapped to the API Gateway custom domain name whose regional domain name
-/// is `regional_domain_name` (e.g. `d-XXX.execute-api.us-west-2.amazonaws.com`).
-/// Only API Gateway v1 base path mappings are followed, so HTTP and WebSocket APIs (v2) are not
-/// found. Returns an empty list when the lookup fails or nothing is mapped.
-#[tracing::instrument(skip(apigateway_client))]
-async fn find_rest_apis_by_regional_domain_name(
+/// Return an API Gateway client for the Region named in an `execute-api` domain name.
+/// The custom domain name only exists in that Region, which can differ from the Region of the
+/// default client.
+fn regional_apigateway_client(
     apigateway_client: &ApiGatewayClient,
     regional_domain_name: &str,
-) -> Vec<RestApi> {
+) -> Option<ApiGatewayClient> {
     let Some(region) = regional_domain_name
         .split('.')
         .skip_while(|label| *label != "execute-api")
         .nth(1)
     else {
         log_warn(format!(
-            "No Region found in API Gateway domain name '{}'. Location: main.rs: find_rest_apis_by_regional_domain_name()",
+            "No Region found in API Gateway domain name '{}'. Location: main.rs: regional_apigateway_client()",
             regional_domain_name
         ));
-        return Vec::new();
+        return None;
     };
-    // The custom domain name only exists in the Region named in its DNS name, which can differ
-    // from the Region of the default client.
-    let regional_client = ApiGatewayClient::from_conf(
+    Some(ApiGatewayClient::from_conf(
         apigateway_client
             .config()
             .to_builder()
             .region(Region::new(region.to_string()))
             .build(),
-    );
+    ))
+}
 
+/// Return the REST APIs mapped to the API Gateway custom domain name whose regional domain name
+/// is `regional_domain_name` (e.g. `d-XXX.execute-api.us-west-2.amazonaws.com`).
+/// Only API Gateway v1 base path mappings are followed, so HTTP and WebSocket APIs (v2) are not
+/// found. Returns an empty list when the lookup fails or nothing is mapped.
+/// `regional_client` must target the Region named in `regional_domain_name`.
+#[tracing::instrument(skip(regional_client))]
+async fn find_rest_apis_by_regional_domain_name(
+    regional_client: &ApiGatewayClient,
+    regional_domain_name: &str,
+) -> Vec<RestApi> {
     let mut custom_domain_name = None;
     let mut domain_names = regional_client
         .get_domain_names()
