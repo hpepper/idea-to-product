@@ -1,11 +1,9 @@
-- Add API resources
-
-Get list of API gw
-  ❯ jq '.ResourceRecordSets[] | select(.Type == "A")' na_02_route53_records.json| grep DNSName | sort -u
- 
-
-Add a function that can look up a componentID and key in componentRelations
-
+- Do a uses/used-by for lambdas
+- Create a deployment set
+  - VPC
+  - EC2
+  - EKS
+  - RDS
 
 Number of spans: the default batch queue holds 2048 spans. A large account with many records could exceed that, and spans past the limit are dropped. If that happens, raise max_queue_size in init_tracer.
 AWS SDK spans: the AWS SDK emits its own tracing spans. The layer from step 2 picks them up automatically, so each describe_load_balancers request appears as a child span. Filter them out with EnvFilter if they are too noisy.
