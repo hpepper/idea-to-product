@@ -1,4 +1,8 @@
-use crate::models::{Behavior, Component, ComponentRelation, ContextModel, Document, Team, ViewPacket};
+use crate::models::{
+    Behavior, Component, ComponentRelation, ContextModel, Document, Team, ViewPacket,
+};
+
+use crate::convert_from_id_to_address;
 
 use rusqlite::{Connection, Result};
 
@@ -19,7 +23,6 @@ pub fn get_component_by_id(db_conn: &Connection, component_id: u64) -> Result<Co
     })?;
     Ok(component)
 }
-
 
 /// Get a component by its name.
 ///
@@ -103,9 +106,11 @@ pub fn get_component_name_by_id(db_conn: &Connection, component_id: u64) -> Stri
     let mut stmt = db_conn
         .prepare("SELECT name FROM component WHERE id = ?1")
         .unwrap();
-    let component_name = stmt
-        .query_row([component_id], |row| Ok(row.get(0)?))
-        .unwrap();
+    let component_name = stmt.query_row([component_id], |row| Ok(row.get(0)?))
+        .unwrap_or_else(|e| {
+            let address = convert_from_id_to_address(component_id);
+            panic!("failed to get component name for {address}: {e}")
+        });
     component_name
 }
 
@@ -172,8 +177,6 @@ pub fn get_vector_of_components_by_key_sorted_by_name(
         .collect::<Result<Vec<_>, _>>()?;
     Ok(components)
 }
-
-
 
 pub fn get_components_vector_by_team_id_sorted_by_name(
     db_conn: &Connection,

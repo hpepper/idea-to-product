@@ -136,6 +136,10 @@ TODO the related view
       * I guess I need to go and find the root components, so I guess I need to build a tree
     * Connect - line attachment
     * Allign - for the ~~~ thing
+  * Install
+    * Contains - creates a subgraph
+    * Connect - line attachment
+    * Allign - for the ~~~ thing
 
 #### ViewPacket Behavior
 
