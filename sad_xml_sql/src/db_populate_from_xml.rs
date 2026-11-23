@@ -34,9 +34,11 @@ fn update_file_id_for_filename(db_conn: &Connection, file_id: u64, filename: Str
     db_conn
         .execute(
             "UPDATE include SET file_id = ?1 WHERE filename = ?2",
-            (file_id, filename),
+            (file_id, &filename),
         )
-        .expect("Unable to update file_id for include");
+        .unwrap_or_else(|e| {
+            panic!("Unable to update file_id {file_id} for include {filename}: {e}")
+        });
 }
 
 pub fn db_populate_from_include_xml(db_conn: &Connection, filename: &String, original_filename: String) {
