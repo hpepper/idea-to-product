@@ -1,0 +1,15 @@
+# cargo-audit exception list for gui_editor, sad2md, sad_xml_sql, and tui_editor
+# (GEDT-AR-00025).
+# CI runs `cargo audit` for the other crates from gui_editor with `--file`,
+# because `cargo audit` reads this file from its working directory.
+# `build.sh` runs `cargo audit --deny warnings`, so every finding fails the build.
+# Mirroring rule: this list must hold exactly the advisory IDs in deny.toml
+# (advisories.ignore).
+# Add an exception to deny.toml first, with its reason, then copy the ID here.
+# Put the same reason in a comment above each ID, because this file has no reason field.
+# `check_advisory_ignores.sh` fails the build when the two lists differ.
+# Do not add other settings here; the check rejects them.
+# Reference: https://github.com/rustsec/rustsec/blob/main/cargo-audit/audit.toml.example
+
+[advisories]
+ignore = []

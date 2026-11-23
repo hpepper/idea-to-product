@@ -53,6 +53,12 @@
 - Project data are stored in xml files on the designated storage system.
 - Project data is currently held in memory in a mem based sqlite DB, for ease of search and update.
 - When handeling multiple projects, each project is stored in their own XML file.
+- Use rust as the programming language.
+- Use egui for development since it supports both native and web applications.
+
+### Voice of the business
+
+- Start with the native linux application first.
 
 
 ### Gemba

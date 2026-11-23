@@ -4,7 +4,7 @@
 
 ### Purpose
 
-<!-- 1-2 sentences: document purpose. -->
+<!-- 1-2 sentences: document purpose and the system or feature whose design decisions it records. -->
 
 ### Vocabulary
 
@@ -12,70 +12,91 @@
 
 ### References
 
-<!-- Bullet list of external links/references. -->
+<!-- Bullet list of external links/references.
+Include the PRD, SRS, or FIP the decisions trace to,
+and the ICD that describes component interconnection. -->
 
 ### Reading this document
 
 Three organizational levels:
 
 - Introduction (top)
-  - Purpose - one sentence on the app.
-  - Vocabulary - glossary (EKS, pipeline, namespace, etc.).
-  - References - external libs/APIs.
-  - Overview - system bird's-eye: 2 diagrams + 2 tables.
-    - Context diagram: app vs outside world (browser, OAuth proxy, GitLab, Kubernetes).
-    - Component interconnection diagram: internal pieces.
-- Component sections (bulk)
-  - One section per component, same pattern:
-    - Short prose: what component does.
-    - Decomposition table: subcomponents/files.
-    - Context diagram (optional): external interactions.
-    - Communication diagram + table (optional): protocols, endpoints, purposes.
+  - Purpose - one sentence on the system and the decisions recorded.
+  - Vocabulary - glossary of uncommon terms.
+  - References - requirement documents, ICD, external standards.
+  - Overview - scope, decision drivers, and a decision log table.
+- Decision sections (bulk)
+  - One section per decision, same pattern:
+    - Context: the problem and the forces that shape it.
+    - Drivers: requirements and quality attributes the decision must satisfy.
+    - Options: each alternative with pros and cons.
+    - Decision: the chosen option.
+    - Rationale: why the chosen option beats the alternatives.
+    - Consequences: positive, negative, and follow-up work.
+- Component interconnection lives in the ICD, not here.
 
 ### Overview
 
-#### Primary components decomposition
+#### Design scope
 
-<!-- Table of top-level components. Columns:
-  Name - component name.
-  Description - ≤10-word summary.
-  Reference - link to component section.
+<!-- 2-4 sentences: what the decisions cover and what they exclude.
+Link the ICD for interfaces and component interconnection. -->
+
+#### Decision drivers
+
+<!-- Table of requirements and quality attributes that drive the decisions. Columns:
+  ID - requirement ID, for example FEAT-AR-nnnnn.
+  Driver - ≤10-word summary.
+  Source - link to PRD, SRS, or FIP section.
+  Rows sorted alphabetically by ID.
   -->
 
-#### Overview context diagram
+#### Decision log
 
-<!-- Mermaid: this project = 'the work' (rectangle); connected entities = circles. Show both directions.
-Table columns:
-  Entity - component/connector name.
-  Type - 'The Work' | Adjacent | Connector.
-  Description - ≤10-word summary.
-  Reference - external link.
+<!-- Table of all decisions. Columns:
+  ID - DD-nnn.
+  Title - ≤10-word summary.
+  Status - Proposed | Accepted | Deprecated | Superseded by DD-nnn.
+  Date - YYYY-MM-DD of last status change.
+  Reference - link to decision section.
+  Rows sorted alphabetically by ID.
   -->
 
-#### Primary components interconnection
+<!-- Repeat the section below per decision. Order by ID. -->
 
-<!-- Mermaid: top-level components connected. Lines without arrows; name lines where relevant.
-Table columns:
-  Entity - component/connector name.
-  Type - Component | Connector.
-  Description - ≤10-word summary (connectors: include protocol if relevant).
-  Reference - optional link to sub-section.
+## DD-nnn: [Decision Title]
+
+### DD-nnn Status
+
+<!-- Proposed | Accepted | Deprecated | Superseded by DD-nnn. Add date and decision owner. -->
+
+### DD-nnn Context
+
+<!-- The problem, constraints, and forces at play. State facts, not the solution. -->
+
+### DD-nnn Drivers
+
+<!-- Bullet list of requirement IDs and quality attributes this decision must satisfy.
+Link each to the Decision drivers table. -->
+
+### DD-nnn Options
+
+<!-- Table of considered options. Columns:
+  Option - short name.
+  Pros - bullet-style phrases.
+  Cons - bullet-style phrases.
+  Rows sorted alphabetically by Option.
   -->
 
-<!-- Repeat sections below per high-level component. Alphabetical by name. -->
+### DD-nnn Decision
 
-## Component: [Component Name]
+<!-- One or two sentences: the chosen option, stated as an imperative. -->
 
-<!-- Short purpose summary. -->
+### DD-nnn Rationale
 
-### [Component Name] Decomposition
+<!-- Why the chosen option beats the rejected ones against the drivers. -->
 
-<!-- Optional. List subcomponents if any. -->
+### DD-nnn Consequences
 
-### [Component Name] Context diagram
-
-<!-- Optional. Show components this one interacts with. -->
-
-### [Component Name] communication
-
-<!-- Optional. Show connected components + protocol. -->
+<!-- Bullet list: positive outcomes, negative outcomes, risks, and follow-up work.
+Note any ICD or requirement changes the decision causes. -->

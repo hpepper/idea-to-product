@@ -4,7 +4,7 @@
 
 # https://hub.docker.com/_/rust
 docker run -it --rm --user "$(id -u)":"$(id -g)" -v $(pwd):/home/builder/project -v $(pwd)/bin:/home/builder/bin -w /home/builder rust:1.98 ./project/sad2md/release.sh
-docker run -it --rm --user "$(id -u)":"$(id -g)" -v $(pwd):/home/builder/project -v $(pwd)/bin:/home/builder/bin -w /home/builder rust:1.98 ./project/aws2xml/build.sh
+#docker run -it --rm --user "$(id -u)":"$(id -g)" -v $(pwd):/home/builder/project -v $(pwd)/bin:/home/builder/bin -w /home/builder rust:1.98 ./project/aws2xml/build.sh
 
 cp bin/sad2md $HOME/bin
 

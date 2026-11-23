@@ -20,7 +20,8 @@ When creating or substantially restructuring a standalone documentation file (ar
 
 ### Picking a template
 
-- DESIGN_template.md - architecture/system design docs: component decomposition, context diagrams, component interconnection, per-component communication. Use for any doc describing how a system's pieces fit together.
+- DESIGN_template.md - design decision docs: each decision with its rationale and rejected alternatives.
+- ICD_template.md - Interface Control Document: component interconnection, interfaces, protocols, and per-component communication.
 - DEVELOPMENT_template.md - developer-facing repo docs: toolchain setup, local dev loop, test environment, how-to guides, troubleshooting. Use for onboarding/README/CONTRIBUTING-style docs.
 - FIP_template.md - Feature Implementation Proposal. For documenting proposal for new features to existing producs.
 - generic_template.md - fallback for any other standalone doc that doesn't fit the above (short notes, one-off write-ups).
@@ -31,7 +32,7 @@ If unsure which fits, ask rather than guessing.
 
 ## How to use a template
 
-- Read the template fully before writing - it encodes section order and intent (e.g. DESIGN_template's "Reading this document" section explains its three organizational levels: introduction, overview, per-component sections).
+- Read the template fully before writing - it encodes section order and intent (e.g. DESIGN_template's "Reading this document" section explains its three organizational levels: introduction, overview, per-decision sections).
 - Copy its structure into the new document; replace `DOCUMENT_NAME` and placeholder headings with real content.
 - Keep the `Introduction` sections (Purpose, Vocabulary, References) - common across all templates.
 - Sections marked optional in the template's HTML comments can be dropped if not applicable; don't drop required structural sections.
@@ -40,14 +41,23 @@ If unsure which fits, ask rather than guessing.
 
 ## Line breaks
 
-Applies to documentation (.md) and code comments, including doc comments.
+### Documentation
+
+Applies to documentation (.md).
+
+- One sentence per line. Start each new sentence on a new line.
+- Never wrap a sentence, whatever its length.
+
+### Code comments
+
+Applies to code comments, including doc comments.
 
 - One sentence per line. Start each new sentence on a new line.
 - Do not wrap a line of 90 characters or fewer.
 - Wrap a line only when it exceeds 90 characters, counting indentation and comment markers.
 - Break only after punctuation (`,` `;` `:` `.` `?` `!`) or before an opening parenthesis. Never break mid-phrase.
 - Continuation lines keep the same indentation and comment marker as the first line.
-- Exempt: tables, fenced code blocks, headings, URLs, and link targets.
+- Exempt: URLs and link targets.
 
 ## Documentation Guidelines
 
@@ -64,6 +74,7 @@ On changes, update relevant docs:
 
 - No em-dash '—'.
 - No ASCII tree chars. Bullet lists only.
+- No bold (`**`) except key terms in jump lists. No bold labels at the start of a bullet.
 - Table rows sorted alphabetically.
 - No ambiguous pronouns ('it', 'this', 'they') opening sentences. Restate subject.
 - H1 for title only. No heading deeper than H4.
@@ -104,7 +115,7 @@ On changes, update relevant docs:
 - Break long paragraphs into bullets.
 - ≤9 items per list.
 - Concise phrases over full sentences.
-- Multi-sentence item: first sentence = summary.
+- Multi-sentence item: first sentence = summary. Each further sentence goes in a nested bullet, never on an indented plain continuation line.
 
 #### Jump lists
 

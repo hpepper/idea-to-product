@@ -55,7 +55,6 @@ TODO unlike?? find competitors
 - Edit diagrams
 - Save to common storage format.
 - Provide local UI
-- Provide web UI.
 
 ## Project scope
 
