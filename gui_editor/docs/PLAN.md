@@ -52,22 +52,28 @@ After T-40, the product owner decided questions 11 to 13 and approved the revise
 The decision on question 8 is provisional, because the product owner gave no answer.
 After T-41, the product owner made the decisions in the rows marked "T-41 follow-up" on 2026-11-24.
 After commit `5fbeeb3`, the product owner made the decisions in the rows marked "5fbeeb3 follow-up" on 2026-11-24.
+After T-52, the product owner made the decisions in the rows marked "T-52 follow-up" on 2026-11-24.
 
 | Question | Decision |
 | --- | --- |
 | Accepted save losses, requirements open question 8 | Accepted for the first release and recorded in REQUIREMENTS.md; no task. |
 | Advisories in `aws2xml`, T-41 follow-up | Record risk only; no task; the 16 advisories stay unassigned, see [Security Findings](#security-findings). |
 | Advisory fix, T-01 follow-up | Upgrade dependencies in task T-41; add no advisory exceptions. |
+| `aws2xml` version guard, T-52 follow-up | Added to T-52 scope on 2026-11-24: the `sad_xml_sql` path dependency in `aws2xml/Cargo.toml` gets `version = "0.7.3"`; `gui_editor/tests/test_build_pipeline_config.rs` guards `aws2xml` through the separate list `VERSION_GUARDED_NON_CI_CRATES`, not `CI_CRATES`, because CI does not build `aws2xml`. |
 | Bans check baseline, 5fbeeb3 follow-up | Add task T-52, size S, before T-02, to bring the `cargo deny check` bans state back to the baseline before `5fbeeb3`; T-52 takes the `sad2md` wildcard from T-43. |
+| Bans check deviation, T-52 follow-up | T-52 closes with a recorded deviation: `cargo deny check bans` for `sad2md` and `sad_xml_sql` moves to task T-53, because the remaining `hashbrown` duplicate comes from `simple-xml-builder` 1.1.0, the newest release. |
 | Clippy gate, T-01 follow-up | Add `cargo clippy -D warnings` to CI in task T-44. |
 | Clippy requirement, question 8, provisional | No answer; the planner default applies. T-44 stays under GEDT-STORY-00019 with GEDT-AR-00030 as the nearest requirement; the architect adds a clippy requirement later. |
+| Decision rows that allow skips, T-52 follow-up | The rows "Duplicate `syn` versions, T-41 follow-up" and "Duplicate versions, T-01 follow-up" stay unchanged, by product owner decision on 2026-11-24. |
 | Deferred list | GEDT-STORY-00013 stays deferred; T-48 is not scheduled, see [Deferred](#deferred). |
 | Delivery order, 5fbeeb3 follow-up | T-52, T-02, T-47, T-43, T-44, T-45, T-46, T-03, then the rest unchanged; T-43 keeps its dependencies T-02, T-42, and T-47. |
 | Delivery order, T-01 follow-up | Approved as is: T-39, T-40, T-41, T-42, T-02, T-43, T-44, T-45, T-46, then T-03 onward. |
+| Delivery order, T-52 follow-up | Add task T-53, size M, after T-47 and before T-43, to replace `simple-xml-builder` in `sad_xml_sql`; T-53 depends on T-47 and T-52; T-43 also depends on T-53. |
 | Delivery order, revision after T-40 | Approved on 2026-11-24, with T-51 moved to INC-1 and T-48 removed, see [Delivery Order](#delivery-order). |
 | DTD validation | Structural DTD checks in the Rust core now; the product owner approves `xmllint` as a CI-only tool when T-13 starts. |
 | Duplicate `syn` versions, T-41 follow-up | T-43 removes the `syn` 2 and `syn` 3 duplicate in `tui_editor` by pinning `thiserror`, or by a `skip` entry with a reason. |
 | Duplicate versions, T-01 follow-up | Remove duplicates through upgrades; `skip` only for windows-target duplicates, each with a reason; `multiple-versions = "deny"` stays. |
+| Hashbrown ownership, T-52 follow-up | T-53 owns the `hashbrown` duplicate entirely; T-43 and T-52 no longer cover `hashbrown`; after T-53, no crate in `CI_CRATES` has more than one `hashbrown` version, and any `hashbrown` duplicate left in `tui_editor` is removed through upgrades in T-53, never a skip. |
 | Included-file writes, question 12 | T-51, size L, is the first task of INC-1, not part of the MVP; until T-51 lands, the T-50 warning tells users that edits to included-file items are skipped. |
 | Increment order | INC-1 to INC-6 as listed. |
 | Licence allow list, T-01 follow-up | Add Zlib and Unicode-3.0 to the `deny.toml` allow list in task T-42. |
@@ -81,6 +87,7 @@ After commit `5fbeeb3`, the product owner made the decisions in the rows marked 
 | Round-trip scope, question 11 | Shrink both tasks: T-03 becomes a short check of the save gaps left after T-40, and T-12 covers only what T-40 did not. |
 | Save failure in `tui_editor`, requirements open question 10 | Task T-47 under GEDT-STORY-00002 fixes the silent save failure and keeps the `tui_out.xml` target. |
 | Save target of `tui_editor`, question 13 | Keep `tui_out.xml`; T-48 is not scheduled, see [Deferred](#deferred). |
+| Skip wording in T-02 and T-43, T-52 follow-up | Unchanged by product owner decision. |
 | Skipped-edit warning form, requirements open question 12 | Non-modal warning on a direct Save; on exit, a modal warning that lets the user cancel the exit; T-50 implements this form. |
 
 ## Existing Work
@@ -102,7 +109,7 @@ After commit `5fbeeb3`, the product owner made the decisions in the rows marked 
   - T-41 removes the `crossterm`, `rustix`, `linux-raw-sys`, `unicode-width`, and `windows_*` duplicates as a side effect.
   - T-41 adds a `syn` 2 and `syn` 3 duplicate in `tui_editor`, through `thiserror` 2 in `kasuari` and `ratatui-core`; T-43 resolves the duplicate.
   - `aws2xml` keeps 16 known advisories that predate T-41, see [Security Findings](#security-findings).
-- T-42 is done; the product owner commits T-42.
+- T-42 is done and committed as `d44c2ff`.
   - The review nits R-02 to R-04 are in [Backlog](#backlog).
 - Commit `5fbeeb3`, "Update sqlite to 0.41", broke the bans baseline of `cargo deny check`.
   - `5fbeeb3` adds the `bans.skip` entries `hashbrown@0.12.3`, `syn@2.0.104`, and `windows-sys@0.59.0` to `gui_editor/deny.toml`, which all four crates share through `--config`.
@@ -110,9 +117,16 @@ After commit `5fbeeb3`, the product owner made the decisions in the rows marked 
   - The `hashbrown` and `syn` entries are not windows-target duplicates, against the T-01 follow-up decision on duplicate versions.
   - The `gui_editor` test `test_ar_00025_ac4_deny_bans_deny_multiple_versions_and_wildcards` fails with "bans.skip is not empty" at `gui_editor/tests/test_build_pipeline_config.rs:621`.
   - `sad2md` fails with `error[wildcard]`, because the `sad_xml_sql` path dependency in `sad2md/Cargo.toml` has no `version`; `tui_editor` already has `version = "0.7.3"`.
-  - T-52 restores the baseline.
+  - T-52 restores the baseline for `gui_editor`; T-53 removes the `hashbrown` duplicate left in `sad2md` and `sad_xml_sql`.
+- T-52 is done: tested, reviewed in two rounds, and approved with nits; the product owner commit is pending.
+  - `bans.skip` in `gui_editor/deny.toml` is empty, and the `sad_xml_sql` path dependency in `sad2md/Cargo.toml` has `version = "0.7.3"`.
+  - The `sad_xml_sql` path dependency in `aws2xml/Cargo.toml` also has `version = "0.7.3"`, guarded by `VERSION_GUARDED_NON_CI_CRATES` in `gui_editor/tests/test_build_pipeline_config.rs`.
+  - The review and test nits are in [Backlog](#backlog).
+  - `gui_editor` passes the full `cargo deny` check, no crate reports `unmatched-skip` or `wildcard`, and all test suites pass.
+  - `sad2md` and `sad_xml_sql` still fail `cargo deny check bans` on `hashbrown` 0.12.3, through `indexmap` 1.9.3 and `simple-xml-builder` 1.1.0, and `hashbrown` 0.17.2, through `hashlink` 0.12.2 and `rusqlite` 0.41.1.
+  - `simple-xml-builder` 1.1.0 is the newest release, and a `rusqlite` downgrade brings back RUSTSEC-2026-0459, so T-53 replaces `simple-xml-builder`.
 - Git status shows no partial T-02 change in `gui_editor`; T-02 restarts clean from the T-01 commit.
-- CI stays red until T-52 and T-43 land, because `cargo deny check bans` fails for `gui_editor`, `sad2md`, `sad_xml_sql`, and `tui_editor`.
+- CI stays red until T-53 and T-43 land, because `cargo deny check bans` fails for `sad2md`, `sad_xml_sql`, and `tui_editor`.
 - The uncommitted change to `aws2xml/Cargo.lock` predates T-01 and belongs to no planned task.
 - Save findings in shared and `tui_editor` code:
   - `tui_editor/src/work.rs` line 314 discards the `Result` of `dump_db_to_xml` and writes the fixed path `tui_out.xml`.
@@ -230,7 +244,7 @@ Task T-48 is not scheduled and is listed in [Deferred](#deferred).
 | ID | Task | Story | Inc | Depends on | Size | Definition of done |
 | --- | --- | --- | --- | --- | --- | --- |
 | T-01 | Build pipeline | 00019 | MVP | none | M | Done, committed as `dd719d1`. `build.sh` builds `gui_editor`, not `amber-dos`; image pinned by version and digest; `cargo build --locked`; `cargo audit` and `cargo deny` fail on unignored findings; secret scan; CI runs the `gui_editor`, `sad_xml_sql`, `sad2md`, and `tui_editor` tests; `.cargo-home/` ignored in `gui_editor` and `aws2xml` (AR-00024, AR-00025, AR-00030) |
-| T-02 | egui walking skeleton | 00019 | MVP | T-01, T-42 | M | Restarted clean from the T-01 commit; eframe window starts on Fedora Wayland and X11, with an open-file dialog and an empty component list; new licences of egui dependencies, such as OFL-1.1, approved by the product owner and added to `deny.toml` with the allow-list test; windowing duplicates removed, or skipped for windows targets with a reason, see open question 20; backlog items R-02 to R-04 done; `gui_editor` CI gate green (AR-00003, AR-00004, AR-00025) |
+| T-02 | egui walking skeleton | 00019 | MVP | T-01, T-42 | M | Restarted clean from the T-01 commit; eframe window starts on Fedora Wayland and X11, with an open-file dialog and an empty component list; new licences of egui dependencies, such as OFL-1.1, approved by the product owner and added to `deny.toml` with the allow-list test; windowing duplicates removed, or skipped for windows targets with a reason, see open question 20; backlog items R-02 to R-05 done; `gui_editor` CI gate green (AR-00003, AR-00004, AR-00025) |
 | T-03 | Check of save gaps after T-40 | 00002 | MVP | T-01, T-40 | S | Short check, no fixes: open and save of every fixture compared with the source; each element that `sad_xml_sql` still drops or reorders, apart from the Known save limitations, listed and assigned to T-12 or proposed as a Known save limitation; elements fixed by T-40 not re-checked beyond the existing T-40 tests |
 | T-04 | Hardened XML reader | 00021 | MVP | T-44 | M | External entity and entity expansion fixtures rejected; no external DTD loaded; file over 64 MiB or nesting over 32 levels rejected (AR-00010, AR-00011, AR-00031) |
 | T-05 | Errors instead of crashes | 00021 | MVP | T-04 | M | No `expect`, panic, or exit on input paths, including `update_component_by_id`; legacy tests expect error values; 1 hour of fuzzing without crash (AR-00012) |
@@ -270,29 +284,31 @@ Task T-48 is not scheduled and is listed in [Deferred](#deferred).
 | T-39 | Regression tests for `sad2md` and `tui_editor` | 00002 | MVP | T-01 | M | Done, reviewed, approved, and committed. Fixed `tui_editor/Cargo.lock` with `sad_xml_sql` 0.7.3 committed; `sad2md` golden-output tests over the fixtures; `tui_editor` tests for load, edit, and save through `sad_xml_sql`, without a terminal; both suites run with `--locked` in CI and pass (AR-00030) |
 | T-40 | Fix failing `sad_xml_sql` test | 00002 | MVP | T-39 | S | Done, reviewed, approved with nits N1 to N6, see [Backlog](#backlog), and committed. `db_update::tests::test_insert_into_context_model_ignore_duplicates_ignores_duplicate` passes without a panic at `src/db_update.rs:212`; root cause fixed in code, or test correction justified in the change set; `sad2md` and `tui_editor` suites pass (AR-00030). The change set also holds the save round-trip fix, so T-03 and T-12 cover only the remaining gaps |
 | T-41 | Security upgrade of shipped crates | 00019 | MVP | T-40 | L | Done and committed; `ratatui` upgraded to 0.30.2 and `tui-textarea` replaced with `ratatui-textarea` 0.9.4. `rusqlite` 0.41 with `libsqlite3-sys` 0.39 or later in `sad_xml_sql`, `sad2md`, and `tui_editor`, fixing RUSTSEC-2026-0459; `tui_editor` upgrades fix RUSTSEC-2026-0009, RUSTSEC-2025-0055, RUSTSEC-2024-0436, RUSTSEC-2026-0253, RUSTSEC-2026-0002, and RUSTSEC-2026-0486; no new advisory ignore entries; `cargo audit` passes for all four crates; all test suites pass (AR-00025, AR-00030) |
-| T-42 | Licences | 00019 | MVP | T-41 | S | Done; the product owner commits T-42; review nits R-02 to R-04 in [Backlog](#backlog). `license = "Apache-2.0"` in `sad2md`, `sad_xml_sql`, and `tui_editor`; Zlib and Unicode-3.0 in the `deny.toml` allow list; `deny.toml` key allow-list test in `gui_editor/tests/test_build_pipeline_config.rs` updated and passing; `cargo deny check licenses` passes for all four crates (AR-00025) |
-| T-43 | Duplicate versions | 00019 | MVP | T-02, T-42, T-47 | M | Starts from the T-52 bans baseline; path dependency versions are out of scope, because T-52 fixes the `sad2md` wildcard and `tui_editor` already has `version = "0.7.3"`; one `hashbrown` version instead of 0.12 and 0.17; the `tui_editor` duplicates left after T-41 removed through upgrades, because T-41 already removed the `crossterm`, `rustix`, `linux-raw-sys`, `unicode-width`, and `windows_*` duplicates; the `syn` 2 and `syn` 3 duplicate in `tui_editor`, added by T-41 through `thiserror` 2 in `kasuari` and `ratatui-core`, resolved by pinning `thiserror`, or by a `skip` entry with a reason, as decided after T-41; `windows-sys` 0.59 and 0.61 removed, or skipped as a windows-target duplicate; other `skip` entries only for windows-target duplicates, each with a reason, see open question 20; `multiple-versions = "deny"` kept; `cargo deny check` passes for all four crates; all test suites pass (AR-00025, AR-00030) |
-| T-44 | Clippy gate | 00019 | MVP | T-43 | M | Pinned image adds clippy through `rustup component add clippy`; CI runs `cargo clippy --locked --all-targets -- -D warnings` for all four crates; warnings fixed, not allowed in bulk; all test suites pass; CI fully green (AR-00030, see open question 8) |
+| T-42 | Licences | 00019 | MVP | T-41 | S | Done, committed as `d44c2ff`; review nits R-02 to R-04 in [Backlog](#backlog). `license = "Apache-2.0"` in `sad2md`, `sad_xml_sql`, and `tui_editor`; Zlib and Unicode-3.0 in the `deny.toml` allow list; `deny.toml` key allow-list test in `gui_editor/tests/test_build_pipeline_config.rs` updated and passing; `cargo deny check licenses` passes for all four crates (AR-00025) |
+| T-43 | Duplicate versions | 00019 | MVP | T-02, T-42, T-47, T-53 | M | Starts from the T-52 bans baseline; path dependency versions are out of scope, because T-52 fixes the `sad2md` wildcard and `tui_editor` already has `version = "0.7.3"`; the `tui_editor` duplicates left after T-41 removed through upgrades, because T-41 already removed the `crossterm`, `rustix`, `linux-raw-sys`, `unicode-width`, and `windows_*` duplicates; the `syn` 2 and `syn` 3 duplicate in `tui_editor`, added by T-41 through `thiserror` 2 in `kasuari` and `ratatui-core`, resolved by pinning `thiserror`, or by a `skip` entry with a reason, as decided after T-41; `windows-sys` 0.59 and 0.61 removed, or skipped as a windows-target duplicate; other `skip` entries only for windows-target duplicates, each with a reason, see open question 20; `multiple-versions = "deny"` kept; `cargo deny check` passes for all four crates; all test suites pass (AR-00025, AR-00030) |
+| T-44 | Clippy gate | 00019 | MVP | T-43 | M | Pinned image adds clippy through `rustup component add clippy`; CI runs `cargo clippy --locked --all-targets -- -D warnings` for all four crates; warnings fixed, not allowed in bulk, including the backlog item on `collapsible_if` in `package_license_values`; all test suites pass; CI fully green (AR-00030, see open question 8) |
 | T-45 | Requirement IDs in advisory script | 00019 | MVP | T-01 | S | Backlog nit F-15: the three comments in `gui_editor/check_advisory_ignores.sh` cite GEDT-AR-00025 instead of `DEF-04` and `DEF-06` (AR-00025) |
 | T-46 | Repository-root build fixes | 00019 | MVP | T-45 | S | Root `build.sh` uses the official `rust` image pinned by version and digest instead of `rust:latest`, runs `cargo build --locked`, names no `amber-dos` binary, and leaves build output owned by the invoking user under rootless Docker; `build_in_docker.sh` pins `rust:1.98` by digest; root `.gitignore` ignores `.cargo-home/`; `git status` shows no `.cargo-home/` entry after a build; both scripts pass `shellcheck` (AR-00025, nearest requirement, see open question 10) |
 | T-47 | Save failures reported in core and `tui_editor` | 00002 | MVP | T-41 | S | `dump_db_to_xml` returns an error value naming the output file and the cause; the `println!` debug lines in `dump_db_to_xml` removed, so the `tui_editor` screen stays clean; `tui_editor/src/work.rs` line 314 handles the `Result` and shows the error on screen; the save target stays `tui_out.xml`; edits stay in the session after a failure; read-only directory and full-disk fixtures in the `sad_xml_sql` and `tui_editor` tests, without a terminal; backlog items N2 and N4 done; all test suites pass (FR-00046, FR-00047 and FR-00048 applied to `tui_editor`, AR-00030) |
 | T-49 | Editor-only reader option for included files | 00001 | MVP | T-07 | M | `sad_xml_sql` reader option loads only Component and Team elements from included files and follows no Include of an included file; only `gui_editor` sets the option; the default read is unchanged, and the T-39 `sad2md` golden tests pass without change; tests cover both read paths (FR-00042, AR-00030) |
 | T-50 | Skipped-edit warning | 00005 | MVP | T-15, T-18 | M | Core records each edit to a Component or Team element of an included file as a skipped edit; skipped edits leave the modified flag unchanged; a direct Save shows a non-modal warning naming the address and source file of each skipped edit; exit shows a modal warning that lets the user cancel the exit, as decided on requirements open question 12; until T-51 lands, the warning states that edits to included-file items are skipped; the warning repeats on each Save or exit, also when no file is written; tests for direct Save and exit; also traces to GEDT-STORY-00002 (FR-00008, FR-00045) |
 | T-51 | Write included files | 00002 | INC-1 | T-07, T-14, T-15, T-19, T-49, T-50 | L | First task of INC-1. An included file is written only when the path resolved at write time is inside the directory of the including project file, and the write goes through the checked directory handle; traversal and symlink-swap fixtures rejected with the file kept (AR-00035); only the Component elements loaded from that file written (FR-00043); Document, Include, Team with `Member`, ViewPacket, ComponentRelation, Behavior, and Requirement copied from the file on disk and unchanged in a canonical XML compare (FR-00044); DTD check, atomic save, external-change check, and failure handling of T-13 to T-15 apply to each written file; the T-50 warning then lists only Team edits of included files; also traces to GEDT-STORY-00021 (FR-00009, FR-00046 to FR-00048) |
-| T-52 | Bans check baseline | 00019 | MVP | T-42 | S | Runs before T-02. The three `bans.skip` entries added by `5fbeeb3`, `hashbrown@0.12.3`, `syn@2.0.104`, and `windows-sys@0.59.0`, removed from `gui_editor/deny.toml`, so `bans.skip` is empty as before `5fbeeb3`; the `sad_xml_sql` path dependency in `sad2md/Cargo.toml` gets `version = "0.7.3"`, as in `tui_editor`; `test_ar_00025_ac4_deny_bans_deny_multiple_versions_and_wildcards` passes; with cargo-deny 0.22.0 and `--deny warnings`, no crate reports `unmatched-skip` or `wildcard`, and `cargo deny check bans` passes for `gui_editor`, `sad2md`, and `sad_xml_sql`; the `tui_editor` duplicates that then fail, such as `syn` 2 and 3, `hashbrown`, and `windows-sys`, stay for T-43; no new `skip` entry added; `multiple-versions = "deny"` kept; all test suites pass (AR-00025, AR-00030) |
+| T-52 | Bans check baseline | 00019 | MVP | T-42 | S | Done: tested, reviewed in two rounds, and approved with nits, see [Backlog](#backlog); commit by the product owner pending. Runs before T-02. The three `bans.skip` entries added by `5fbeeb3`, `hashbrown@0.12.3`, `syn@2.0.104`, and `windows-sys@0.59.0`, removed from `gui_editor/deny.toml`, so `bans.skip` is empty as before `5fbeeb3`; the `sad_xml_sql` path dependency in `sad2md/Cargo.toml` gets `version = "0.7.3"`, as in `tui_editor`; `test_ar_00025_ac4_deny_bans_deny_multiple_versions_and_wildcards` passes; with cargo-deny 0.22.0 and `--deny warnings`, no crate reports `unmatched-skip` or `wildcard`; `gui_editor` passes the full `cargo deny` check; the `tui_editor` duplicates that then fail, such as `syn` 2 and 3 and `windows-sys`, stay for T-43, and any `hashbrown` duplicate goes to T-53; no new `skip` entry added; `multiple-versions = "deny"` kept; all test suites pass (AR-00025, AR-00030). Deviation, by product owner decision after T-52: `cargo deny check bans` for `sad2md` and `sad_xml_sql` moves to T-53, because `hashbrown` 0.12.3 comes through `indexmap` 1.9.3 from `simple-xml-builder` 1.1.0, the newest release, and a `rusqlite` downgrade brings back RUSTSEC-2026-0459. Scope addition, by product owner decision on 2026-11-24: the `sad_xml_sql` path dependency in `aws2xml/Cargo.toml` gets `version = "0.7.3"`, and `gui_editor/tests/test_build_pipeline_config.rs` guards `aws2xml` through the separate list `VERSION_GUARDED_NON_CI_CRATES`, not `CI_CRATES`, because CI does not build `aws2xml` |
+| T-53 | Replace `simple-xml-builder` in `sad_xml_sql` | 00019 | MVP | T-47, T-52 | M | Runs after T-47 and before T-43; size range S to M. `sad_xml_sql` no longer depends on `simple-xml-builder`, and so not on `indexmap` 1 or `hashbrown` 0.12; XML output unchanged, so the T-39 `sad2md` golden tests and the `sad_xml_sql` and `tui_editor` save tests pass unchanged; `cargo deny check bans` passes for `sad2md` and `sad_xml_sql` with an empty `bans.skip`; no crate in `CI_CRATES`, `gui_editor`, `sad2md`, `sad_xml_sql`, and `tui_editor`, has more than one `hashbrown` version, checked with `cargo tree -d` or the cargo-deny bans output; any `hashbrown` duplicate left in `tui_editor` removed through upgrades in T-53, never a `skip` entry; no new crate without product owner approval: a std-only writer is the default, and any replacement crate needs approval; tests cover text escaping in the writer, because the writer emits user-controlled text into XML; `cargo audit` stays green (AR-00025, AR-00030) |
 
 ### Delivery Order
 
-The product owner approved the revised order on 2026-11-24, and added T-52 before T-02 on 2026-11-24.
+The product owner approved the revised order on 2026-11-24, added T-52 before T-02 on 2026-11-24, and added T-53 between T-47 and T-43 on 2026-11-24.
 The list follows plan order, so the list is not sorted alphabetically.
 
 - T-39, done and committed: CI runs real tests for `sad2md` and `tui_editor`. The product owner sees no app change.
 - T-40, done and committed: all test jobs pass, and the shared writer keeps more of the file on save. The product owner sees green test steps; audit and deny stay red.
 - T-41, done and committed: shipped `sad2md` and `tui_editor` no longer link the vulnerable SQLite. The product owner sees `cargo audit` green for every crate in the CI matrix, with unchanged tool behaviour.
-- T-42, done, commit by the product owner pending: licence checks pass. The product owner sees `cargo deny` licence checks green; duplicate checks stay red.
-- T-52: bans check baseline. The product owner sees no `unmatched-skip` or `wildcard` finding, `cargo deny check bans` green for `gui_editor`, `sad2md`, and `sad_xml_sql`, and the bans test passing; the `tui_editor` duplicate checks stay red until T-43.
+- T-42, done and committed: licence checks pass. The product owner sees `cargo deny` licence checks green; duplicate checks stay red.
+- T-52, done and approved, commit by the product owner pending: bans check baseline. The product owner sees no `unmatched-skip` or `wildcard` finding, `cargo deny` green for `gui_editor`, and the bans test passing; the `sad2md` and `sad_xml_sql` bans checks stay red until T-53, and the `tui_editor` duplicate checks stay red until T-43.
 - T-02: first GUI. The product owner sees an egui window on Fedora Wayland and X11, with an open-file dialog and an empty component list.
 - T-47: `tui_editor` reports save failures. The product owner sees an error on the `tui_editor` screen when a save fails, and no debug lines over the screen.
+- T-53: XML writer without `simple-xml-builder`. The product owner sees unchanged `sad2md` and `tui_editor` output, and `cargo deny check bans` green for `sad2md` and `sad_xml_sql`.
 - T-43: duplicate checks pass. The product owner sees the whole CI gate green for all four crates.
 - T-44: clippy joins the CI gate. The product owner sees CI green with clippy.
 - T-45: comment fix. The product owner sees no change.
@@ -319,6 +335,10 @@ Reasons for the order:
 - T-47 follows T-41, so the save-failure fix does not collide with the `rusqlite` upgrade in `sad_xml_sql` and `tui_editor`.
 - T-47 follows T-02, so the GUI is not delayed, and precedes T-43 and T-44, so the silent data loss in a shipped tool ends before the remaining CI work, and the `tui_editor` upgrades and clippy fixes start from the fixed code.
 - T-47 takes the `println!` removal, because T-47 already changes `dump_db_to_xml` and the debug lines break the `tui_editor` screen today.
+- T-53 follows T-52, by product owner decision after T-52, because T-52 leaves the `hashbrown` 0.12 duplicate of `simple-xml-builder` in `sad2md` and `sad_xml_sql`.
+  - Open question 20 rules out a `skip` entry, and no upgrade exists: `simple-xml-builder` 1.1.0 is the newest release, and a `rusqlite` downgrade brings back RUSTSEC-2026-0459.
+- T-53 follows T-47, because T-47 changes `dump_db_to_xml` in the same writer, and precedes T-43, so T-43 starts without any `hashbrown` duplicate in the four crates.
+- T-14 later builds the atomic save on the writer that T-53 delivers.
 - T-14 takes the atomic save of the shared core, because the editor save task needs GEDT-AR-00007, and one shared path avoids a second writer.
 - T-04 and T-08 wait for T-44, so changes to the shared reader start on a fully green CI gate.
 - T-49 follows T-07, because both change the include loading code, and precedes T-10, the first project load in the GUI.
@@ -361,14 +381,16 @@ flowchart LR
   T39 --> T40[T-40 failing test, done]
   T40 --> T03[T-03 save gap check]
   T40 --> T41[T-41 security upgrade, done]
-  T41 --> T42[T-42 licences, done]
+  T41 --> T42[T-42 licences, done and committed]
   T41 --> T47[T-47 save failures]
-  T42 --> T52[T-52 bans baseline]
+  T42 --> T52[T-52 bans baseline, done]
   T52 -. order .-> T02
   T42 --> T02[T-02 egui skeleton]
   T02 --> T43[T-43 duplicates]
   T42 --> T43
-  T47 --> T43
+  T47 --> T53[T-53 replace XML builder]
+  T52 --> T53
+  T53 --> T43
   T43 --> T44[T-44 clippy]
   T44 --> T04[T-04 hardened reader]
   T44 --> T08[T-08 bound SQL]
@@ -408,11 +430,15 @@ flowchart LR
 
 ## Backlog
 
-Review nits that need no product owner decision.
-Each item rides with the task that touches the same code.
+Review nits and findings that need no product owner decision.
+Each assigned item rides with the task that touches the same code.
+Items marked Unassigned have no task yet.
 
 | Item | Location | Taken by |
 | --- | --- | --- |
+| `aws2xml` build prints three manifest warnings, one suggesting that `opentelemetry-stdout` is unused; removing unused dependencies shrinks the audit and deny surface. | `aws2xml/Cargo.toml` | Unassigned |
+| `aws2xml` is not built, audited, or deny-checked in CI; only the manifest version test guards `aws2xml`. | CI configuration, `gui_editor/tests/test_build_pipeline_config.rs` | Unassigned |
+| Clippy `collapsible_if`, found by the T-52 tester in the T-42 function `package_license_values`. | `gui_editor/tests/test_build_pipeline_config.rs` | T-44 |
 | Docs nit: sentences wrapped across lines in the "Included files" notes. | `gui_editor/docs/REQUIREMENTS.md` | Architect, in progress; no task |
 | F-15, T-01 review: comments cite GEDT-AR-00025 instead of `DEF-04` and `DEF-06`. | `gui_editor/check_advisory_ignores.sh` | T-45 |
 | N1, T-40 review: `Include` elements written in FileId order, not source order; use `ORDER BY rowid` and document that only the includes of the main file are stored. | `sad_xml_sql/src/db_retrieval.rs:473-475` | T-12 |
@@ -424,6 +450,7 @@ Each item rides with the task that touches the same code.
 | R-02, T-42 review: comment lines break mid-phrase, against the comment rule. | `gui_editor/tests/test_build_pipeline_config.rs` | T-02 |
 | R-03, T-42 review: comment lines break mid-phrase, against the comment rule. | `gui_editor/tests/test_build_pipeline_config.rs` | T-02 |
 | R-04, T-42 review: the approved licence list is duplicated across two tests; share one const. | `gui_editor/tests/test_build_pipeline_config.rs` | T-02 |
+| R-05, T-52 review round 2: the alias `let wanted = key;` is redundant; rename the parameter or loop binding and drop the alias. | `gui_editor/tests/test_build_pipeline_config.rs:678` | T-02 |
 
 ## Risks
 
@@ -441,7 +468,8 @@ Each item rides with the task that touches the same code.
 | Multiple egui windows misbehave on Wayland. | INC-1 | Spike T-23, long before INC-5. |
 | Open, then save, loses data because `sad_xml_sql` drops elements. | MVP | T-40 fixes most drops; check T-03 lists the rest; canonical compare tests in T-12; the product owner accepts the Known save limitations. |
 | Partial T-02 changes from the stopped run enter the code unreviewed. | MVP | T-02 restarts clean from the T-01 commit. |
-| Shared `deny.toml` turns a `skip` entry that one crate needs into an `unmatched-skip` failure in the other crates. | MVP | T-52 empties `bans.skip`; T-43 removes duplicates through upgrades; open question 20 decides how T-02 and T-43 handle a needed `skip`. |
+| Replacing `simple-xml-builder` changes the XML output or the escaping of user-controlled text. | MVP | T-53 keeps the T-39 `sad2md` golden tests and the `sad_xml_sql` and `tui_editor` save tests unchanged, and adds escaping tests for the writer. |
+| Shared `deny.toml` turns a `skip` entry that one crate needs into an `unmatched-skip` failure in the other crates. | MVP | T-52 empties `bans.skip`; T-02 and T-43 remove duplicates through upgrades only, with no `skip` entry, as decided on open question 20. |
 | Symlink swap between the write-time check and the write redirects an included-file write. | INC-1 | T-51 checks at write time and writes through the checked directory handle; symlink-swap fixture. |
 | T-40 grew past its S size and overlaps T-03 and T-12. | MVP | The T-40 review passed with the `sad2md` and `tui_editor` suites; T-03 and T-12 shrink to the remaining gaps, as decided on question 11. |
 | Template `template_sad.xml` uses IDs such as `1101`, which the reader rejects. | MVP | Addresses with FileId first; T-17 updates the template. |
@@ -516,13 +544,13 @@ Questions for the architect:
   Options: the architect splits the included-file write part, GEDT-FR-00043, GEDT-FR-00044, and GEDT-AR-00035, into a new INC-1 story; keep GEDT-STORY-00002 in the MVP and record T-51 as its INC-1 completion.
   Default: the architect splits the story; until then the plan keeps GEDT-STORY-00002 in the MVP with T-51 in INC-1.
 
-Questions from the re-plan after commit `5fbeeb3`, pending, not blocking T-52:
+Questions from the re-plan after commit `5fbeeb3`, decided by the product owner on 2026-11-24:
 
 - 20, the shared `deny.toml` and `--deny warnings` turn every `skip` entry into an `unmatched-skip` failure in each crate without that duplicate, and the bans test requires an empty `bans.skip`.
   The T-01 follow-up decision allows windows-target `skip` entries, and the T-41 follow-up decision allows a `syn` `skip` entry in T-43; neither works with the shared config.
   Options: remove duplicates only through upgrades, with no `skip`; one `deny.toml` per crate, with the bans test adjusted; allow `unmatched-skip` as a warning, which weakens the gate.
-  Default: remove duplicates only through upgrades; decide before T-02 adds a `skip` entry.
+  Decision: upgrades only; duplicates are removed only through upgrades, never through `skip` entries, with no relaxed `multiple-versions`, `wildcards`, or `unmatched-skip` handling and no split of `deny.toml`.
 
 ## Next Step
 
-After the product owner commits T-42, hand off to developer GEDT-STORY-00019, task T-52.
+After the product owner commits T-52, hand off to developer GEDT-STORY-00019, task T-02.

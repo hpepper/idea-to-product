@@ -27,7 +27,7 @@ pem = "3"
 # `cache` is the remaining default feature.
 rusqlite = { version = "0.41.0", default-features = false, features = ["bundled", "cache"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"] }
-sad_xml_sql = { path = "../sad_xml_sql" }
+sad_xml_sql = { path = "../sad_xml_sql", version = "0.7.3" }
 secrecy = "0.10"
 serde_json = "1.0.151"
 tokio = { version = "1.53.1", features = ["full"] }

@@ -8,4 +8,4 @@ license = "Apache-2.0"
 # Default features off drops the wasm-only SQLite backend from the lock file;
 # `cache` is the remaining default feature.
 rusqlite = { version = "0.41.0", default-features = false, features = ["bundled", "cache"] }
-sad_xml_sql = { path = "../sad_xml_sql" }
+sad_xml_sql = { path = "../sad_xml_sql", version = "0.7.3" }

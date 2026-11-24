@@ -18,6 +18,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 const CI_CRATES: [&str; 4] = ["gui_editor", "sad2md", "sad_xml_sql", "tui_editor"];
+// Crates outside the CI gate whose path dependencies still carry a version,
+// by product owner decision.
+// Kept apart from CI_CRATES because CI does not build or test these crates.
+const VERSION_GUARDED_NON_CI_CRATES: [&str; 1] = ["aws2xml"];
 const CRATES_IO_INDEX: &str = "https://github.com/rust-lang/crates.io-index";
 
 fn gui_dir() -> PathBuf {
@@ -666,6 +670,12 @@ fn test_ar_00025_ac4_deny_licenses_approved_only() {
 /// Returns the raw values of every `license` key in the `[package]` table of a manifest.
 /// A `license` key in another table, such as a dependency table, does not count.
 fn package_license_values(manifest: &str) -> Vec<String> {
+    package_values(manifest, "license")
+}
+
+/// Returns the raw values of every `key` in the `[package]` table of a manifest.
+fn package_values(manifest: &str, key: &str) -> Vec<String> {
+    let wanted = key;
     let mut in_package = false;
     let mut values = Vec::new();
     for raw in manifest.lines() {
@@ -678,7 +688,7 @@ fn package_license_values(manifest: &str) -> Vec<String> {
             continue;
         }
         if let Some((key, value)) = line.split_once('=') {
-            if key.trim() == "license" {
+            if key.trim() == wanted {
                 values.push(value.trim().to_string());
             }
         }
@@ -859,6 +869,217 @@ fn test_ar_00025_ac4_deny_keys_allow_listed() {
             );
         }
     }
+}
+
+// --- GEDT-AR-00025, T-52: path dependencies carry a version ---
+
+fn is_dependency_table(header: &str) -> bool {
+    let last = header.rsplit('.').next().unwrap_or(header);
+    matches!(
+        last,
+        "dependencies" | "dev-dependencies" | "build-dependencies"
+    )
+}
+
+/// Returns the top-level keys and raw values of a one-line inline table.
+/// Example: `{ path = "..", x = [1, 2] }`.
+/// Panics on literal strings and escapes, which the reader cannot see through.
+fn inline_table_fields(value: &str) -> Vec<(String, String)> {
+    let inner = value
+        .trim()
+        .strip_prefix('{')
+        .and_then(|v| v.strip_suffix('}'))
+        .unwrap_or_else(|| panic!("not a one-line inline table: {value}"));
+    assert!(
+        !inner.contains(['\'', '\\']),
+        "inline table literal strings and escapes are not supported: {value}"
+    );
+    let mut fields = Vec::new();
+    let mut field = String::new();
+    let mut in_string = false;
+    let mut depth = 0;
+    for c in inner.chars().chain(std::iter::once(',')) {
+        match c {
+            '"' => in_string = !in_string,
+            '[' | '{' if !in_string => depth += 1,
+            ']' | '}' if !in_string => depth -= 1,
+            ',' if !in_string && depth == 0 => {
+                if let Some((key, raw)) = field.split_once('=') {
+                    fields.push((key.trim().to_string(), raw.trim().to_string()));
+                }
+                field.clear();
+                continue;
+            }
+            _ => {}
+        }
+        field.push(c);
+    }
+    fields
+}
+
+fn inline_table_keys(value: &str) -> Vec<String> {
+    inline_table_fields(value)
+        .into_iter()
+        .map(|(k, _)| k)
+        .collect()
+}
+
+/// Returns the names of path dependencies without a `version` key,
+/// in every dependency table.
+/// `cargo deny` reports such a dependency as a wildcard,
+/// which `bans.wildcards = "deny"` fails.
+/// Panics on `[dependencies.name]` tables and multi-line values,
+/// so a form the reader cannot see through fails the test instead of hiding a dependency.
+fn path_dependencies_without_version(manifest: &str) -> Vec<String> {
+    let mut in_dependencies = false;
+    let mut missing = Vec::new();
+    for raw in manifest.lines() {
+        let line = strip_toml_comment(raw).trim();
+        if line.is_empty() {
+            continue;
+        }
+        if let Some(header) = line.strip_prefix('[').and_then(|l| l.strip_suffix(']')) {
+            let header = header.trim();
+            assert!(
+                !header.split('.').rev().skip(1).any(is_dependency_table),
+                "dependency tables of the form [{header}] are not supported"
+            );
+            in_dependencies = is_dependency_table(header);
+            continue;
+        }
+        if !in_dependencies {
+            continue;
+        }
+        let (name, value) = line
+            .split_once('=')
+            .unwrap_or_else(|| panic!("dependency line is not name = value: {raw}"));
+        let value = value.trim();
+        assert_eq!(bracket_depth(value), 0, "multi-line dependency: {raw}");
+        if !value.starts_with('{') {
+            continue;
+        }
+        let keys = inline_table_keys(value);
+        if keys.iter().any(|k| k == "path") && !keys.iter().any(|k| k == "version") {
+            missing.push(name.trim().to_string());
+        }
+    }
+    missing
+}
+
+// GEDT-STORY-00019, T-52: a `path` dependency without `version` is a cargo-deny wildcard.
+// `cargo deny check bans` fails on `wildcards = "deny"` for every crate that has one.
+// The product owner extended the guard to aws2xml, which CI does not gate.
+#[test]
+fn test_ar_00025_t52_ci_crates_path_dependencies_have_version() {
+    for krate in CI_CRATES.iter().chain(&VERSION_GUARDED_NON_CI_CRATES) {
+        let path = repo_dir().join(krate).join("Cargo.toml");
+        let missing = path_dependencies_without_version(&read(&path));
+        assert!(
+            missing.is_empty(),
+            "{} path dependencies without version: {missing:?}",
+            path.display()
+        );
+    }
+}
+
+// GEDT-STORY-00019, T-52: sad2md and tui_editor pin `sad_xml_sql` by path and version.
+// The T-52 definition of done requires the versioned path form.
+// aws2xml joins by product owner decision.
+// The version equals the sad_xml_sql package version,
+// so the requirement matches the path crate.
+#[test]
+fn test_ar_00025_t52_sad_xml_sql_dependency_is_versioned_path() {
+    let package = package_values(&read(&repo_dir().join("sad_xml_sql/Cargo.toml")), "version");
+    assert_eq!(
+        package.len(),
+        1,
+        "sad_xml_sql [package] version: {package:?}"
+    );
+    for krate in ["aws2xml", "sad2md", "tui_editor"] {
+        let manifest = read(&repo_dir().join(krate).join("Cargo.toml"));
+        let line = manifest
+            .lines()
+            .map(|l| strip_toml_comment(l).trim())
+            .find(|l| {
+                l.split_once('=')
+                    .is_some_and(|(k, _)| k.trim() == "sad_xml_sql")
+            })
+            .unwrap_or_else(|| panic!("{krate} has no sad_xml_sql dependency"));
+        let fields = inline_table_fields(line.split_once('=').expect("name = value").1);
+        let value = |key: &str| {
+            fields
+                .iter()
+                .find(|(k, _)| k == key)
+                .map(|(_, v)| v.as_str())
+        };
+        assert!(value("path").is_some(), "{krate}: {line}");
+        assert_eq!(
+            value("version"),
+            Some(package[0].as_str()),
+            "{krate}: {line}"
+        );
+    }
+}
+
+// GEDT-STORY-00019, T-52: checks the path dependency reader on synthetic manifests,
+// so the version test cannot pass on a missed table, key, or comment.
+#[test]
+fn test_ar_00025_t52_path_dependencies_without_version_reader() {
+    let versioned = "[dependencies]\na = { path = \"../a\", version = \"0.1.0\" }\n";
+    assert!(path_dependencies_without_version(versioned).is_empty());
+
+    let bare = "[dependencies]\na = { path = \"../a\" }\nb = \"1\"\n";
+    assert_eq!(path_dependencies_without_version(bare), ["a"]);
+
+    let dev = "[package]\nname = \"x\"\n[dev-dependencies]\na = { path = \"../a\" }\n";
+    assert_eq!(path_dependencies_without_version(dev), ["a"], "dev");
+
+    let target = "[target.'cfg(unix)'.dependencies]\na = { path = \"../a\" }\n";
+    assert_eq!(path_dependencies_without_version(target), ["a"], "target");
+
+    let commented = "[dependencies]\na = { path = \"../a\" } # version = \"0.1.0\"\n";
+    assert_eq!(
+        path_dependencies_without_version(commented),
+        ["a"],
+        "comment"
+    );
+
+    let in_string = "[dependencies]\na = { path = \"../version = 1\" }\n";
+    assert_eq!(
+        path_dependencies_without_version(in_string),
+        ["a"],
+        "string"
+    );
+
+    let nested = "[dependencies]\na = { path = \"../a\", features = [\"version\"] }\n";
+    assert_eq!(path_dependencies_without_version(nested), ["a"], "array");
+
+    let outside = "[package]\nname = \"x\"\n[features]\nversion = []\n";
+    assert!(path_dependencies_without_version(outside).is_empty());
+
+    let dotted = "[dependencies.a]\npath = \"../a\"\n";
+    let result = std::panic::catch_unwind(|| path_dependencies_without_version(dotted));
+    assert!(result.is_err(), "dotted dependency table is not rejected");
+
+    for unsupported in [
+        "[dependencies]\na = { path = '../a' }\n",
+        "[dependencies]\na = { path = \"../a\\\" version = 1\" }\n",
+    ] {
+        let result = std::panic::catch_unwind(|| path_dependencies_without_version(unsupported));
+        assert!(
+            result.is_err(),
+            "unsupported string not rejected: {unsupported}"
+        );
+    }
+
+    let fields = inline_table_fields("{ path = \"../a\", version = \"0.1.0\" }");
+    assert_eq!(
+        fields,
+        [
+            ("path".to_string(), "\"../a\"".to_string()),
+            ("version".to_string(), "\"0.1.0\"".to_string()),
+        ]
+    );
 }
 
 // --- CI workflow structure: GEDT-AR-00024, GEDT-AR-00025, GEDT-AR-00030, AC5, AC6 ---
