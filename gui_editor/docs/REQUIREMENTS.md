@@ -90,17 +90,19 @@ Readers are the planner, the developers, and the testers of `gui_editor`.
 Traceability gaps:
 
 - Secondary: GEDT-AR-00025, supply-chain hygiene.
-  No story asks for GEDT-AR-00025; the repository security policy mandates the requirement.
+  - No story asks for GEDT-AR-00025; the repository security policy mandates the requirement.
 - Secondary: GEDT-AR-00032, program code in Rust.
-  No story asks for GEDT-AR-00032; the product owner mandates the requirement as a process parameter.
+  - No story asks for GEDT-AR-00032; the product owner mandates the requirement as a process parameter.
 - Secondary: GEDT-AR-00033, scripts in Bash.
-  No story asks for GEDT-AR-00033; the product owner mandates the requirement as a process parameter.
+  - No story asks for GEDT-AR-00033; the product owner mandates the requirement as a process parameter.
 - Secondary: GEDT-AR-00034, official Rust build image.
-  No story asks for GEDT-AR-00034; the product owner mandates the requirement as a process parameter.
+  - No story asks for GEDT-AR-00034; the product owner mandates the requirement as a process parameter.
+- Secondary: GEDT-AR-00036, version bump on change.
+  - No story asks for GEDT-AR-00036; the product owner mandates the requirement as a process parameter.
 - Orphaned requirements: none.
 - Stories without a requirement: none.
 - Removed: GEDT-AR-00006 and GEDT-AR-00022, together with the web app architecture decision.
-  The IDs stay retired.
+  - The IDs stay retired.
 
 ## Architecture and interface overview
 
@@ -328,6 +330,7 @@ so the allowed set comes from `sad_xml_sql`, the list that `sad2md` processes.
 | GEDT-AR-00032 | Hand-written program code of `gui_editor` shall be written in Rust. | Secondary | Critical | Inspection of repository |
 | GEDT-AR-00033 | When `gui_editor` needs a hand-written script, the script shall be written in Bash. | Secondary | Critical | Inspection of repository |
 | GEDT-AR-00034 | The build shall compile `gui_editor` in the Docker Official Image `docker.io/library/rust`. | Secondary | Critical | Inspection of build |
+| GEDT-AR-00036 | When a branch changes a file under `gui_editor/src` or `gui_editor/Cargo.toml`, the branch shall set the `gui_editor` package version in `Cargo.toml` to a semantic version higher than the version on `master`. | Secondary | Critical | Inspection of the branch diff against `master` |
 
 Rationale for GEDT-AR-00032 and GEDT-AR-00033: the product owner limits the languages to reduce toolchains, reviewer skills, and supply-chain surface.
 Data and configuration formats are not program code or scripts, for example TOML, YAML, XML, Markdown, and Mermaid.

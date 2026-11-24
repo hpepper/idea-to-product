@@ -50,10 +50,12 @@ After T-01, the product owner made the follow-up decisions in the rows marked "T
 The product owner approved the task order of the T-01 follow-up on 2026-11-23.
 After T-40, the product owner decided questions 11 to 13 and approved the revised order in [Delivery Order](#delivery-order) on 2026-11-24.
 The decision on question 8 is provisional, because the product owner gave no answer.
+After T-41, the product owner made the decisions in the rows marked "T-41 follow-up" on 2026-11-24.
 
 | Question | Decision |
 | --- | --- |
 | Accepted save losses, requirements open question 8 | Accepted for the first release and recorded in REQUIREMENTS.md; no task. |
+| Advisories in `aws2xml`, T-41 follow-up | Record risk only; no task; the 16 advisories stay unassigned, see [Security Findings](#security-findings). |
 | Advisory fix, T-01 follow-up | Upgrade dependencies in task T-41; add no advisory exceptions. |
 | Clippy gate, T-01 follow-up | Add `cargo clippy -D warnings` to CI in task T-44. |
 | Clippy requirement, question 8, provisional | No answer; the planner default applies. T-44 stays under GEDT-STORY-00019 with GEDT-AR-00030 as the nearest requirement; the architect adds a clippy requirement later. |
@@ -61,6 +63,7 @@ The decision on question 8 is provisional, because the product owner gave no ans
 | Delivery order, T-01 follow-up | Approved as is: T-39, T-40, T-41, T-42, T-02, T-43, T-44, T-45, T-46, then T-03 onward. |
 | Delivery order, revision after T-40 | Approved on 2026-11-24, with T-51 moved to INC-1 and T-48 removed, see [Delivery Order](#delivery-order). |
 | DTD validation | Structural DTD checks in the Rust core now; the product owner approves `xmllint` as a CI-only tool when T-13 starts. |
+| Duplicate `syn` versions, T-41 follow-up | T-43 removes the `syn` 2 and `syn` 3 duplicate in `tui_editor` by pinning `thiserror`, or by a `skip` entry with a reason. |
 | Duplicate versions, T-01 follow-up | Remove duplicates through upgrades; `skip` only for windows-target duplicates, each with a reason; `multiple-versions = "deny"` stays. |
 | Included-file writes, question 12 | T-51, size L, is the first task of INC-1, not part of the MVP; until T-51 lands, the T-50 warning tells users that edits to included-file items are skipped. |
 | Increment order | INC-1 to INC-6 as listed. |
@@ -91,6 +94,12 @@ The decision on question 8 is provisional, because the product owner gave no ans
   - T-03 and T-12 shrink to the gaps that T-40 left, as decided on question 11.
   - The review nits are in [Backlog](#backlog).
 - The product owner commits T-39 and T-40 next.
+- T-41 is done, verified by the tester, and in review.
+  - T-41 upgrades `ratatui` to 0.30.2 and replaces `tui-textarea` with `ratatui-textarea` 0.9.4.
+  - T-41 removes RUSTSEC-2026-0459 from `aws2xml` as a side effect.
+  - T-41 removes the `crossterm`, `rustix`, `linux-raw-sys`, `unicode-width`, and `windows_*` duplicates as a side effect.
+  - T-41 adds a `syn` 2 and `syn` 3 duplicate in `tui_editor`, through `thiserror` 2 in `kasuari` and `ratatui-core`; T-43 resolves the duplicate.
+  - `aws2xml` keeps 16 known advisories that predate T-41, see [Security Findings](#security-findings).
 - Git status shows no partial T-02 change in `gui_editor`; T-02 restarts clean from the T-01 commit.
 - CI stays red until T-41 to T-43 land, because the audit and deny gate fails for `sad2md`, `sad_xml_sql`, and `tui_editor`.
 - The uncommitted change to `aws2xml/Cargo.lock` predates T-01 and belongs to no planned task.
@@ -249,9 +258,9 @@ Task T-48 is not scheduled and is listed in [Deferred](#deferred).
 | T-38 | Web feature parity | 00020 | INC-6 | T-36, T-37 | L | Shared UI suite passes in Firefox and Chromium (AR-00005, FR-00041) |
 | T-39 | Regression tests for `sad2md` and `tui_editor` | 00002 | MVP | T-01 | M | Done, reviewed, and approved; not committed; the product owner commits T-39 next. Fixed `tui_editor/Cargo.lock` with `sad_xml_sql` 0.7.3 committed; `sad2md` golden-output tests over the fixtures; `tui_editor` tests for load, edit, and save through `sad_xml_sql`, without a terminal; both suites run with `--locked` in CI and pass (AR-00030) |
 | T-40 | Fix failing `sad_xml_sql` test | 00002 | MVP | T-39 | S | Done, reviewed, and approved with nits N1 to N6, see [Backlog](#backlog); not committed; the product owner commits T-40 after T-39. `db_update::tests::test_insert_into_context_model_ignore_duplicates_ignores_duplicate` passes without a panic at `src/db_update.rs:212`; root cause fixed in code, or test correction justified in the change set; `sad2md` and `tui_editor` suites pass (AR-00030). The change set also holds the save round-trip fix, so T-03 and T-12 cover only the remaining gaps |
-| T-41 | Security upgrade of shipped crates | 00019 | MVP | T-40 | L | `rusqlite` 0.41 with `libsqlite3-sys` 0.39 or later in `sad_xml_sql`, `sad2md`, and `tui_editor`, fixing RUSTSEC-2026-0459; `tui_editor` upgrades fix RUSTSEC-2026-0009, RUSTSEC-2025-0055, RUSTSEC-2024-0436, RUSTSEC-2026-0253, RUSTSEC-2026-0002, and RUSTSEC-2026-0486; no new advisory ignore entries; `cargo audit` passes for all four crates; all test suites pass (AR-00025, AR-00030) |
+| T-41 | Security upgrade of shipped crates | 00019 | MVP | T-40 | L | Done, verified by the tester, and in review; `ratatui` upgraded to 0.30.2 and `tui-textarea` replaced with `ratatui-textarea` 0.9.4. `rusqlite` 0.41 with `libsqlite3-sys` 0.39 or later in `sad_xml_sql`, `sad2md`, and `tui_editor`, fixing RUSTSEC-2026-0459; `tui_editor` upgrades fix RUSTSEC-2026-0009, RUSTSEC-2025-0055, RUSTSEC-2024-0436, RUSTSEC-2026-0253, RUSTSEC-2026-0002, and RUSTSEC-2026-0486; no new advisory ignore entries; `cargo audit` passes for all four crates; all test suites pass (AR-00025, AR-00030) |
 | T-42 | Licences | 00019 | MVP | T-41 | S | `license = "Apache-2.0"` in `sad2md`, `sad_xml_sql`, and `tui_editor`; Zlib and Unicode-3.0 in the `deny.toml` allow list; `deny.toml` key allow-list test in `gui_editor/tests/test_build_pipeline_config.rs` updated and passing; `cargo deny check licenses` passes for all four crates (AR-00025) |
-| T-43 | Path dependency versions and duplicates | 00019 | MVP | T-02, T-42, T-47 | M | `version = "0.7"` on every `sad_xml_sql` path dependency; one `hashbrown` version; the 14 `tui_editor` duplicates removed through upgrades; `skip` entries only for windows-target duplicates, each with a reason; `multiple-versions = "deny"` kept; `cargo deny check` passes for all four crates; all test suites pass (AR-00025, AR-00030) |
+| T-43 | Path dependency versions and duplicates | 00019 | MVP | T-02, T-42, T-47 | M | `version = "0.7"` on every `sad_xml_sql` path dependency; one `hashbrown` version instead of 0.12 and 0.17; the `tui_editor` duplicates left after T-41 removed through upgrades, because T-41 already removed the `crossterm`, `rustix`, `linux-raw-sys`, `unicode-width`, and `windows_*` duplicates; the `syn` 2 and `syn` 3 duplicate in `tui_editor`, added by T-41 through `thiserror` 2 in `kasuari` and `ratatui-core`, resolved by pinning `thiserror`, or by a `skip` entry with a reason, as decided after T-41; `windows-sys` 0.59 and 0.61 removed, or skipped as a windows-target duplicate; other `skip` entries only for windows-target duplicates, each with a reason; `multiple-versions = "deny"` kept; `cargo deny check` passes for all four crates; all test suites pass (AR-00025, AR-00030) |
 | T-44 | Clippy gate | 00019 | MVP | T-43 | M | Pinned image adds clippy through `rustup component add clippy`; CI runs `cargo clippy --locked --all-targets -- -D warnings` for all four crates; warnings fixed, not allowed in bulk; all test suites pass; CI fully green (AR-00030, see open question 8) |
 | T-45 | Requirement IDs in advisory script | 00019 | MVP | T-01 | S | Backlog nit F-15: the three comments in `gui_editor/check_advisory_ignores.sh` cite GEDT-AR-00025 instead of `DEF-04` and `DEF-06` (AR-00025) |
 | T-46 | Repository-root build fixes | 00019 | MVP | T-45 | S | Root `build.sh` uses the official `rust` image pinned by version and digest instead of `rust:latest`, runs `cargo build --locked`, names no `amber-dos` binary, and leaves build output owned by the invoking user under rootless Docker; `build_in_docker.sh` pins `rust:1.98` by digest; root `.gitignore` ignores `.cargo-home/`; `git status` shows no `.cargo-home/` entry after a build; both scripts pass `shellcheck` (AR-00025, nearest requirement, see open question 10) |
@@ -268,7 +277,7 @@ The list follows plan order, so the list is not sorted alphabetically.
 - T-39, done, not committed: CI runs real tests for `sad2md` and `tui_editor`. The product owner sees no app change.
 - T-40, done, not committed: all test jobs pass, and the shared writer keeps more of the file on save. The product owner sees green test steps; audit and deny stay red.
 - Commit of T-39 and T-40 by the product owner.
-- T-41: shipped `sad2md` and `tui_editor` no longer link the vulnerable SQLite. The product owner sees `cargo audit` green for every crate, with unchanged tool behaviour.
+- T-41, verified by the tester, in review: shipped `sad2md` and `tui_editor` no longer link the vulnerable SQLite. The product owner sees `cargo audit` green for every crate in the CI matrix, with unchanged tool behaviour.
 - T-42: licence checks pass. The product owner sees `cargo deny` licence checks green; duplicate checks stay red.
 - T-02: first GUI. The product owner sees an egui window on Fedora Wayland and X11, with an open-file dialog and an empty component list.
 - T-47: `tui_editor` reports save failures. The product owner sees an error on the `tui_editor` screen when a save fails, and no debug lines over the screen.
@@ -402,6 +411,7 @@ Each item rides with the task that touches the same code.
 
 | Risk | Inc | Mitigation |
 | --- | --- | --- |
+| `aws2xml` keeps 16 known advisories in `rustls`, `rustls-webpki`, `h2`, `crypto-bigint`, and `ctutils`, and no CI gate checks `aws2xml`. | none | Unassigned, product owner decision: record risk only; see [Security Findings](#security-findings). |
 | Changes to `sad_xml_sql` break `sad2md` or `tui_editor`. | MVP | T-01 runs all their test suites in CI; T-39 adds the tests that `sad2md` and `tui_editor` lacked. |
 | Clippy with `-D warnings` reports many warnings in legacy crates. | MVP | T-44 fixes the warnings instead of allowing them; split T-44 per crate if the work grows past M. |
 | Component reorder on first save produces large git diffs. | MVP | One reorder commit per existing project before first use. |
@@ -424,7 +434,7 @@ Each item rides with the task that touches the same code.
 
 ## Security Findings
 
-Findings in existing code, found during planning, during T-01, and during the T-40 review.
+Findings in existing code, found during planning, during T-01, during the T-40 review, and during T-41.
 
 | Finding | Location | Fixed by |
 | --- | --- | --- |
@@ -432,13 +442,14 @@ Findings in existing code, found during planning, during T-01, and during the T-
 | Build uses the unpinned `rust:latest` image, names the `amber-dos` binary, and has a file ownership issue under rootless Docker. | `build.sh` at the repository root | [T-46](#task-list) |
 | Build uses the unpinned `rust:latest` image, runs without `--locked`, and names the `amber-dos` binary. | `gui_editor/build.sh` | T-01, done |
 | Include path traversal is marked TODO; `sad2md` is affected today. | `sad_xml_sql/src/db_populate_from_xml.rs` | T-07 |
+| Known advisories RUSTSEC-2026-0098, 0099, 0104, 0258, 0346 to 0349, 0382, 0383, 0385 to 0387, 0441, 0543, and 0592 in `rustls` 0.21 and 0.23, `rustls-webpki` 0.101, `h2` 0.3, `crypto-bigint`, and `ctutils`; the advisories predate T-41, and `aws2xml` is not in the CI matrix. | `aws2xml` | Unassigned, product owner decision: record risk only |
 | Malformed input crashes the reader through `expect`; `sad2md` is affected today. | `sad_xml_sql/src/db_update.rs`, `sad_xml_sql/src/db_populate_from_xml.rs` | T-05 |
 | Save discards the `dump_db_to_xml` result, so a failed save loses edits without notice. | `tui_editor/src/work.rs` line 314 | [T-47](#task-list) |
 | Save writes in place with `File::create`, so an interrupted save truncates the file. | `sad_xml_sql/src/db_dump_to_xml.rs` | [T-14](#task-list) |
-| SQLite CVE through `libsqlite3-sys` 0.33, RUSTSEC-2026-0459. | `sad2md`, `sad_xml_sql`, `tui_editor` | T-41 |
+| SQLite CVE through `libsqlite3-sys` 0.33, RUSTSEC-2026-0459. | `aws2xml`, `sad2md`, `sad_xml_sql`, `tui_editor` | T-41, in review; `aws2xml` fixed as a side effect |
 | Untracked `.cargo-home/` at the repository root can be committed by accident. | Repository root | [T-46](#task-list) |
 | Untracked `.cargo-home/` registry caches can be committed by accident. | `aws2xml/`, `gui_editor/` | T-01, done |
-| Vulnerable, unsound, or unmaintained `time`, `tracing-subscriber`, `paste`, `lru`, and `rustix` versions. | `tui_editor` | T-41 |
+| Vulnerable, unsound, or unmaintained `time`, `tracing-subscriber`, `paste`, `lru`, and `rustix` versions. | `tui_editor` | T-41, in review |
 
 ## Open Questions
 

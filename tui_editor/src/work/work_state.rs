@@ -1,7 +1,7 @@
 use ratatui::{style::{Color, Style}, widgets::ListState};
 use crate::work::work_component_render::ComponentTextAreas;
 use crate::work::work_viewpacket_render::ViewPacketEditorFieldData;
-use tui_textarea::{Input, Key, TextArea};
+use ratatui_textarea::{Input, Key, TextArea};
 
 pub struct WorkState {
     pub list_state: ListState,

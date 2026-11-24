@@ -8,7 +8,7 @@ use ratatui::{
     Frame,
 };
 use rusqlite::Connection;
-use tui_textarea::{Input, Key, TextArea};
+use ratatui_textarea::{Input, Key, TextArea};
 
 use sad_xml_sql::{
     dump_db_to_xml, get_component_by_name, get_vector_of_component_names_sorted,
@@ -412,7 +412,7 @@ pub fn handle_work_input(
             // Handle textarea input when editor is active
             // _ if work_state.active_pane == WorkPane::Editor => {
             //     let input = crossterm::event::KeyEvent::new(key_code, modifiers);
-            //     work_state.textarea.input(tui_textarea::Input::from(input));
+            //     work_state.textarea.input(ratatui_textarea::Input::from(input));
             //     true
             // }
             _ => false, // Key not handled by work pane
@@ -423,7 +423,7 @@ pub fn handle_work_input(
     event_handled
 }
 
-// To convert the crossterm keycode to tui_textarea::Input(via ratatui Key)
+// To convert the crossterm keycode to ratatui_textarea::Input(via ratatui Key)
 fn keyevent_to_input(key_event: KeyEvent) -> Input {
     let key = match key_event.code {
         KeyCode::Backspace => Key::Backspace,

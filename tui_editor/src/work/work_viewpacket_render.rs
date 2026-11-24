@@ -7,7 +7,7 @@ use ratatui::{
 };
 
 use rusqlite::Connection;
-use tui_textarea::TextArea;
+use ratatui_textarea::TextArea;
 
 use super::work_state::WorkState;
 use sad_xml_sql::{get_viewpacket_by_title, ViewPacket};
@@ -481,7 +481,7 @@ impl ViewPacketEditorFieldData {
     }
 
     // Handle input for the active text area
-    // pub fn handle_input(&mut self, input: tui_textarea::Input) -> bool {
+    // pub fn handle_input(&mut self, input: ratatui_textarea::Input) -> bool {
     //     // Don't allow editing the ID field
     //     if self.field_in_focus == ViewPacketEditorFocusField::Id {
     //         return false;

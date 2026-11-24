@@ -4,5 +4,7 @@ version = "0.6.7"
 edition = "2021"
 
 [dependencies]
-rusqlite = { version = "0.35.0", features = ["bundled"] }
+# Default features off drops the wasm-only SQLite backend from the lock file;
+# `cache` is the remaining default feature.
+rusqlite = { version = "0.41.0", default-features = false, features = ["bundled", "cache"] }
 sad_xml_sql = { path = "../sad_xml_sql" }

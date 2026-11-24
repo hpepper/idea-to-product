@@ -7,7 +7,7 @@ use ratatui::{
 };
 
 use rusqlite::Connection;
-use tui_textarea::{TextArea};
+use ratatui_textarea::{TextArea};
 
 use sad_xml_sql::{Component, get_component_by_name};
 use super::work_state::WorkState;
@@ -302,7 +302,7 @@ impl ComponentTextAreas {
     }
 
     // Handle input for the active text area
-    pub fn handle_input(&mut self, input: tui_textarea::Input) -> bool {
+    pub fn handle_input(&mut self, input: ratatui_textarea::Input) -> bool {
         // Don't allow editing the ID field
         if self.active_field == ComponentField::Id {
             return false;

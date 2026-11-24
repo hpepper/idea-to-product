@@ -7,7 +7,7 @@
 ```rust
 [dependencies]
 sad_xml_sql = { path = "../sad_xml_sql" }
-rusqlite = { version = "0.35.0", features = ["bundled"] }
+rusqlite = { version = "0.41.0", default-features = false, features = ["bundled", "cache", "fallible_uint"] }
 ```
 
 ### main.rs

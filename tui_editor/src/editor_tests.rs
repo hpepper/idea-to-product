@@ -380,3 +380,163 @@ fn ar_00030_tui_editor_save_writes_edit_to_xml() {
         );
     }
 }
+
+// Tester checks for GEDT-STORY-00019, task T-41 (GEDT-AR-00030):
+// editor key handling after the swap from `tui-textarea` 0.7 to `ratatui-textarea` 0.9
+// and from `ratatui` 0.29 to 0.30.
+// The component field type is private to the `work` module,
+// so the tests compare the `Debug` name of the active field.
+
+/// The summary of `EDITED_COMPONENT` in the fixture.
+const EDITED_SUMMARY: &str = "Execute the battle";
+
+impl Editor {
+    /// Like `press`, but returns whether the work pane handled the key.
+    /// A cursor move changes no text, so the text area reports it as not handled.
+    fn send(&mut self, modifiers: KeyModifiers, code: KeyCode) -> bool {
+        let handled = handle_work_input(
+            &mut self.work_state,
+            KeyEvent::new(code, modifiers),
+            &self.db_conn,
+        );
+        self.render();
+        handled
+    }
+
+    fn active_field(&self) -> String {
+        format!("{:?}", self.work_state.component_text_areas.active_field)
+    }
+
+    /// Opens `EDITED_COMPONENT` in the editor with F4, without saving anything.
+    fn open_edited_component() -> Self {
+        let mut editor = Self::open(&fixture_path());
+        editor.select_component(EDITED_COMPONENT);
+        editor.press(KeyModifiers::NONE, KeyCode::F(4));
+        editor
+    }
+
+    /// The rendered screen, one string per terminal row.
+    fn screen_rows(&self) -> Vec<String> {
+        let buffer = self.terminal.backend().buffer();
+        let width = usize::from(buffer.area.width);
+        buffer
+            .content
+            .chunks(width)
+            .map(|row| row.iter().map(|cell| cell.symbol()).collect())
+            .collect()
+    }
+}
+
+#[test]
+fn t41_ar_00030_tui_editor_tab_cycles_fields_and_skips_id() {
+    let mut editor = Editor::open_edited_component();
+    assert_eq!(editor.active_field(), "Name");
+
+    let mut visited = Vec::new();
+    for _ in 0..6 {
+        editor.press(KeyModifiers::NONE, KeyCode::Tab);
+        visited.push(editor.active_field());
+    }
+
+    assert_eq!(visited, ["Purpose", "Summary", "Name", "Purpose", "Summary", "Name"]);
+}
+
+#[test]
+fn t41_ar_00030_tui_editor_backtab_cycles_fields_backwards_and_skips_id() {
+    let mut editor = Editor::open_edited_component();
+
+    let mut visited = Vec::new();
+    for _ in 0..6 {
+        editor.press(KeyModifiers::SHIFT, KeyCode::BackTab);
+        visited.push(editor.active_field());
+    }
+
+    assert_eq!(visited, ["Summary", "Purpose", "Name", "Summary", "Purpose", "Name"]);
+}
+
+/// No key sequence focuses the ID field, so typed text never reaches the ID.
+#[test]
+fn t41_ar_00030_tui_editor_id_field_stays_read_only() {
+    let mut editor = Editor::open_edited_component();
+    let original_id = editor.work_state.component_text_areas.id.lines().to_vec();
+    assert!(!original_id.concat().is_empty(), "F4 loaded no ID");
+
+    for (modifiers, code) in [
+        (KeyModifiers::NONE, KeyCode::Tab),
+        (KeyModifiers::SHIFT, KeyCode::BackTab),
+        (KeyModifiers::SHIFT, KeyCode::BackTab),
+    ] {
+        editor.press(modifiers, code);
+        assert_ne!(editor.active_field(), "Id");
+        editor.type_text("9");
+        editor.press(KeyModifiers::NONE, KeyCode::Backspace);
+    }
+
+    assert_eq!(editor.work_state.component_text_areas.id.lines(), original_id.as_slice());
+    assert!(
+        editor.screen_rows().iter().any(|row| row.contains("ID (read-only)")),
+        "editor does not show the ID as read-only"
+    );
+}
+
+/// Each mapped key in `keyevent_to_input` must reach the text area with its meaning.
+#[test]
+fn t41_ar_00030_tui_editor_editing_keys_reach_text_area() {
+    let mut editor = Editor::open_edited_component();
+    editor.press(KeyModifiers::NONE, KeyCode::Tab);
+    editor.press(KeyModifiers::NONE, KeyCode::Tab);
+    assert_eq!(editor.active_field(), "Summary");
+    let summary_lines = |editor: &Editor| editor.work_state.component_text_areas.summary.lines().to_vec();
+    assert_eq!(summary_lines(&editor), [EDITED_SUMMARY]);
+
+    editor.press(KeyModifiers::NONE, KeyCode::Backspace);
+    assert_eq!(summary_lines(&editor), ["Execute the battl"]);
+
+    editor.send(KeyModifiers::NONE, KeyCode::Home);
+    editor.type_text("X");
+    editor.press(KeyModifiers::NONE, KeyCode::Delete);
+    assert_eq!(summary_lines(&editor), ["Xxecute the battl"]);
+
+    editor.send(KeyModifiers::NONE, KeyCode::End);
+    editor.type_text("Y");
+    editor.send(KeyModifiers::NONE, KeyCode::Left);
+    editor.type_text("Z");
+    editor.send(KeyModifiers::NONE, KeyCode::Right);
+    editor.type_text("W");
+    assert_eq!(summary_lines(&editor), ["Xxecute the battlZYW"]);
+
+    // A terminal reports an uppercase letter with the SHIFT modifier.
+    editor.press(KeyModifiers::SHIFT, KeyCode::Char('Q'));
+    editor.press(KeyModifiers::NONE, KeyCode::Enter);
+    editor.type_text("2");
+    assert_eq!(summary_lines(&editor), ["Xxecute the battlZYWQ", "2"]);
+
+    editor.send(KeyModifiers::NONE, KeyCode::Up);
+    editor.send(KeyModifiers::NONE, KeyCode::Home);
+    editor.type_text("U");
+    editor.send(KeyModifiers::NONE, KeyCode::Down);
+    editor.type_text("D");
+    assert_eq!(summary_lines(&editor), ["UXxecute the battlZYWQ", "2D"]);
+
+    let screen = editor.screen_rows();
+    assert!(
+        screen.iter().any(|row| row.contains("UXxecute the battlZYWQ")),
+        "edited summary not rendered:\n{}",
+        screen.join("\n")
+    );
+}
+
+/// Esc leaves the editor without writing the edit to the database.
+#[test]
+fn t41_ar_00030_tui_editor_esc_discards_unsaved_edit() {
+    let mut editor = Editor::open_edited_component();
+    editor.press(KeyModifiers::NONE, KeyCode::Tab);
+    editor.type_text("T41-unsaved");
+
+    editor.press(KeyModifiers::NONE, KeyCode::Esc);
+
+    let stored = get_component_by_name(&editor.db_conn, EDITED_COMPONENT.to_string())
+        .expect("fixture component");
+    assert_eq!(stored.purpose, "");
+    assert_eq!(stored.summary, EDITED_SUMMARY);
+}

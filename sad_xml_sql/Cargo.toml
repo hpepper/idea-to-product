@@ -2,8 +2,14 @@
 name = "sad_xml_sql"
 version = "0.7.3"
 edition = "2021"
+license = "Apache-2.0"
 
 [dependencies]
-rusqlite = { version = "0.35.0", features = ["bundled"] }
+# `fallible_uint` restores the u64 and usize conversions,
+# which newer rusqlite versions gate behind the feature.
+# Values above i64::MAX still fail with a conversion error, as in rusqlite 0.35.
+# Default features off drops the wasm-only SQLite backend from the lock file;
+# `cache` is the remaining default feature.
+rusqlite = { version = "0.41.0", default-features = false, features = ["bundled", "cache", "fallible_uint"] }
 simple-xml-builder = "1.1.0"
 xmltree = "0.11.0"
