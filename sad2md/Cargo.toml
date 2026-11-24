@@ -2,6 +2,7 @@
 name = "sad2md"
 version = "0.6.7"
 edition = "2021"
+license = "Apache-2.0"
 
 [dependencies]
 # Default features off drops the wasm-only SQLite backend from the lock file;

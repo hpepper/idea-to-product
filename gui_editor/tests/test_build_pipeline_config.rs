@@ -642,19 +642,145 @@ fn test_ar_00025_ac4_deny_sources_crates_io_only() {
     );
 }
 
+// Product owner decision for T-42: Unicode-3.0 (unicode-ident) and Zlib (foldhash)
+// join Apache-2.0 and MIT; any other license needs a new decision.
 #[test]
-fn test_ar_00025_ac4_deny_licenses_apache_or_mit_only() {
+fn test_ar_00025_ac4_deny_licenses_approved_only() {
     let cfg = deny_toml();
     let licenses = table(&cfg, "licenses");
     for license in toml_string_array(licenses, "allow") {
         assert!(
-            matches!(license.as_str(), "Apache-2.0" | "MIT"),
+            matches!(
+                license.as_str(),
+                "Apache-2.0" | "MIT" | "Unicode-3.0" | "Zlib"
+            ),
             "licenses.allow has {license}"
         );
     }
     assert!(
         toml_array_is_empty(licenses, "exceptions"),
         "licenses.exceptions is not empty"
+    );
+}
+
+/// Returns the raw values of every `license` key in the `[package]` table of a manifest.
+/// A `license` key in another table, such as a dependency table, does not count.
+fn package_license_values(manifest: &str) -> Vec<String> {
+    let mut in_package = false;
+    let mut values = Vec::new();
+    for raw in manifest.lines() {
+        let line = strip_toml_comment(raw).trim();
+        if line.starts_with('[') {
+            in_package = line == "[package]";
+            continue;
+        }
+        if !in_package {
+            continue;
+        }
+        if let Some((key, value)) = line.split_once('=') {
+            if key.trim() == "license" {
+                values.push(value.trim().to_string());
+            }
+        }
+    }
+    values
+}
+
+// GEDT-STORY-00019, T-42: every crate the CI gate checks declares the repository license,
+// so `cargo deny check licenses` never reports a workspace crate as unlicensed.
+#[test]
+fn test_ar_00025_ac4_crates_declare_apache_license() {
+    for krate in CI_CRATES {
+        let path = repo_dir().join(krate).join("Cargo.toml");
+        let values = package_license_values(&read(&path));
+        assert_eq!(
+            values,
+            ["\"Apache-2.0\""],
+            "{} [package] license is not exactly \"Apache-2.0\"",
+            path.display()
+        );
+    }
+}
+
+// GEDT-STORY-00019, T-42: Zlib and Unicode-3.0 must be present, not only permitted,
+// and the list holds no duplicate, so a lost entry fails here before `cargo deny` runs.
+#[test]
+fn test_ar_00025_ac4_deny_licenses_allow_is_approved_set() {
+    let cfg = deny_toml();
+    let mut allow = toml_string_array(table(&cfg, "licenses"), "allow");
+    let listed = allow.len();
+    allow.sort();
+    allow.dedup();
+    assert_eq!(listed, allow.len(), "licenses.allow has duplicates");
+    assert_eq!(
+        allow,
+        ["Apache-2.0", "MIT", "Unicode-3.0", "Zlib"],
+        "licenses.allow"
+    );
+}
+
+// GEDT-AR-00025, T-42: a lower confidence threshold lets cargo-deny accept
+// a license text it only partly recognises, which weakens the license check.
+#[test]
+fn test_ar_00025_ac4_deny_licenses_confidence_threshold_kept() {
+    let cfg = deny_toml();
+    let raw = toml_raw(table(&cfg, "licenses"), "confidence-threshold")
+        .expect("licenses.confidence-threshold is set");
+    let threshold: f64 = raw
+        .parse()
+        .unwrap_or_else(|err| panic!("confidence-threshold {raw}: {err}"));
+    assert!(
+        threshold >= 0.93,
+        "licenses.confidence-threshold {threshold} is below 0.93"
+    );
+}
+
+// GEDT-STORY-00019, T-42: checks the manifest reader on synthetic manifests,
+// so the crate license test cannot pass on a missing, doubled, or misplaced key.
+#[test]
+fn test_ar_00025_ac4_package_license_values_reads_package_table_only() {
+    let one = "[package]\nname = \"a\"\nlicense = \"Apache-2.0\" # repo\n";
+    assert_eq!(package_license_values(one), ["\"Apache-2.0\""]);
+
+    let missing = "[package]\nname = \"a\"\n[dependencies]\nx = \"1\"\n";
+    assert!(
+        package_license_values(missing).is_empty(),
+        "missing license"
+    );
+
+    let twice = "[package]\nlicense = \"Apache-2.0\"\nlicense = \"MIT\"\n";
+    assert_eq!(package_license_values(twice).len(), 2, "second license");
+
+    let other_table = "[package]\nname = \"a\"\n[package.metadata]\nlicense = \"Apache-2.0\"\n\
+                       [dependencies.x]\nlicense = \"Apache-2.0\"\n";
+    assert!(
+        package_license_values(other_table).is_empty(),
+        "license outside [package]"
+    );
+
+    let before_package = "license = \"Apache-2.0\"\n[package]\nname = \"a\"\n";
+    assert!(
+        package_license_values(before_package).is_empty(),
+        "license before [package]"
+    );
+
+    let workspace = "[package]\nlicense.workspace = true\n";
+    assert!(
+        package_license_values(workspace).is_empty(),
+        "inherited license is not a literal Apache-2.0"
+    );
+
+    let commented = "[package]\n# license = \"Apache-2.0\"\n";
+    assert!(
+        package_license_values(commented).is_empty(),
+        "commented-out license"
+    );
+
+    let dual = "[package]\nlicense = \"Apache-2.0 OR GPL-3.0\"\n";
+    assert_ne!(
+        package_license_values(dual),
+        ["\"Apache-2.0\""],
+        "dual license"
     );
 }
 
