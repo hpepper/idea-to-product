@@ -20,6 +20,12 @@
 * cargo run ../sad_xml_sql/tests/test_sad.xml && cat draft_architecture.md
 * xmllint --valid  ../sad_xml_sql/tests/test_sad.xml  > t 2>u; head u
 
+### Tests
+
+* Run `cargo test --locked` in `sad2md/`.
+* `tests/golden_output.rs` runs `sad2md` on each fixture in `../sad_xml_sql/tests/` and compares `draft_architecture.md` with `tests/golden/<fixture>.md`.
+* To accept an intended output change, run `cargo run -- ../sad_xml_sql/tests/<fixture>.xml`, copy `draft_architecture.md` to `tests/golden/<fixture>.md`, and review the diff.
+
 ### Overview
 
 * read the xml and write the data into the in-memory db

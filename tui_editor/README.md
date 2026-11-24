@@ -90,6 +90,13 @@ note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 * F11 - fullscreen
 * F12 - Save as
 
+## Tests
+
+* Run `cargo test --locked` in `tui_editor/`.
+* `src/editor_tests.rs` loads `../sad_xml_sql/tests/test_sad.xml`, edits a component with F4 and F7, and checks the saved `tui_out.xml`.
+* The tests render to a ratatui `TestBackend`, so they need no terminal.
+* The save tests write `tui_out.xml` in `tui_editor/` and restore any existing copy afterwards.
+
 ## Design
 
 * Put the List for each type in their own struct, so it will remember the active/selected entry, when switching between entities.

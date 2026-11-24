@@ -46,7 +46,8 @@ If unsure which fits, ask rather than guessing.
 Applies to documentation (.md).
 
 - One sentence per line. Start each new sentence on a new line.
-- Never wrap a sentence, whatever its length.
+- Never wrap a sentence, list item, or field value, whatever its length, including lists of IDs.
+- When editing a line that is already wrapped, join the line into one line.
 
 ### Code comments
 

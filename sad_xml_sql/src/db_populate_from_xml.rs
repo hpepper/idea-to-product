@@ -27,7 +27,7 @@ pub fn db_populate_from_xml(db_conn: &Connection, filename: &String) {
     populate_db_with_components(db_conn, &xml_root, file_id);
     populate_db_with_componentrelations(db_conn, &xml_root);
     populate_db_with_includes(db_conn, &xml_root, parent);
-    populate_db_with_teams(db_conn, &xml_root);
+    populate_db_with_teams(db_conn, &xml_root, file_id);
 }
 
 fn update_file_id_for_filename(db_conn: &Connection, file_id: u64, filename: String) {
@@ -51,7 +51,7 @@ pub fn db_populate_from_include_xml(db_conn: &Connection, filename: &String, ori
     populate_db_with_viewpackets(db_conn, &xml_root, file_id);
 
     populate_db_with_components(db_conn, &xml_root, file_id);
-    populate_db_with_teams(db_conn, &xml_root);
+    populate_db_with_teams(db_conn, &xml_root, file_id);
 }
 // TODO itterate though include elements of the document of the first file.
 // TODO do not load viewpackets from include files.
@@ -377,7 +377,7 @@ fn populate_db_with_includes(db_conn: &Connection, xml_root: &Element, parent: &
     }
 }
 
-fn populate_db_with_teams(db_conn: &Connection, xml_root: &Element) {
+fn populate_db_with_teams(db_conn: &Connection, xml_root: &Element, file_id: u64) {
     // Insert the data
     for child in &xml_root.children {
         match child {
@@ -400,9 +400,9 @@ fn populate_db_with_teams(db_conn: &Connection, xml_root: &Element) {
                     // TODO also read the members and their roles and put in the member table.
                     db_conn
                         .execute(
-                            "INSERT INTO team (id, name, description)
-                            VALUES (?1, ?2, ?3)",
-                            (id, &name.to_string(), &description.to_string()),
+                            "INSERT INTO team (id, name, description, file_id)
+                            VALUES (?1, ?2, ?3, ?4)",
+                            (id, &name.to_string(), &description.to_string(), file_id),
                         )
                         .expect("Unable to insert data into team");
                 }

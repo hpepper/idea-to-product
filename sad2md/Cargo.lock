@@ -108,7 +108,7 @@ dependencies = [
 
 [[package]]
 name = "sad2md"
-version = "0.6.6"
+version = "0.6.7"
 dependencies = [
  "rusqlite",
  "sad_xml_sql",

@@ -70,8 +70,7 @@ Proposed measurable outcomes, pending confirmation, see open question 1:
   - UI toolkit is egui, because egui supports both native and web apps.
   - Native Linux app ships before the web app, from the voice of the business.
 - Assumptions:
-  - Loaded project data is held in an in-memory SQLite database for search and update,
-    from the voice of the developer.
+  - Loaded project data is held in an in-memory SQLite database for search and update, from the voice of the developer.
     The architect confirms or replaces this design.
   - One user edits a project at a time.
   - Version history and audit come from the user's version control, for example git.
@@ -93,8 +92,7 @@ Proposed measurable outcomes, pending confirmation, see open question 1:
   - Opening an invalid file shows an error naming the file and the failing location.
   - Opening an invalid file leaves the file unchanged.
 - Dependent on: GEDT-STORY-00021
-- Requirements: GEDT-AR-00001, GEDT-AR-00012, GEDT-AR-00013, GEDT-AR-00027, GEDT-FR-00001,
-  GEDT-FR-00002, GEDT-FR-00003
+- Requirements: GEDT-AR-00001, GEDT-AR-00012, GEDT-AR-00013, GEDT-AR-00027, GEDT-FR-00001, GEDT-FR-00002, GEDT-FR-00003, GEDT-FR-00042
 
 #### GEDT-STORY-00002 - As a maintainer, I want to save the project to its XML file so that other SAD tools can use my changes
 
@@ -108,8 +106,7 @@ Proposed measurable outcomes, pending confirmation, see open question 1:
   - Opening, then saving without edits, keeps every component, viewpacket, and relation.
   - `sad2md` processes a file saved by the editor without errors.
 - Dependent on: GEDT-STORY-00001, GEDT-STORY-00022
-- Requirements: GEDT-AR-00001, GEDT-AR-00002, GEDT-AR-00030, GEDT-FR-00004, GEDT-FR-00005,
-  GEDT-FR-00006, GEDT-FR-00009
+- Requirements: GEDT-AR-00001, GEDT-AR-00002, GEDT-AR-00030, GEDT-AR-00035, GEDT-FR-00004, GEDT-FR-00005, GEDT-FR-00006, GEDT-FR-00009, GEDT-FR-00043, GEDT-FR-00044, GEDT-FR-00045, GEDT-FR-00046, GEDT-FR-00047, GEDT-FR-00048
 
 #### GEDT-STORY-00003 - As a maintainer, I want the editor to save automatically so that I lose at most one minute of work
 
@@ -122,7 +119,7 @@ Proposed measurable outcomes, pending confirmation, see open question 1:
   - With unsaved changes, the editor saves within 60 seconds of the first unsaved change.
   - Without unsaved changes, the editor does not rewrite the file.
 - Dependent on: GEDT-STORY-00002
-- Requirements: GEDT-AR-00007, GEDT-AR-00029, GEDT-FR-00007, GEDT-FR-00008, GEDT-FR-00009
+- Requirements: GEDT-AR-00007, GEDT-AR-00029, GEDT-FR-00007, GEDT-FR-00008, GEDT-FR-00009, GEDT-FR-00047, GEDT-FR-00048
 
 ## Editing
 
@@ -154,7 +151,7 @@ Proposed measurable outcomes, pending confirmation, see open question 1:
   - Changing a component name updates every reference to that component.
   - The component ID does not change on edit.
 - Dependent on: GEDT-STORY-00004
-- Requirements: GEDT-FR-00013, GEDT-FR-00014, GEDT-FR-00015, GEDT-FR-00016
+- Requirements: GEDT-FR-00013, GEDT-FR-00014, GEDT-FR-00015, GEDT-FR-00016, GEDT-FR-00045
 
 ### Viewpackets
 
@@ -396,11 +393,9 @@ Proposed measurable outcomes, pending confirmation, see open question 1:
 - Acceptance criteria:
   - Opening a file with an external entity does not read the referenced file.
   - Opening a file does not make a network request.
-  - Opening a file with deeply nested or expanding entities fails with an error,
-    and the editor stays responsive.
+  - Opening a file with deeply nested or expanding entities fails with an error, and the editor stays responsive.
 - Dependent on: none
-- Requirements: GEDT-AR-00010, GEDT-AR-00011, GEDT-AR-00012, GEDT-AR-00013, GEDT-AR-00014,
-  GEDT-AR-00015, GEDT-AR-00016, GEDT-AR-00029, GEDT-AR-00031
+- Requirements: GEDT-AR-00010, GEDT-AR-00011, GEDT-AR-00012, GEDT-AR-00013, GEDT-AR-00014, GEDT-AR-00015, GEDT-AR-00016, GEDT-AR-00029, GEDT-AR-00031, GEDT-AR-00035
 
 #### GEDT-STORY-00022 - As a maintainer, I want saves that never corrupt the project file so that an interrupted save does not lose my SAD
 
@@ -410,8 +405,7 @@ Proposed measurable outcomes, pending confirmation, see open question 1:
 - Root reason: Autosave writes often, which raises the chance of an interrupted write.
 - What if not done: A crash during save can destroy the whole project file.
 - Acceptance criteria:
-  - Killing the editor during a save leaves either the previous or the new file,
-    and the file validates against the SAD DTD.
+  - Killing the editor during a save leaves either the previous or the new file, and the file validates against the SAD DTD.
   - Saving keeps the file permissions of the original file.
 - Dependent on: none
 - Requirements: GEDT-AR-00007, GEDT-AR-00008, GEDT-AR-00009, GEDT-FR-00006

@@ -1,5 +1,5 @@
 use crate::models::{
-    Behavior, Component, ComponentRelation, ContextModel, Document, Team, ViewPacket,
+    Behavior, Component, ComponentRelation, ContextModel, Document, Include, Team, ViewPacket,
 };
 
 use crate::convert_from_id_to_address;
@@ -232,7 +232,9 @@ pub fn get_vector_of_context_model_by_key(
         .collect::<Vec<_>>();
 
     let mut stmt = db_conn.prepare(
-        "INSERT INTO context_model (key, entity, entity_type, description, reference) 
+        // OR IGNORE keeps the UNIQUE constraint on context_model from failing the lookup,
+        // when a row is already present.
+        "INSERT OR IGNORE INTO context_model (key, entity, entity_type, description, reference)
          VALUES (?1, ?2, ?3, ?4, ?5)",
     )?;
 
@@ -466,6 +468,44 @@ pub fn get_document(db_conn: &Connection) -> Result<Document> {
             summary: row.get(4)?,
         })
     })
+}
+
+/// Get the includes of the main file, sorted by the `FileId` of the included file.
+pub fn get_vector_of_includes_sorted_by_file_id(db_conn: &Connection) -> Result<Vec<Include>> {
+    let mut stmt = db_conn.prepare("SELECT file_id, filename, url FROM include ORDER BY file_id")?;
+    let includes = stmt
+        .query_map([], |row| {
+            Ok(Include {
+                file_id: row.get(0)?,
+                filename: row.get(1)?,
+                url: row.get(2)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(includes)
+}
+
+/// Get the teams of the main SAD file `main_file_id`, sorted by name.
+/// A team without a `file_id` was added in the session, so it belongs to the main file.
+pub fn get_vector_of_main_file_teams_sorted_by_name(
+    db_conn: &Connection,
+    main_file_id: u64,
+) -> Result<Vec<Team>> {
+    let mut stmt = db_conn.prepare(
+        "SELECT id, name, description FROM team
+         WHERE file_id = ?1 OR file_id IS NULL
+         ORDER BY name COLLATE NOCASE ASC",
+    )?;
+    let teams = stmt
+        .query_map([main_file_id], |row| {
+            Ok(Team {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                description: row.get::<_, Option<String>>(2)?.unwrap_or_default(),
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(teams)
 }
 
 pub fn get_include_url_by_file_id(db_conn: &Connection, file_id: u64) -> Result<String> {

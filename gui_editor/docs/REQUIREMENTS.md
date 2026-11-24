@@ -12,6 +12,9 @@ Readers are the planner, the developers, and the testers of `gui_editor`.
 
 - In scope: native Linux app, later local web app, editing and viewing of SAD XML projects.
 - Out of scope: multi-user service, authentication of users, storage formats other than SAD XML.
+- Included files: the editor loads Component and Team elements and writes back Component elements only,
+  see GEDT-FR-00042 to GEDT-FR-00045.
+  The product owner states this scope may change in the future.
 - Adopted defaults for the business-analyst open questions:
   - 2: Detect external file changes and ask before overwriting, see GEDT-FR-00009.
   - 3: Fixed autosave interval of 60 seconds, see GEDT-FR-00007.
@@ -26,9 +29,12 @@ Readers are the planner, the developers, and the testers of `gui_editor`.
 - DTD rules: Element order, required elements, and required attributes of the SAD DTD,
   plus the field rules of GEDT-AR-00013.
 - FileId: Number in `<Document><FileId>` that identifies a project.
+- Included file: SAD XML file named by an `<Include>` element of the including project file.
 - SAD: Software Architecture Documentation.
 - SAD DTD: `sad_xml_sql/tests/software_architecture_documentation.dtd`, version 0.1.0.
 - Session: One run of the editor, with one or more loaded projects.
+- Skipped edit: Edit to a Component or Team element loaded from an included file,
+  which no save writes to that file.
 - SRS: Software Requirements Specification.
 - STS: Software Testing Specification.
 
@@ -55,11 +61,11 @@ Readers are the planner, the developers, and the testers of `gui_editor`.
 
 | Story | Requirements |
 | --- | --- |
-| GEDT-STORY-00001 | GEDT-AR-00001, GEDT-AR-00012, GEDT-AR-00013, GEDT-AR-00027, GEDT-FR-00001, GEDT-FR-00002, GEDT-FR-00003 |
-| GEDT-STORY-00002 | GEDT-AR-00001, GEDT-AR-00002, GEDT-AR-00030, GEDT-FR-00004, GEDT-FR-00005, GEDT-FR-00006, GEDT-FR-00009 |
-| GEDT-STORY-00003 | GEDT-AR-00007, GEDT-AR-00029, GEDT-FR-00007, GEDT-FR-00008, GEDT-FR-00009 |
+| GEDT-STORY-00001 | GEDT-AR-00001, GEDT-AR-00012, GEDT-AR-00013, GEDT-AR-00027, GEDT-FR-00001, GEDT-FR-00002, GEDT-FR-00003, GEDT-FR-00042 |
+| GEDT-STORY-00002 | GEDT-AR-00001, GEDT-AR-00002, GEDT-AR-00030, GEDT-AR-00035, GEDT-FR-00004, GEDT-FR-00005, GEDT-FR-00006, GEDT-FR-00009, GEDT-FR-00043, GEDT-FR-00044, GEDT-FR-00045, GEDT-FR-00046, GEDT-FR-00047, GEDT-FR-00048 |
+| GEDT-STORY-00003 | GEDT-AR-00007, GEDT-AR-00029, GEDT-FR-00007, GEDT-FR-00008, GEDT-FR-00009, GEDT-FR-00047, GEDT-FR-00048 |
 | GEDT-STORY-00004 | GEDT-FR-00010, GEDT-FR-00011, GEDT-FR-00012, GEDT-FR-00013 |
-| GEDT-STORY-00005 | GEDT-FR-00013, GEDT-FR-00014, GEDT-FR-00015, GEDT-FR-00016 |
+| GEDT-STORY-00005 | GEDT-FR-00013, GEDT-FR-00014, GEDT-FR-00015, GEDT-FR-00016, GEDT-FR-00045 |
 | GEDT-STORY-00006 | GEDT-FR-00011, GEDT-FR-00017, GEDT-FR-00018, GEDT-FR-00019 |
 | GEDT-STORY-00007 | GEDT-FR-00011, GEDT-FR-00020, GEDT-FR-00021, GEDT-FR-00022 |
 | GEDT-STORY-00008 | GEDT-AR-00016, GEDT-AR-00028, GEDT-FR-00024 |
@@ -75,7 +81,7 @@ Readers are the planner, the developers, and the testers of `gui_editor`.
 | GEDT-STORY-00018 | GEDT-FR-00039, GEDT-FR-00040 |
 | GEDT-STORY-00019 | GEDT-AR-00003, GEDT-AR-00004 |
 | GEDT-STORY-00020 | GEDT-AR-00003, GEDT-AR-00005, GEDT-FR-00041 |
-| GEDT-STORY-00021 | GEDT-AR-00010, GEDT-AR-00011, GEDT-AR-00012, GEDT-AR-00013, GEDT-AR-00014, GEDT-AR-00015, GEDT-AR-00016, GEDT-AR-00029, GEDT-AR-00031 |
+| GEDT-STORY-00021 | GEDT-AR-00010, GEDT-AR-00011, GEDT-AR-00012, GEDT-AR-00013, GEDT-AR-00014, GEDT-AR-00015, GEDT-AR-00016, GEDT-AR-00029, GEDT-AR-00031, GEDT-AR-00035 |
 | GEDT-STORY-00022 | GEDT-AR-00007, GEDT-AR-00008, GEDT-AR-00009, GEDT-FR-00006 |
 | GEDT-STORY-00023 | GEDT-AR-00017, GEDT-AR-00018, GEDT-AR-00019, GEDT-AR-00020 |
 | GEDT-STORY-00024 | GEDT-AR-00021 |
@@ -89,6 +95,8 @@ Traceability gaps:
   No story asks for GEDT-AR-00032; the product owner mandates the requirement as a process parameter.
 - Secondary: GEDT-AR-00033, scripts in Bash.
   No story asks for GEDT-AR-00033; the product owner mandates the requirement as a process parameter.
+- Secondary: GEDT-AR-00034, official Rust build image.
+  No story asks for GEDT-AR-00034; the product owner mandates the requirement as a process parameter.
 - Orphaned requirements: none.
 - Stories without a requirement: none.
 - Removed: GEDT-AR-00006 and GEDT-AR-00022, together with the web app architecture decision.
@@ -136,6 +144,7 @@ Requirements traced only to GEDT-STORY-00023 or GEDT-STORY-00024 are Critical fo
 | GEDT-AR-00008 | A save shall keep the permission mode bits of the existing project file. | 00022 | Critical | Test |
 | GEDT-AR-00009 | The editor shall write project data only to project files and to temporary files in the same directory, with permission mode bits no wider than the project file. | 00022, 00025 | Critical | Test, inspection |
 | GEDT-AR-00030 | The core shall extend the shared `sad_xml_sql` library, keeping the `sad2md` and `tui_editor` test suites passing. | 00002 | Critical | Test |
+| GEDT-AR-00035 | The editor shall write an included file only when the resolved path, after symlink resolution at write time, is inside the directory of the including project file. | 00002, 00021 | Critical | Test, traversal and symlink swap fixtures |
 | GEDT-FR-00001 | When the user selects a SAD XML file, the editor shall load every Component, ViewPacket, ComponentRelation, Behavior, Team, Requirement, and Include element into the session. | 00001 | Critical | Test |
 | GEDT-FR-00002 | When a file fails XML parsing or the DTD rules, the editor shall reject the whole file with an error naming the file path, line, column, and failed rule. | 00001 | Critical | Test |
 | GEDT-FR-00003 | The editor shall open a project file without writing to the file. | 00001 | Critical | Test, compare hash and mtime |
@@ -145,6 +154,109 @@ Requirements traced only to GEDT-STORY-00023 or GEDT-STORY-00024 are Critical fo
 | GEDT-FR-00007 | With unsaved changes, the editor shall save the project within 60 seconds of the first unsaved change. | 00003 | Value adding | Test |
 | GEDT-FR-00008 | Without unsaved changes, the editor shall not write the project file. | 00003 | Value adding | Test |
 | GEDT-FR-00009 | Before each save, including autosave, the editor shall ask the user before overwriting a file that changed on disk since the last load or save. | 00002, 00003 | Critical | Test |
+| GEDT-FR-00042 | From an included file, the core shall load only the Component and Team elements into the editor session, keeping the default read of the shared `sad_xml_sql` reader unchanged. | 00001 | Critical | Test, `sad2md` golden tests |
+| GEDT-FR-00043 | When a save writes an included file, the editor shall write to that file only the Component elements loaded from that file. | 00002 | Critical | Test |
+| GEDT-FR-00044 | When a save writes an included file, the editor shall keep the Document, Include, Team, ViewPacket, ComponentRelation, Behavior, and Requirement elements of that file unchanged. | 00002 | Critical | Test, canonical XML compare |
+| GEDT-FR-00045 | When the user selects Save, directly or through exit, while the session holds a skipped edit, the editor shall show a warning that names the address and the source file of each element with a skipped edit. | 00002, 00005 | Critical | Test: direct Save shows a non-modal warning; exit shows a modal warning that lets the user cancel the exit; autosave shows no warning |
+| GEDT-FR-00046 | The core shall return every save failure as an error value that names the project file and the failure cause. | 00002 | Critical | Test, read-only directory and full disk fixtures |
+| GEDT-FR-00047 | When a save fails, the editor shall show the user the error of GEDT-FR-00046. | 00002, 00003 | Critical | Test |
+| GEDT-FR-00048 | After a failed save, the editor shall keep the project marked as modified. | 00002, 00003 | Critical | Test |
+
+TOOD fix this AI generated shit show. Update the requirements skill to adhere to a correct req doc formatting, including where to put requirement notes.
+
+Included files:
+
+- Source: product owner decision, quoted: "only components and teams are read from an include file and only those are written back.
+  This may change in the future."
+- The product owner answer to open question 9 corrects the write-back part, quoted: "GEDT-FR-00043 is wrong, it should state: When a save writes an included file, the editor shall write to that file only the Component loaded from that file."
+  GEDT-FR-00043 reads "Component" as "Component elements".
+  The read part stays: GEDT-FR-00042 loads Component and Team elements.
+- No save writes Team elements to an included file.
+  GEDT-FR-00044 keeps the Team elements of an included file unchanged, including Team `Member`.
+- Stability of GEDT-FR-00042 to GEDT-FR-00045: Low.
+  The product owner states the scope may change.
+- GEDT-FR-00001 applies to the project file the user selects.
+  GEDT-FR-00042 limits the editor session to Component and Team elements of an included file.
+- GEDT-FR-00042 follows the product owner answer to open question 5.
+  The shared `sad_xml_sql` reader gets an option that loads only Component and Team elements from an included file.
+  The option skips the viewpackets, relations, behaviors, and nested Include elements of an included file.
+  Only the editor sets the option.
+  The default read stays unchanged, so `sad2md` output and its golden tests stay unchanged, GEDT-AR-00030.
+- GEDT-FR-00043 depends on GEDT-AR-00014 and GEDT-AR-00035.
+  `PLAN.md` task T-07 adds the include path check; a later save task writes included files.
+  Until then, a save writes no included file.
+- GEDT-FR-00044 follows the product owner answer to open question 6.
+  The SAD DTD requires `ViewPacket+` in every file, so a file with only Component elements fails the DTD rules.
+- GEDT-FR-00044 keeps Team elements as the included file defines them on disk, because the `sad_xml_sql` model does not hold Team `Member`.
+- Architect default, pending product owner review in open question 13: GEDT-FR-00009 applies to each included file before a save writes that file.
+  The prompt names the included file.
+  When the user declines, the save leaves that included file as the file is on disk.
+  When the user confirms, GEDT-FR-00044 keeps the other elements as the included file holds them on disk at write time.
+  The save therefore overwrites only the Component elements of the included file.
+- GEDT-FR-00045 follows the product owner answers to open questions 7 and 11.
+  The editor allows edits to Component and Team elements of included files.
+  Until a save writes included files, every save skips both.
+  After that, every save still skips the Team edits, GEDT-FR-00043.
+- GEDT-FR-00045 covers Team edits of included files, so no edit is lost silently.
+- Autosave, GEDT-FR-00007, skips the skipped edits without a warning.
+  The user gets the warning on the next explicit Save or exit.
+- Product owner decision: a skipped edit does not count as an unsaved change for GEDT-FR-00007 and GEDT-FR-00008.
+  Autosave therefore does not rewrite an unchanged file every 60 seconds.
+- Product owner decision: GEDT-FR-00045 shows the warning on an explicit Save or exit, also when GEDT-FR-00008 leaves every file unwritten.
+- Product owner answer to open question 12: the warning of GEDT-FR-00045 is non-modal on a direct Save.
+  On exit, the warning is modal and lets the user cancel the exit, because a non-modal warning closes with the window.
+- Skipped edits stay in the session until the session ends, so each explicit Save or exit repeats the warning.
+- A crash before the next explicit Save or exit loses the skipped edits without a warning, like every other unsaved change.
+- GEDT-AR-00035 repeats the GEDT-AR-00014 check at write time, because a symlink can change between load and save.
+
+Save failures:
+
+- GEDT-FR-00006 covers a DTD rule failure before the write;
+  GEDT-FR-00046 to GEDT-FR-00048 cover every other save failure,
+  for example a failed open, write, flush, or rename.
+- GEDT-FR-00046 applies to `tui_editor` through the shared core, GEDT-AR-00030.
+- GEDT-FR-00048 keeps the next autosave attempt,
+  because GEDT-FR-00008 writes only with unsaved changes.
+- Source: tester finding in `tui_editor/src/work.rs` line 314.
+  Product owner decision: a new task under GEDT-STORY-00002 fixes the silent save failure.
+- Product owner decision, open question 10: `tui_editor` keeps the save target `tui_out.xml`.
+  `PLAN.md` task T-48, which changes the `tui_editor` save target to the loaded project file, is deferred and unscheduled.
+  T-48 is a `tui_editor` task outside the `gui_editor` scope, with no GEDT story or requirement.
+
+GEDT-FR-00005 note:
+
+- The product owner accepts the losses in [Known save limitations](#known-save-limitations) for the first release.
+- GEDT-FR-00005 stays the target; the accepted losses are known exceptions,
+  and the round-trip tests exclude only those items.
+
+#### Known save limitations
+
+The `sad_xml_sql` reader reads none of the elements below from any file,
+so a save of the including project file drops them.
+Included files are not written yet, so included files lose nothing today.
+The product owner accepts these losses as a known limitation,
+in the answer to open question 8.
+
+| Dropped item | Conflict with GEDT-STORY-00002 criterion | Conflict with requirements |
+| --- | --- | --- |
+| Team `Member` | None; the criterion names components, viewpackets, and relations only. | GEDT-FR-00001, GEDT-FR-00005; the including project file only, because GEDT-FR-00044 keeps Team elements of an included file unchanged. |
+| Top-level `Requirement` | None; the criterion names components, viewpackets, and relations only. | GEDT-FR-00001, GEDT-FR-00005. |
+| ViewPacket `ChildViewPacketId`, `ParentViewPacketId`, `SiblingViewPacketId` | Yes: each viewpacket stays, but the viewpacket loses the links to other viewpackets. | GEDT-FR-00005. |
+| ViewPacket `DiagramKey` | Yes: each viewpacket and each ComponentRelation stays, but a relation whose `Key` matches only a dropped `DiagramKey` no longer belongs to any viewpacket diagram. | GEDT-FR-00005. |
+| XML comments, in any file | None. | None; the SAD DTD defines no comments, so GEDT-FR-00005 does not cover comments. |
+
+Behavior `DiagramKey` is not a loss: `PLAN.md` task T-40, reviewed and approved, writes Behavior `DiagramKey` back exactly as in the source.
+The accepted loss is ViewPacket `DiagramKey` only, which the `sad_xml_sql` reader never reads.
+
+Consequences of the accepted losses:
+
+- The GEDT-STORY-00002 criterion for a save without edits is knowingly not fully met.
+  The criterion reads: "Opening, then saving without edits, keeps every component, viewpacket, and relation."
+  The ViewPacket `DiagramKey` and viewpacket link losses cause the gap.
+  The business analyst aligns the story criterion when the product owner asks.
+- GEDT-FR-00001 and GEDT-FR-00005 keep the full target; the dropped items are accepted exceptions.
+- Team `Member` in included files is not lost, because no save writes Team elements to an included file,
+  product owner answer to open question 9.
 
 ### Components
 
@@ -215,6 +327,7 @@ so the allowed set comes from `sad_xml_sql`, the list that `sad2md` processes.
 | GEDT-FR-00041 | The web app shall offer every edit and view function of the native app. | 00020 | Value adding | Test, shared UI suite |
 | GEDT-AR-00032 | Hand-written program code of `gui_editor` shall be written in Rust. | Secondary | Critical | Inspection of repository |
 | GEDT-AR-00033 | When `gui_editor` needs a hand-written script, the script shall be written in Bash. | Secondary | Critical | Inspection of repository |
+| GEDT-AR-00034 | The build shall compile `gui_editor` in the Docker Official Image `docker.io/library/rust`. | Secondary | Critical | Inspection of build |
 
 Rationale for GEDT-AR-00032 and GEDT-AR-00033: the product owner limits the languages to reduce toolchains, reviewer skills, and supply-chain surface.
 Data and configuration formats are not program code or scripts, for example TOML, YAML, XML, Markdown, and Mermaid.
@@ -271,8 +384,8 @@ The project size targets are assumptions; see [open questions](#open-questions).
 
 | Interface | Protocol | Format | Direction | Error handling | Versioning |
 | --- | --- | --- | --- | --- | --- |
-| Include reference | Local file read | Relative path in `<Include>` | Core reads | Path outside project directory or missing file: error, project loads without the include. | SAD DTD version |
-| SAD XML project file | Local file read, atomic write | XML 1.0, UTF-8, SAD DTD | Core reads and writes | Parse or rule failure: error with path, line, column; write failure: previous file kept. | Root `Version` attribute, 0.1.0 |
+| Include reference | Local file read, atomic write after GEDT-AR-00035 | Relative path in `<Include>`; reads Component and Team elements, GEDT-FR-00042; writes Component elements only, GEDT-FR-00043 and GEDT-FR-00044 | Core reads; core writes in a later save task | Path outside project directory or missing file: error, project loads without the include; write check fails: error, included file kept. | SAD DTD version |
+| SAD XML project file | Local file read, atomic write | XML 1.0, UTF-8, SAD DTD | Core reads and writes | Parse or rule failure: error with path, line, column; write failure: previous file kept, error shown, project stays modified, GEDT-FR-00046 to GEDT-FR-00048. | Root `Version` attribute, 0.1.0 |
 | Selection events | In-process | Rust types, window and address | Core to all windows | A window that closed is dropped from the receivers. | Crate version |
 
 Web app interfaces are defined with the web app architecture.
@@ -315,6 +428,35 @@ Web app interfaces are defined with the web app architecture.
 - Rationale: No C XML library at runtime; `xmllint` gives an independent check in tests.
 - Rejected: libxml2 at runtime; adds a C dependency with a history of entity and memory bugs.
 
+### Accepted save losses
+
+- Decision: Accept the losses in [Known save limitations](#known-save-limitations) for the first release.
+- Source: product owner answer to open question 8.
+- Rationale: The fix needs reader, writer, and schema changes in `sad_xml_sql` for each dropped item.
+- Rejected: Fix the DTD-defined items before the first release; delays the first release.
+- Consequence: The GEDT-STORY-00002 save criterion is knowingly not fully met.
+
+### Editor-only reader option for included files
+
+- Decision: Add an option to the shared `sad_xml_sql` reader that loads only Component and Team elements from an included file, GEDT-FR-00042.
+  The option skips the viewpackets, relations, behaviors, and nested Include elements of an included file.
+  Only the editor sets the option.
+- Source: product owner answer to open question 5.
+- Rationale: The default read stays unchanged, so `sad2md` output and golden tests stay unchanged.
+- Rejected: Restrict the default shared reader to Component and Team elements of included files; removes the external viewpacket links in `sad2md` output.
+- Cost: Two read paths to test.
+
+### Component-only write-back for included files
+
+- Decision: A save writes only Component elements to an included file;
+  Team elements stay unchanged.
+- Source: product owner answer to open question 9.
+- Rationale: The `sad_xml_sql` model drops Team `Member`,
+  so a Team write-back loses data the user did not edit.
+- Rejected: Write Team elements back without `Member`; extends the accepted loss to included files.
+- Rejected: Read and write Team `Member` first; needs reader, writer, and schema changes.
+- Cost: Team edits of included files are never saved; GEDT-FR-00045 warns the user.
+
 ### Encryption
 
 - Decision: The editor adds no encryption; data at rest relies on OS disk encryption.
@@ -329,12 +471,19 @@ Web app interfaces are defined with the web app architecture.
 | Autosave overwrites a file changed by `aws2xml` or a hand edit. | Medium | High | GEDT-FR-00009. |
 | Changes to `sad_xml_sql` break `sad2md` or `tui_editor`. | Medium | Medium | GEDT-AR-00030; CI runs all suites. |
 | Component reorder on first save produces large git diffs in existing files. | Medium | Low | One-time reorder commit before first use. |
-| Dump in `sad_xml_sql` drops Include, Requirement, and most Component and ViewPacket children. | Certain | High | GEDT-FR-00005; golden-file round-trip tests. |
-| Dump in `sad_xml_sql` writes Component `Title` before `TeamId`, against DTD order. | Certain | High | GEDT-FR-00006; fix the writer. |
-| Dump in `sad_xml_sql` writes root `version="0.1.1"`; the DTD requires `Version`. | Certain | High | GEDT-FR-00006; fix the writer. |
+| Dump in `sad_xml_sql` drops DTD-defined items on save. | Certain | High | T-40 restores Include elements, ViewPacket `TeamId`, and Behavior `DiagramKey`; T-03 lists the remaining gaps; GEDT-FR-00005 golden-file round-trip tests; the rest is in [Known save limitations](#known-save-limitations). |
+| Dump in `sad_xml_sql` regresses to the root attribute `version="0.1.1"`, fixed by T-40; the DTD requires `Version`. | Low | High | GEDT-FR-00006; round-trip tests. |
+| Dump in `sad_xml_sql` regresses to writing elements out of DTD order, fixed by T-40. | Low | High | GEDT-FR-00006; round-trip tests. |
+| Edits to components of an included file are lost, because no save writes included files yet. | High | Medium | GEDT-FR-00045 warns on each explicit Save or exit; a later save task writes included files. |
+| Edits to teams of an included file are lost, because no save writes Team elements to an included file. | High | Medium | GEDT-FR-00045 warns on each explicit Save or exit. |
 | Include path traversal, marked TODO in `db_populate_from_xml.rs`. | High | High | GEDT-AR-00014 before first release. |
+| Included file written with only Component elements fails the SAD DTD rule `ViewPacket+` and loses content. | Medium | High | GEDT-FR-00044. |
 | Loader in `sad_xml_sql` panics or exits on malformed input, losing unsaved work. | Certain | High | GEDT-AR-00012. |
 | Multiple egui windows misbehave on Wayland. | Medium | Medium | Prototype GEDT-FR-00032 early. |
+| Restricting the shared reader to Component and Team elements removes the external viewpacket links that `sad2md` writes for included files. | Low | Medium | GEDT-FR-00042 with an editor-only reader option; GEDT-AR-00030. |
+| Save in `tui_editor/src/work.rs` line 314 discards the `Result` of `dump_db_to_xml`, so a failed save is silent and the user loses edits. | Certain | High | GEDT-FR-00046 to GEDT-FR-00048; new task under GEDT-STORY-00002. |
+| Save in `tui_editor/src/work.rs` line 314 writes to the fixed relative path `tui_out.xml` in the working directory, not to the loaded project file. | Certain | Medium | GEDT-FR-00004 for the editor; for `tui_editor`, the product owner keeps `tui_out.xml`, open question 10, so `PLAN.md` task T-48 is deferred and unscheduled. |
+| Symlink swap between load and save redirects a write of an included file outside the project directory. | Low | High | GEDT-AR-00035. |
 | Template `template_sad.xml` uses IDs such as `1101`, which the loader rejects. | High | Medium | Open question 1; update the template. |
 | Web API reached by DNS rebinding or a cross-site page. | Medium | High | GEDT-AR-00018, GEDT-AR-00019, GEDT-AR-00020. |
 
@@ -345,6 +494,12 @@ Web app interfaces are defined with the web app architecture.
 - The writer fix changes the root attribute from `version` to `Version`, as the DTD requires.
 - Files that `sad_xml_sql` accepts today, but that break the DTD rules, fail to open in the editor.
   The error names the failing rule, so the maintainer can fix the file.
+- Viewpackets, relations, behaviors, and requirements of an included file do not show in the editor,
+  GEDT-FR-00042.
+  `sad2md` keeps the viewpackets of included files,
+  because the default read of the shared reader is unchanged.
+- A save drops the items in [Known save limitations](#known-save-limitations);
+  the product owner accepts the loss.
 
 ## Feature interaction
 
@@ -357,6 +512,9 @@ Web app interfaces are defined with the web app architecture.
 - Fixture set: valid files, DTD-rule failures, XXE, entity expansion, deep nesting,
   path traversal, `<script>` text, special characters in names.
 - Round trip: open and save each valid fixture, then compare canonical XML and run `xmllint`.
+  The compare excludes only the items in [Known save limitations](#known-save-limitations).
+- Save failure: save into a read-only directory and onto a full disk,
+  then assert the error, the kept file, and the modified flag.
 - Kill loop: kill the editor at random points during save, then validate the file.
 - Network: run the editor in a network namespace without a route, and assert zero connection attempts.
 - Web security: Host, Origin, token, and CSP tests against the local server.
@@ -384,3 +542,15 @@ None blocks the first release; the proposed defaults are in the requirements abo
   Proposed default: installation means Install; context means the ContextModelKey diagram.
 - 4: Project size and reference workstation for GEDT-AR-00027 and GEDT-AR-00028.
   Proposed default: 2,000 components, 500 viewpackets, 5,000 relations, 4 cores, 8 GiB RAM.
+- 5: Answered: editor-only reader option, see GEDT-FR-00042.
+- 6: Answered: keep the other elements of an included file unchanged, see GEDT-FR-00044.
+- 7: Answered: allow edits and warn on save, see GEDT-FR-00045.
+- 8: Answered: accept the losses, see [Known save limitations](#known-save-limitations).
+- 9: Answered: a save writes only Component elements to an included file, see GEDT-FR-00043.
+- 10: Answered: `tui_editor` keeps `tui_out.xml`; task T-48 is deferred and unscheduled, see [Save failures](#storage).
+- 11: Answered: warn when the user selects Save, directly or through exit, see GEDT-FR-00045.
+- 12: Answered: a non-modal warning on direct Save; on exit, a modal warning that lets the user cancel the exit, see GEDT-FR-00045.
+- 13: External change of an included file before a save writes that file, GEDT-FR-00009 and GEDT-FR-00044.
+  Options: the GEDT-FR-00009 prompt covers each included file; the save skips a changed included file without a prompt; the save fails.
+  Architect default: the GEDT-FR-00009 prompt covers each included file, and a confirmed save keeps the other elements as on disk at write time.
+  The default needs product owner review before the save task that writes included files.

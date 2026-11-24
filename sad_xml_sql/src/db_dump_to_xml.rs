@@ -2,38 +2,76 @@ use crate::convert_from_id_to_address;
 use rusqlite::Connection;
 use simple_xml_builder::XMLElement;
 use std::fs::File;
+use std::io::Write;
 
 use crate::db_retrieval::{
     get_document,
     get_vector_of_behaviors_sorted_by_key_and_order,
     get_vector_of_component_relations_sorted_by_key_and_order,
     get_vector_of_components_sorted_by_name,
-    get_vector_of_teams_sorted_by_name,
+    get_vector_of_includes_sorted_by_file_id,
+    get_vector_of_main_file_teams_sorted_by_name,
     get_viewpacket_vector_by_type_and_style_sorted_by_order,
 };
 
+/// The DOCTYPE the SAD fixtures declare,
+/// so DTD-aware tools validate a saved file the same way.
+const SAD_DOCTYPE: &str =
+    "<!DOCTYPE SoftwareArchitectureDocumentation SYSTEM \"software_architecture_documentation.dtd\">\n";
+
+/// Writes the main SAD file of the database to `output_file`.
+///
+/// The saved file keeps the `Include` elements of the main file,
+/// and holds only the items that belong to the main file.
+/// Items loaded from included files stay in those files,
+/// which this function never writes.
+/// Edits to items from included files are therefore not saved yet.
+/// Include paths come from file content and are not validated yet (GEDT-AR-00014, T-07),
+/// so writing to them could let a crafted file overwrite any file the user can write.
+///
+/// # Panics
+///
+/// Panics when the database has no `document` row, or when a table cannot be read.
 pub fn dump_db_to_xml(db_conn: &Connection, output_file: &str) -> Result<(), std::io::Error> {
-    let file = File::create(output_file)?;
+    let mut file = File::create(output_file)?;
 
     println!("DDD Dumping database to XML file: {}", output_file);
 
     let mut xml_root = XMLElement::new("SoftwareArchitectureDocumentation");
-    xml_root.add_attribute("version", "0.1.1");
+    // The DTD requires the attribute name `Version`, see GEDT-AR-00001.
+    xml_root.add_attribute("Version", "0.1.1");
 
-    // TODO dump the Document entry
-    dump_document_to_xml(&mut xml_root, db_conn).expect("Failed to dump document");
-    // Dump each table
+    let main_file_id =
+        dump_document_to_xml(&mut xml_root, db_conn).expect("Failed to dump document");
+    dump_table_include_to_xml(&mut xml_root, db_conn).expect("Failed to dump includes");
     // TODO dump the top architecture
-    dump_table_viewpacket_to_xml(&mut xml_root, db_conn).expect("Failed to dump view packets");
+    dump_table_viewpacket_to_xml(&mut xml_root, db_conn, main_file_id)
+        .expect("Failed to dump view packets");
     println!("DDD Dumped view packets");
-    dump_table_component_to_xml(&mut xml_root, db_conn).expect("Failed to dump components");
+    dump_table_component_to_xml(&mut xml_root, db_conn, main_file_id)
+        .expect("Failed to dump components");
     println!("DDD Dumped components");
     dump_table_componentrelation_to_xml(&mut xml_root, db_conn).expect("Failed to dump component relations");
-    dump_table_behavior_to_xml(&mut xml_root, db_conn).expect("Failed to dump behaviors");
-    dump_table_team_to_xml(&mut xml_root, db_conn).expect("Failed to dump teams");
+    dump_table_behavior_to_xml(&mut xml_root, db_conn, main_file_id)
+        .expect("Failed to dump behaviors");
+    dump_table_team_to_xml(&mut xml_root, db_conn, main_file_id).expect("Failed to dump teams");
     // TODO dump_table_requirement_to_xml(&mut xml_root, db_conn)?;
-    xml_root.write(file)?;
-    Ok(())
+    write_with_doctype(&xml_root, &mut file)
+}
+
+/// Writes the XML declaration, the SAD DOCTYPE, and then the document element.
+/// simple-xml-builder always writes the declaration as its first line,
+/// and has no DOCTYPE support, so the DOCTYPE goes in after that first line.
+fn write_with_doctype(xml_root: &XMLElement, output: &mut impl Write) -> std::io::Result<()> {
+    let mut xml_bytes = Vec::new();
+    xml_root.write(&mut xml_bytes)?;
+    let declaration_end = xml_bytes
+        .iter()
+        .position(|&byte| byte == b'\n')
+        .map_or(0, |newline| newline + 1);
+    output.write_all(&xml_bytes[..declaration_end])?;
+    output.write_all(SAD_DOCTYPE.as_bytes())?;
+    output.write_all(&xml_bytes[declaration_end..])
 }
 
 pub fn convert_id_to_address(id: u64) -> String {
@@ -46,10 +84,11 @@ pub fn convert_id_to_address(id: u64) -> String {
     format!("{}.{}.{}.{}", a, b, c, d)
 }
 
+/// Writes the `Document` element and returns the `FileId` of the main file.
 fn dump_document_to_xml(
     xml_root: &mut XMLElement,
     db_conn: &Connection,
-) -> Result<(), rusqlite::Error> {
+) -> Result<u64, rusqlite::Error> {
     let document = get_document(db_conn)?;
 
     let mut document_element = XMLElement::new("Document");
@@ -71,22 +110,49 @@ fn dump_document_to_xml(
     document_element.add_child(summary);
 
     xml_root.add_child(document_element);
+    Ok(document.file_id)
+}
+
+/// Writes each `Include` of the main file with the attribute and text it was loaded with.
+fn dump_table_include_to_xml(
+    xml_root: &mut XMLElement,
+    db_conn: &Connection,
+) -> Result<(), rusqlite::Error> {
+    for include in get_vector_of_includes_sorted_by_file_id(db_conn)? {
+        let mut include_element = XMLElement::new("Include");
+        include_element.add_attribute("url", &include.url);
+        include_element.add_text(include.filename);
+        xml_root.add_child(include_element);
+    }
     Ok(())
 }
 
+/// Returns `stored_key` without the `{file_id}-` prefix the XML reader adds to a behavior
+/// `DiagramKey`, so a save writes the key as the source file had it.
+/// Without this, each save and reload adds one more prefix.
+/// A key without the prefix,
+/// for example one created in the session, is returned unchanged.
+fn diagram_key_as_in_file(stored_key: &str, file_id: u64) -> &str {
+    stored_key.strip_prefix(&format!("{file_id}-")).unwrap_or(stored_key)
+}
+
+/// The XML reader loads behaviors from the main file only,
+/// so every behavior belongs to the main file.
 fn dump_table_behavior_to_xml(
     xml_root: &mut XMLElement,
     db_conn: &Connection,
+    main_file_id: u64,
 ) -> Result<(), rusqlite::Error> {
     let behavior_vector = get_vector_of_behaviors_sorted_by_key_and_order(db_conn)?;
 
     for behavior in behavior_vector {
         let mut behavior_element = XMLElement::new("Behavior");
-        behavior_element.add_attribute("Id", behavior.id.to_string());
+        // The XML reader expects both IDs as "a.b.c.d" addresses.
+        behavior_element.add_attribute("Id", convert_from_id_to_address(behavior.id));
         behavior_element.add_attribute("SortOrder", &behavior.sort_order.to_string());
 
         let mut view_packet_id = XMLElement::new("ViewPacketId");
-        view_packet_id.add_text(behavior.view_packet_id.to_string());
+        view_packet_id.add_text(convert_from_id_to_address(behavior.view_packet_id));
         behavior_element.add_child(view_packet_id);
 
         let mut description = XMLElement::new("Description");
@@ -94,7 +160,7 @@ fn dump_table_behavior_to_xml(
         behavior_element.add_child(description);
 
         let mut diagram_key = XMLElement::new("DiagramKey");
-        diagram_key.add_text(behavior.diagram_key.clone());
+        diagram_key.add_text(diagram_key_as_in_file(&behavior.diagram_key, main_file_id));
         behavior_element.add_child(diagram_key);
 
         xml_root.add_child(behavior_element);
@@ -105,10 +171,11 @@ fn dump_table_behavior_to_xml(
 fn dump_table_component_to_xml(
     xml_root: &mut XMLElement,
     db_conn: &Connection,
+    main_file_id: u64,
 ) -> Result<(), rusqlite::Error> {
     let component_vector = get_vector_of_components_sorted_by_name(db_conn)?;
 
-    for component in component_vector {
+    for component in component_vector.into_iter().filter(|component| component.file_id == main_file_id) {
         let mut component_element = XMLElement::new("Component");
         component_element.add_attribute("Id", convert_from_id_to_address(component.id));
         component_element.add_attribute("Name", &component.name);
@@ -121,16 +188,17 @@ fn dump_table_component_to_xml(
         summary_element.add_text(component.summary.clone());
         component_element.add_child(summary_element);
 
-        if !component.title.is_empty() {
-            let mut title_element = XMLElement::new("Title");
-            title_element.add_text(component.title.clone());
-            component_element.add_child(title_element);
-        }
         // The XML reader expects <TeamId> inside <Component>, as an "a.b.c.d" address.
+        // The DTD sequence for Component puts TeamId before Title.
         if component.team_id > 0 {
             let mut team_id_element = XMLElement::new("TeamId");
             team_id_element.add_text(convert_from_id_to_address(component.team_id));
             component_element.add_child(team_id_element);
+        }
+        if !component.title.is_empty() {
+            let mut title_element = XMLElement::new("Title");
+            title_element.add_text(component.title.clone());
+            component_element.add_child(title_element);
         }
         xml_root.add_child(component_element);
     }
@@ -140,8 +208,9 @@ fn dump_table_component_to_xml(
 fn dump_table_team_to_xml(
     xml_root: &mut XMLElement,
     db_conn: &Connection,
+    main_file_id: u64,
 ) -> Result<(), rusqlite::Error> {
-    for team in get_vector_of_teams_sorted_by_name(db_conn)? {
+    for team in get_vector_of_main_file_teams_sorted_by_name(db_conn, main_file_id)? {
         let mut team_element = XMLElement::new("Team");
         team_element.add_attribute("Id", convert_from_id_to_address(team.id));
         team_element.add_attribute("Name", &team.name);
@@ -209,9 +278,10 @@ fn dump_table_componentrelation_to_xml(
 fn dump_table_viewpacket_to_xml(
     xml_root: &mut XMLElement,
     db_conn: &Connection,
+    main_file_id: u64,
 ) -> Result<(), rusqlite::Error> {
     for module_view_style in ["Decomposition", "Uses", "UsedBy", "Generalize", "Layered"] {
-        retrieve_from_db_and_put_in_xml(db_conn, xml_root, "Module", module_view_style)?;
+        retrieve_from_db_and_put_in_xml(db_conn, xml_root, "Module", module_view_style, main_file_id)?;
     }
     for cnc_view_style in [
         "ClientServer",
@@ -220,10 +290,16 @@ fn dump_table_viewpacket_to_xml(
         "PipeAndFilter",
         "SharedData",
     ] {
-        retrieve_from_db_and_put_in_xml(db_conn, xml_root, "CnC", cnc_view_style)?;
+        retrieve_from_db_and_put_in_xml(db_conn, xml_root, "CnC", cnc_view_style, main_file_id)?;
     }
     for allocation_view_style in ["Deployment", "Install", "Assignment", "Testing"] {
-        retrieve_from_db_and_put_in_xml(db_conn, xml_root, "Allocation", allocation_view_style)?;
+        retrieve_from_db_and_put_in_xml(
+            db_conn,
+            xml_root,
+            "Allocation",
+            allocation_view_style,
+            main_file_id,
+        )?;
     }
     Ok(())
 }
@@ -233,13 +309,14 @@ fn retrieve_from_db_and_put_in_xml(
     xml_root: &mut XMLElement,
     filter_view_type: &str,
     filter_view_style: &str,
+    main_file_id: u64,
 ) -> Result<(), rusqlite::Error> {
     let viewpacket_vector = get_viewpacket_vector_by_type_and_style_sorted_by_order(
         db_conn,
         filter_view_type,
         filter_view_style,
     )?;
-    for viewpacket in viewpacket_vector {
+    for viewpacket in viewpacket_vector.into_iter().filter(|viewpacket| viewpacket.file_id == main_file_id) {
         let mut viewpacket_element = XMLElement::new("ViewPacket");
         viewpacket_element.add_attribute("Id", convert_from_id_to_address(viewpacket.viewpacket_id));
         viewpacket_element.add_attribute("ViewType", &viewpacket.view_type);
@@ -265,6 +342,14 @@ fn retrieve_from_db_and_put_in_xml(
         let mut context_model_key = XMLElement::new("ContextModelKey");
         context_model_key.add_text(viewpacket.context_model_key.clone());
         viewpacket_element.add_child(context_model_key);
+
+        // The DTD sequence for ViewPacket ends with TeamId,
+        // and the reader reads 0 as no team.
+        if viewpacket.team_id > 0 {
+            let mut team_id = XMLElement::new("TeamId");
+            team_id.add_text(convert_from_id_to_address(viewpacket.team_id));
+            viewpacket_element.add_child(team_id);
+        }
 
         xml_root.add_child(viewpacket_element);
     }
@@ -293,7 +378,15 @@ mod tests {
     fn test_dump_db_to_xml_creates_file() {
         let conn = setup_test_db();
         let output_file = "test_output.xml";
-        let _ = dump_db_to_xml(&conn, output_file);
+        // A stale file from an earlier run would hide a failed dump.
+        if let Err(error) = fs::remove_file(output_file) {
+            assert_eq!(
+                error.kind(),
+                std::io::ErrorKind::NotFound,
+                "cannot remove stale {output_file}"
+            );
+        }
+        dump_db_to_xml(&conn, output_file).expect("dump_db_to_xml failed");
         assert!(fs::metadata(output_file).is_ok());
         fs::remove_file(output_file).unwrap();
     }
@@ -335,7 +428,15 @@ mod tests {
     fn test_dump_db_to_xml_xml_structure() {
         let conn = setup_test_db();
         let output_file = "test_output_structure.xml";
-        let _ = dump_db_to_xml(&conn, output_file);
+        // A stale file from an earlier run would hide a failed dump.
+        if let Err(error) = fs::remove_file(output_file) {
+            assert_eq!(
+                error.kind(),
+                std::io::ErrorKind::NotFound,
+                "cannot remove stale {output_file}"
+            );
+        }
+        dump_db_to_xml(&conn, output_file).expect("dump_db_to_xml failed");
         let xml_content = fs::read_to_string(output_file).unwrap();
         let root = Element::parse(xml_content.as_bytes()).unwrap();
         assert_eq!(root.name, "SoftwareArchitectureDocumentation");
@@ -393,6 +494,38 @@ mod tests {
         let result = dump_document_to_xml(&mut xml_root, &conn);
 
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn ar_00002_diagram_key_as_in_file_removes_one_reader_prefix() {
+        assert_eq!(diagram_key_as_in_file("1-MSC301", 1), "MSC301");
+        assert_eq!(diagram_key_as_in_file("1-1-MSC301", 1), "1-MSC301");
+        assert_eq!(diagram_key_as_in_file("MSC301", 1), "MSC301");
+        assert_eq!(diagram_key_as_in_file("2-MSC301", 1), "2-MSC301");
+    }
+
+    #[test]
+    fn ar_00002_dump_writes_only_main_file_teams() {
+        let conn = setup_test_db();
+        conn.execute(
+            "INSERT INTO team (id, name, description, file_id) VALUES (?1, ?2, '', ?3)",
+            (crate::convert_from_address_to_id("1.0.3.1".to_string(), "test"), "Main team", 1),
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO team (id, name, description, file_id) VALUES (?1, ?2, '', ?3)",
+            (crate::convert_from_address_to_id("2.0.3.1".to_string(), "test"), "Included team", 2),
+        )
+        .unwrap();
+        crate::insert_into_team(&conn, 3, "Session team", "");
+        let output_file = "test_output_main_file_teams.xml";
+        dump_db_to_xml(&conn, output_file).unwrap();
+        let xml_content = fs::read_to_string(output_file).unwrap();
+        fs::remove_file(output_file).unwrap();
+
+        assert!(xml_content.contains("Name=\"Main team\""));
+        assert!(xml_content.contains("Name=\"Session team\""));
+        assert!(!xml_content.contains("Included team"));
     }
 
     #[test]

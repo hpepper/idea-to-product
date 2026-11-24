@@ -28,6 +28,27 @@ use menu::{handle_menu_input, render_menu, MenuState};
 mod work;
 use work::{handle_work_input, render_work, WorkState};
 
+#[cfg(test)]
+mod editor_tests;
+
+/// Opens an in-memory SAD database populated from the SAD XML file `filename`.
+///
+/// Kept apart from `main` so the tests load a project the same way the editor does,
+/// without a terminal.
+///
+/// # Panics
+///
+/// Panics when the in-memory database cannot be opened or created,
+/// or when `filename` or a file it includes cannot be loaded into the database.
+fn load_project(filename: &String) -> Connection {
+    let db_conn = Connection::open_in_memory().expect("Connecting to the SQLite database failed.");
+
+    db_create_in_mem_db(&db_conn);
+
+    db_populate_from_xml(&db_conn, filename);
+    db_conn
+}
+
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
 
@@ -46,11 +67,7 @@ fn main() -> color_eyre::Result<()> {
     let mut work_state = WorkState::new();
 
     let filename: String = "../sad_xml_sql/tests/test_sad.xml".to_string();
-    let db_conn = Connection::open_in_memory().expect("Connecting to the SQLite database failed.");
-
-    db_create_in_mem_db(&db_conn);
-
-    db_populate_from_xml(&db_conn, &filename);
+    let db_conn = load_project(&filename);
 
     loop {
         terminal.draw(|f| {

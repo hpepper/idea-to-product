@@ -31,7 +31,9 @@ fn test_xml_load_and_dump() {
     db_populate_from_xml(&db_conn, &filename);
     print_db_info(&db_conn);
     let output_file = "dump_test_output.xml";
-    let _ = dump_db_to_xml(&db_conn, output_file);
+    // A failed dump must fail the test, otherwise a stale output file from an earlier run
+    // would be parsed and the assertions below would pass on old data.
+    dump_db_to_xml(&db_conn, output_file).expect("dump_db_to_xml failed");
     // TODO: Add assertions to verify the contents of the output XML file
     let xml_content = fs::read_to_string(output_file).unwrap();
     let root = Element::parse(xml_content.as_bytes()).unwrap();
@@ -48,7 +50,7 @@ fn test_xml_load_and_dump() {
     let with_title = find_component("BattleResolver");
     assert_eq!(
         with_title.get_child("Title").and_then(|t| t.get_text()).as_deref(),
-        Some("Battle Resolver")
+        Some("The Battle Resolver")
     );
     let without_title = find_component("CardDeckStorage");
     assert!(without_title.get_child("Title").is_none());

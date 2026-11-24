@@ -67,6 +67,8 @@ fn create_table_componentrelations(db_conn: &Connection) {
 }
 
 // This table gets populated when a call to get_vector_of_context_model_by_key() is executed.
+// The UNIQUE constraint lets `INSERT OR IGNORE` drop a row that repeats every column,
+// because sad2md adds the same entity once per path through the context diagram.
 fn create_table_context_model(db_conn: &Connection) {
     // Create the tables
     db_conn
@@ -76,7 +78,8 @@ fn create_table_context_model(db_conn: &Connection) {
         entity TEXT,
         entity_type TEXT,
         description TEXT,
-        reference TEXT
+        reference TEXT,
+        UNIQUE (key, entity, entity_type, description, reference)
     )",
             [],
         )
@@ -114,12 +117,16 @@ fn create_table_include(db_conn: &Connection) {
         .expect("Failed to create include table");
 }
 
+// `file_id` is the FileId of the SAD file the team came from,
+// so a save writes only the main file's own teams.
+// NULL marks a team added in the session, which belongs to the main file.
 fn create_table_team(db_conn: &Connection) {
     // Create the tables
     db_conn
         .execute(
             "CREATE TABLE IF NOT EXISTS team (
         description TEXT,
+        file_id INTEGER,
         id INTEGER PRIMARY KEY,
         name TEXT NOT NULL
     )",
