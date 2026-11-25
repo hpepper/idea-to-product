@@ -1,7 +1,9 @@
 [package]
 name = "gui_editor"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 license = "Apache-2.0"
 
 [dependencies]
+eframe = { version = "0.37.0", default-features = false, features = ["glow", "wayland", "x11", "default_fonts"] }
+rfd = { version = "0.18.0", default-features = false, features = ["xdg-portal"] }

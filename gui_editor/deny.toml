@@ -1,13 +1,22 @@
-# cargo-deny policy for gui_editor, sad2md, sad_xml_sql, and tui_editor (GEDT-AR-00025).
-# `build.sh` runs `cargo deny --locked check --deny warnings`,
+# cargo-deny policy (GEDT-AR-00025), kept in two files.
+# - deny.toml: shared by sad2md, sad_xml_sql, and tui_editor.
+# - deny-gui_editor.toml: gui_editor only.
+# The files differ only in licenses.exceptions and bans.skip,
+# which stay empty in deny.toml.
+# cargo-deny reports an exception or a skip entry that a crate does not need,
+# so the gui_editor entries would fail the other crates.
+# `tests/test_build_pipeline_config.rs` fails when the files differ in anything else,
+# so edit both files together.
+# CI and `build.sh` pass the file with `--config` and run `check --deny warnings`,
 # so every finding fails the build.
-# CI runs the same command for the other crates with `--config ../gui_editor/deny.toml`,
-# so this file is the one policy and the one exception list for all four crates.
 # Add an exception only as an explicit entry with a reason, never by lowering a level.
 # Reference: https://embarkstudios.github.io/cargo-deny/checks/cfg.html
 
 [graph]
 all-features = true
+# Fedora on x86_64 is the only target (GEDT-AR-00004),
+# so duplicates on other platforms, such as macOS objc2 or windows-sys, are out of scope.
+targets = ["x86_64-unknown-linux-gnu"]
 
 [advisories]
 version = 2
@@ -16,7 +25,8 @@ unmaintained = "all"
 # Each entry needs { id = "RUSTSEC-...", reason = "..." } on one line.
 # Mirroring rule: .cargo/audit.toml must list the same IDs,
 # each with this reason as a comment, because `cargo audit` reads only that file.
-# `check_advisory_ignores.sh` fails the build when the two lists differ.
+# `check_advisory_ignores.sh` fails the build when the lists differ,
+# for this file and for the other policy file.
 ignore = []
 
 [licenses]
@@ -26,17 +36,24 @@ version = 2
 include-dev = true
 # Licenses compatible with the repository Apache-2.0 license.
 # Extend the list only when a new dependency needs another license.
+# ISC: libloading through glutin, x11rb, and wayland-sys,
+# by product owner decision for T-02.
 # Unicode-3.0: unicode-ident, through proc-macro2.
 # Zlib: foldhash, through hashbrown, rusqlite, and ratatui.
-allow = ["Apache-2.0", "MIT", "Unicode-3.0", "Zlib"]
+allow = ["Apache-2.0", "ISC", "MIT", "Unicode-3.0", "Zlib"]
 confidence-threshold = 0.93
-# Keeps the allow list ready for dependencies that T-02 adds.
+# Keeps the shared allow list valid for crates that do not use every license.
 unused-allowed-license = "allow"
+# Only deny-gui_editor.toml lists an exception, by product owner decision for T-02:
+# OFL-1.1 and Ubuntu-font-1.0 for the font files that epaint_default_fonts embeds.
+# The font licenses never apply to code crates, so they stay out of the allow list.
+exceptions = []
 
 [bans]
 multiple-versions = "deny"
 wildcards = "deny"
 # Each entry needs { crate = "name@version", reason = "..." }.
+# Only deny-gui_editor.toml lists entries: Linux duplicates of the eframe windowing stack.
 skip = []
 
 [sources]

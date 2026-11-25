@@ -176,7 +176,7 @@ script="$(sed -n '/^set -euo pipefail$/,$p' "$WORK/argv")"
 for expected in \
     'cargo build --locked $PROFILE_FLAG' \
     'cargo audit --deny warnings' \
-    'cargo deny --locked check --deny warnings' \
+    'cargo deny --locked --config deny-gui_editor.toml check --deny warnings' \
     'cargo install --locked cargo-audit --version "$CARGO_AUDIT_VERSION"' \
     'cargo install --locked cargo-deny --version "$CARGO_DENY_VERSION"' \
     'set -euo pipefail'; do
@@ -414,7 +414,7 @@ bash ./check_advisory_ignores.sh
 cargo install --locked cargo-audit --version "$CARGO_AUDIT_VERSION"
 cargo install --locked cargo-deny --version "$CARGO_DENY_VERSION"
 cargo audit --deny warnings
-cargo deny --locked check --deny warnings
+cargo deny --locked --config deny-gui_editor.toml check --deny warnings
 cargo build --locked $PROFILE_FLAG'
 actual_script="$(grep -v '^[[:space:]]*$' <<<"$script" || true)"
 if [[ "$actual_script" == "$expected_script" ]]; then
@@ -431,9 +431,11 @@ fi
 IGN="$WORK/ignores"
 mkdir -p "$IGN/.cargo"
 cp "$GUI_DIR/check_advisory_ignores.sh" "$IGN/"
-# Runs the check on a scratch deny.toml and audit.toml; sets $rc.
+# Runs the check on a scratch audit.toml and on two scratch policy files,
+# deny.toml and deny-gui_editor.toml, with the same content; sets $rc.
 check_ignores() {
     printf '%s\n' "$1" >"$IGN/deny.toml"
+    printf '%s\n' "$1" >"$IGN/deny-gui_editor.toml"
     printf '%s\n' "$2" >"$IGN/.cargo/audit.toml"
     set +e
     (cd "$IGN" && bash ./check_advisory_ignores.sh >/dev/null 2>&1)
@@ -528,10 +530,58 @@ id = \"${hidden_id}\"
 reason = \"not reachable\"" "$audit_empty"
 expect_check fail "AR-00025_AC4_deny_array_of_tables_hidden_id_fails"
 
+# GEDT-AR-00025, T-02: deny-gui_editor.toml is checked like deny.toml.
+# Runs the check with its own deny-gui_editor.toml content, or without the file; sets $rc.
+check_ignores_gui() {
+    check_ignores "$1" "$3"
+    if [[ "$2" == missing ]]; then
+        rm -f "$IGN/deny-gui_editor.toml"
+    else
+        printf '%s\n' "$2" >"$IGN/deny-gui_editor.toml"
+    fi
+    set +e
+    (cd "$IGN" && bash ./check_advisory_ignores.sh >/dev/null 2>&1)
+    rc=$?
+    set -e
+}
+check_ignores_gui "$deny_one" "$deny_one" "$audit_one"
+expect_check pass "AR-00025_T02_gui_policy_ignores_mirrored_pass"
+check_ignores_gui "$deny_one" missing "$audit_one"
+expect_check fail "AR-00025_T02_gui_policy_missing_fails"
+check_ignores_gui "$deny_one" "$audit_empty" "$audit_one"
+expect_check fail "AR-00025_T02_gui_policy_without_audit_ignore_fails"
+check_ignores_gui "$audit_empty" "$deny_one" "$audit_empty"
+expect_check fail "AR-00025_T02_gui_policy_only_ignore_fails"
+check_ignores_gui "$deny_one" "[advisories]
+ignore = [
+    { id = \"RUSTSEC-2021-0003\" },
+]" "$audit_one"
+expect_check fail "AR-00025_T02_gui_policy_ignore_without_reason_fails"
+# Tester cases for T-02: the shared file stays required,
+# and the subset rules reject a hidden ID in the gui_editor file too.
+check_ignores_gui "$deny_one" "$deny_one" "$audit_one"
+rm -f "$IGN/deny.toml"
+set +e
+(cd "$IGN" && bash ./check_advisory_ignores.sh >/dev/null 2>&1)
+rc=$?
+set -e
+expect_check fail "AR-00025_T02_shared_policy_missing_fails"
+check_ignores_gui "$audit_empty" "[advisories]
+ignore = []
+[bans]
+note = 'RUSTSEC-2021-0003'" "$audit_empty"
+expect_check fail "AR-00025_T02_gui_policy_single_quoted_id_fails"
+check_ignores_gui "$audit_empty" "[advisories]
+ignore = []
+[[advisories.ignore]]
+id = \"RUSTSEC-2021-0003\"" "$audit_empty"
+expect_check fail "AR-00025_T02_gui_policy_array_of_tables_id_fails"
+
 # GEDT-AR-00025 AC4: a file without a final newline is read to its last line, fail-closed.
 # Runs the check on files written without a trailing newline; sets $rc.
 check_ignores_no_eol() {
     printf '%s' "$1" >"$IGN/deny.toml"
+    printf '%s' "$1" >"$IGN/deny-gui_editor.toml"
     printf '%s' "$2" >"$IGN/.cargo/audit.toml"
     set +e
     (cd "$IGN" && bash ./check_advisory_ignores.sh >/dev/null 2>&1)

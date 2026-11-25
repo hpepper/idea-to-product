@@ -4,8 +4,9 @@
 #   and cargo deny through gui_editor/build.sh (GEDT-AR-00025).
 # - test: test suites of gui_editor, sad_xml_sql, sad2md, and tui_editor (GEDT-AR-00030),
 #   after gui-editor-build passes.
-#   Each crate first passes two checks with the gui_editor policy (GEDT-AR-00025):
+#   Each crate first passes two checks (GEDT-AR-00025):
 #   `cargo audit --deny warnings` and `cargo deny --locked check --deny warnings`,
+#   with deny-gui_editor.toml for gui_editor and the shared deny.toml otherwise,
 #   so no code or build script of the crate compiles or runs before both checks pass.
 # Actions are pinned by commit SHA and images by digest, so a moved tag cannot change CI.
 # Keep the Rust image in sync with PINNED_RUST_IMAGE in gui_editor/build.sh.
@@ -68,7 +69,7 @@ jobs:
         with:
           persist-credentials: false
       # Supply-chain gate (GEDT-AR-00025): every crate uses the gui_editor policy files,
-      # so one pair of mirrored exception lists covers all four crates.
+      # whose advisory exception lists the check keeps mirrored for all four crates.
       # The image has no $CARGO_HOME/audit.toml;
       # a list there would bypass the mirrored lists.
       - name: Check the shared advisory exception lists
@@ -85,10 +86,15 @@ jobs:
       - name: Audit the lock file
         working-directory: gui_editor
         run: cargo audit --deny warnings --file "../$CRATE/Cargo.lock"
-      # --config replaces the default <cwd>/deny.toml with the gui_editor policy.
+      # --config replaces the default <cwd>/deny.toml.
+      # gui_editor uses deny-gui_editor.toml, the other crates the shared deny.toml;
+      # a config test keeps the two files identical outside the gui_editor entries.
       - name: Check licenses, bans, sources, and advisories
         working-directory: ${{ matrix.crate }}
-        run: cargo deny --locked --config ../gui_editor/deny.toml check --deny warnings
+        run: |
+          deny_config=../gui_editor/deny.toml
+          if [ "$CRATE" = gui_editor ]; then deny_config=../gui_editor/deny-gui_editor.toml; fi
+          cargo deny --locked --config "$deny_config" check --deny warnings
       - name: Test ${{ matrix.crate }}
         working-directory: ${{ matrix.crate }}
         run: cargo test --locked

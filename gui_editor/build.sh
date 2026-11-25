@@ -83,6 +83,8 @@ fi
 # `cargo install` is a no-op when the pinned version is already in .cargo-home.
 # `--deny warnings` turns unmaintained, unsound, and yanked advisories into failures.
 # check_advisory_ignores.sh first proves that both tools share one exception list.
+# cargo deny reads deny-gui_editor.toml, the gui_editor policy;
+# deny.toml is the shared policy of the other crates.
 # Audit and deny run before the build,
 # so a flagged dependency never runs its build script or proc macros on the /app mount.
 # Neither check needs a build: audit reads Cargo.lock, and deny reads `cargo metadata`.
@@ -93,7 +95,7 @@ bash ./check_advisory_ignores.sh
 cargo install --locked cargo-audit --version "$CARGO_AUDIT_VERSION"
 cargo install --locked cargo-deny --version "$CARGO_DENY_VERSION"
 cargo audit --deny warnings
-cargo deny --locked check --deny warnings
+cargo deny --locked --config deny-gui_editor.toml check --deny warnings
 cargo build --locked $PROFILE_FLAG
 '
 

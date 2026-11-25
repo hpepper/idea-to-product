@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Fails when the cargo audit and cargo deny advisory exception lists differ
-# (GEDT-AR-00025).
+# Fails when the cargo audit advisory exception list differs from either policy file:
+# deny.toml or deny-gui_editor.toml (GEDT-AR-00025).
 # `cargo audit` reads .cargo/audit.toml, which has no reason field,
-# while `cargo deny` reads deny.toml, which requires one.
-# Mirroring the lists keeps every exception documented with a reason in deny.toml.
+# while `cargo deny` reads deny.toml or deny-gui_editor.toml, which require one.
+# Mirroring the lists keeps every exception documented with a reason in both policy files.
+# The rules below for deny.toml apply to deny-gui_editor.toml as well.
 # Uses only bash, grep, sed, and sort,
 # so it runs in the pinned Rust image without extra tools.
 #
@@ -31,7 +32,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
-DENY_TOML="deny.toml"
+DENY_FILES=("deny.toml" "deny-gui_editor.toml")
 AUDIT_TOML=".cargo/audit.toml"
 ID_RE='RUSTSEC-[0-9]{4}-[0-9]{4}'
 SP='[[:space:]]*'
@@ -53,7 +54,9 @@ ADVISORIES_KEY_RE="^${SP}\"?advisories\"?${SP}[.=]"
 
 fail() { echo "error: $*" >&2; exit 1; }
 
-[[ -f "$DENY_TOML" ]] || fail "$DENY_TOML not found"
+for DENY_TOML in "${DENY_FILES[@]}"; do
+    [[ -f "$DENY_TOML" ]] || fail "$DENY_TOML not found"
+done
 [[ -f "$AUDIT_TOML" ]] || fail "$AUDIT_TOML not found"
 # cargo audit also reads $CARGO_HOME/audit.toml,
 # which would add an uncommitted exception list.
@@ -145,13 +148,16 @@ parse_audit() {
 }
 
 # Process substitution would hide a parse failure, so capture each list in its own step.
-deny_ids="$(parse_deny)" || exit 1
 audit_ids="$(parse_audit)" || exit 1
-deny_ids="$(sort -u <<<"$deny_ids")"
 audit_ids="$(sort -u <<<"$audit_ids")"
-if [[ "$deny_ids" != "$audit_ids" ]]; then
-    echo "error: advisory ignores differ between $DENY_TOML and $AUDIT_TOML" >&2
-    diff <(echo "$deny_ids") <(echo "$audit_ids") >&2 || true
-    exit 1
-fi
-echo "Advisory ignore lists match ($DENY_TOML, $AUDIT_TOML)."
+# parse_deny reads the file named by DENY_TOML and names it in its messages.
+for DENY_TOML in "${DENY_FILES[@]}"; do
+    deny_ids="$(parse_deny)" || exit 1
+    deny_ids="$(sort -u <<<"$deny_ids")"
+    if [[ "$deny_ids" != "$audit_ids" ]]; then
+        echo "error: advisory ignores differ between $DENY_TOML and $AUDIT_TOML" >&2
+        diff <(echo "$deny_ids") <(echo "$audit_ids") >&2 || true
+        exit 1
+    fi
+done
+echo "Advisory ignore lists match (${DENY_FILES[*]}, $AUDIT_TOML)."

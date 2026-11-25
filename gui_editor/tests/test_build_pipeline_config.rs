@@ -1,13 +1,13 @@
 //! Static checks of the T-01 build pipeline configuration for GEDT-STORY-00019.
 //! Covers GEDT-AR-00024, GEDT-AR-00025, and GEDT-AR-00030,
-//! by inspecting `deny.toml` and `.github/workflows/ci.yml`.
+//! by inspecting `deny.toml`, `deny-gui_editor.toml`, and `.github/workflows/ci.yml`.
 //! The pipeline script tests the behaviour of `build.sh` and `check_advisory_ignores.sh`:
 //! `tests/pipeline/test_build_pipeline.sh` runs them against a fake container engine.
 //! CI runs this file through `cargo test --locked` in the `test` job.
 //!
 //! Product owner rule for T-01:
 //! the tests use only the Rust standard library, no parser crate.
-//! Both files are therefore read as text through two small subset readers below.
+//! The files are therefore read as text through two small subset readers below.
 //! Each reader accepts only the constructs the committed files use,
 //! and panics on anything else, such as dotted keys, duplicate tables or keys,
 //! YAML anchors, aliases, merge keys, or tags.
@@ -161,8 +161,14 @@ fn parse_toml(text: &str) -> Vec<TomlTable> {
     tables
 }
 
+/// The shared policy of sad2md, sad_xml_sql, and tui_editor.
 fn deny_toml() -> Vec<TomlTable> {
     parse_toml(&read(&gui_dir().join("deny.toml")))
+}
+
+/// The gui_editor policy: the shared policy plus the gui_editor `bans.skip` list (T-02).
+fn gui_deny_toml() -> Vec<TomlTable> {
+    parse_toml(&read(&gui_dir().join("deny-gui_editor.toml")))
 }
 
 fn table<'a>(cfg: &'a [TomlTable], name: &str) -> &'a TomlTable {
@@ -202,9 +208,11 @@ fn toml_array_is_empty(section: &TomlTable, key: &str) -> bool {
 /// Returns the strings of the array at `key`, or an empty list when the key is absent.
 /// Panics when the value is not an array of basic strings.
 fn toml_string_array(section: &TomlTable, key: &str) -> Vec<String> {
-    let Some(raw) = toml_raw(section, key) else {
-        return Vec::new();
-    };
+    toml_raw(section, key).map_or_else(Vec::new, |raw| parse_string_array(key, raw))
+}
+
+/// Reads a raw one-line array of basic strings, such as `["a", "b"]`.
+fn parse_string_array(key: &str, raw: &str) -> Vec<String> {
     let inner = raw
         .strip_prefix('[')
         .and_then(|v| v.strip_suffix(']'))
@@ -221,6 +229,43 @@ fn toml_string_array(section: &TomlTable, key: &str) -> Vec<String> {
                 .to_string()
         })
         .collect()
+}
+
+/// Returns the fields of each inline table in the array at `key`,
+/// or an empty list when the key is absent.
+/// Example: `[{ crate = "a", reason = "b" }, { crate = "c", reason = "d" }]`.
+/// Panics on items that are not inline tables.
+fn toml_inline_table_array(section: &TomlTable, key: &str) -> Vec<Vec<(String, String)>> {
+    let Some(raw) = toml_raw(section, key) else {
+        return Vec::new();
+    };
+    let inner = raw
+        .strip_prefix('[')
+        .and_then(|v| v.strip_suffix(']'))
+        .unwrap_or_else(|| panic!("{key} is not an array"));
+    let mut items = Vec::new();
+    let mut item = String::new();
+    let mut in_string = false;
+    let mut depth = 0;
+    // Splits only at commas outside strings and nested brackets,
+    // so a reason or an inner array with commas stays in one item.
+    for c in inner.chars().chain(std::iter::once(',')) {
+        match c {
+            '"' => in_string = !in_string,
+            '[' | '{' if !in_string => depth += 1,
+            ']' | '}' if !in_string => depth -= 1,
+            ',' if !in_string && depth == 0 => {
+                if !item.trim().is_empty() {
+                    items.push(inline_table_fields(&item));
+                }
+                item.clear();
+                continue;
+            }
+            _ => {}
+        }
+        item.push(c);
+    }
+    items
 }
 
 // --- YAML subset reader for ci.yml ---
@@ -646,25 +691,99 @@ fn test_ar_00025_ac4_deny_sources_crates_io_only() {
     );
 }
 
-// Product owner decision for T-42: Unicode-3.0 (unicode-ident) and Zlib (foldhash)
-// join Apache-2.0 and MIT; any other license needs a new decision.
+/// Licenses the product owner approved for licenses.allow in both policy files, sorted.
+/// T-42 added Unicode-3.0 (unicode-ident) and Zlib (foldhash) to Apache-2.0 and MIT.
+/// T-02 added ISC (libloading).
+/// Any other license needs a new decision.
+const APPROVED_LICENSES: [&str; 5] = ["Apache-2.0", "ISC", "MIT", "Unicode-3.0", "Zlib"];
+
+/// The one license exception the product owner approved for T-02:
+/// the font files that epaint_default_fonts embeds, in deny-gui_editor.toml only.
+const APPROVED_EXCEPTION_CRATE: &str = "epaint_default_fonts";
+const APPROVED_EXCEPTION_LICENSES: [&str; 2] = ["OFL-1.1", "Ubuntu-font-1.0"];
+
+/// Strips the quotes of a raw basic string value, or returns `None` for any other value.
+fn unquote(raw: &str) -> Option<&str> {
+    raw.strip_prefix('"')
+        .and_then(|v| v.strip_suffix('"'))
+        .filter(|v| !v.contains('"'))
+}
+
+/// Checks licenses.exceptions against the approved entry.
+/// With `expect_fonts`, the list must hold exactly the approved entry;
+/// without it, the list must be empty.
+/// Returns the first deviation, so a test can also check that deviations are rejected.
+fn check_license_exceptions(licenses: &TomlTable, expect_fonts: bool) -> Result<(), String> {
+    let entries = toml_inline_table_array(licenses, "exceptions");
+    if !expect_fonts {
+        if entries.is_empty() {
+            return Ok(());
+        }
+        return Err(format!("unexpected licenses.exceptions: {entries:?}"));
+    }
+    let [fields] = entries.as_slice() else {
+        return Err(format!("licenses.exceptions is not one entry: {entries:?}"));
+    };
+    let keys: Vec<&str> = fields.iter().map(|(k, _)| k.as_str()).collect();
+    if keys != ["crate", "allow"] {
+        return Err(format!("exception keys are not crate and allow: {keys:?}"));
+    }
+    if unquote(&fields[0].1) != Some(APPROVED_EXCEPTION_CRATE) {
+        return Err(format!("exception crate {}", fields[0].1));
+    }
+    if parse_string_array("allow", &fields[1].1) != APPROVED_EXCEPTION_LICENSES {
+        return Err(format!("exception licenses {}", fields[1].1));
+    }
+    Ok(())
+}
+
+// GEDT-AR-00025, T-02: both policy files allow only approved licenses,
+// and only deny-gui_editor.toml holds the single approved font exception.
 #[test]
 fn test_ar_00025_ac4_deny_licenses_approved_only() {
-    let cfg = deny_toml();
-    let licenses = table(&cfg, "licenses");
-    for license in toml_string_array(licenses, "allow") {
+    for (name, cfg, expect_fonts) in [
+        ("deny.toml", deny_toml(), false),
+        ("deny-gui_editor.toml", gui_deny_toml(), true),
+    ] {
+        let licenses = table(&cfg, "licenses");
+        for license in toml_string_array(licenses, "allow") {
+            assert!(
+                APPROVED_LICENSES.contains(&license.as_str()),
+                "{name} licenses.allow has {license}"
+            );
+        }
+        if let Err(problem) = check_license_exceptions(licenses, expect_fonts) {
+            panic!("{name}: {problem}");
+        }
+    }
+}
+
+// GEDT-AR-00025, T-02: the exception check rejects every entry but the approved one.
+#[test]
+fn test_ar_00025_t02_license_exception_check_rejects_others() {
+    let approved = "{ crate = \"epaint_default_fonts\", allow = [\"OFL-1.1\", \"Ubuntu-font-1.0\"] }";
+    let licenses = |exceptions: &str| {
+        parse_toml(&format!("[licenses]\nexceptions = [\n{exceptions}\n]\n"))
+            .pop()
+            .expect("one table")
+    };
+    assert_eq!(check_license_exceptions(&licenses(approved), true), Ok(()));
+    let rejected = [
+        String::new(),
+        format!("{approved},\n{approved}"),
+        approved.replace("epaint_default_fonts", "ring"),
+        approved.replace("\"Ubuntu-font-1.0\"", "\"Ubuntu-font-1.0\", \"GPL-3.0\""),
+        approved.replace("\"OFL-1.1\", ", ""),
+        approved.replace(" }", ", version = \"*\" }"),
+    ];
+    for exceptions in &rejected {
         assert!(
-            matches!(
-                license.as_str(),
-                "Apache-2.0" | "MIT" | "Unicode-3.0" | "Zlib"
-            ),
-            "licenses.allow has {license}"
+            check_license_exceptions(&licenses(exceptions), true).is_err(),
+            "accepted {exceptions}"
         );
     }
-    assert!(
-        toml_array_is_empty(licenses, "exceptions"),
-        "licenses.exceptions is not empty"
-    );
+    assert!(check_license_exceptions(&licenses(approved), false).is_err());
+    assert_eq!(check_license_exceptions(&licenses(""), false), Ok(()));
 }
 
 /// Returns the raw values of every `license` key in the `[package]` table of a manifest.
@@ -673,9 +792,8 @@ fn package_license_values(manifest: &str) -> Vec<String> {
     package_values(manifest, "license")
 }
 
-/// Returns the raw values of every `key` in the `[package]` table of a manifest.
-fn package_values(manifest: &str, key: &str) -> Vec<String> {
-    let wanted = key;
+/// Returns the raw values of every `wanted` key in the `[package]` table of a manifest.
+fn package_values(manifest: &str, wanted: &str) -> Vec<String> {
     let mut in_package = false;
     let mut values = Vec::new();
     for raw in manifest.lines() {
@@ -722,15 +840,11 @@ fn test_ar_00025_ac4_deny_licenses_allow_is_approved_set() {
     allow.sort();
     allow.dedup();
     assert_eq!(listed, allow.len(), "licenses.allow has duplicates");
-    assert_eq!(
-        allow,
-        ["Apache-2.0", "MIT", "Unicode-3.0", "Zlib"],
-        "licenses.allow"
-    );
+    assert_eq!(allow, APPROVED_LICENSES, "licenses.allow");
 }
 
-// GEDT-AR-00025, T-42: a lower confidence threshold lets cargo-deny accept
-// a license text it only partly recognises, which weakens the license check.
+// GEDT-AR-00025, T-42: a lower confidence threshold weakens the license check,
+// because cargo-deny then accepts a license text it only partly recognises.
 #[test]
 fn test_ar_00025_ac4_deny_licenses_confidence_threshold_kept() {
     let cfg = deny_toml();
@@ -824,18 +938,20 @@ fn test_ar_00025_ac4_deny_licenses_include_dev() {
 /// or `advisories.db-path`.
 /// Adding a key here is a policy change that needs review
 /// (product owner decision for T-01).
+/// T-02 added `graph.targets` and `licenses.exceptions` by product owner decision.
 const DENY_ALLOWED_KEYS: [(&str, &[&str]); 5] = [
     (
         "advisories",
         &["ignore", "unmaintained", "version", "yanked"],
     ),
     ("bans", &["multiple-versions", "skip", "wildcards"]),
-    ("graph", &["all-features"]),
+    ("graph", &["all-features", "targets"]),
     (
         "licenses",
         &[
             "allow",
             "confidence-threshold",
+            "exceptions",
             "include-dev",
             "unused-allowed-license",
             "version",
@@ -854,21 +970,143 @@ const DENY_ALLOWED_KEYS: [(&str, &[&str]); 5] = [
 
 #[test]
 fn test_ar_00025_ac4_deny_keys_allow_listed() {
-    let cfg = deny_toml();
-    for section in &cfg {
-        let allowed = DENY_ALLOWED_KEYS
-            .iter()
-            .find(|(name, _)| *name == section.name)
-            .map(|(_, keys)| *keys)
-            .unwrap_or_else(|| panic!("deny.toml table [{}] is not allow-listed", section.name));
-        for (key, _) in &section.entries {
-            assert!(
-                allowed.contains(&key.as_str()),
-                "deny.toml key {}.{key} is not allow-listed",
-                section.name
-            );
+    for (file, cfg) in [
+        ("deny.toml", deny_toml()),
+        ("deny-gui_editor.toml", gui_deny_toml()),
+    ] {
+        for section in &cfg {
+            let allowed = DENY_ALLOWED_KEYS
+                .iter()
+                .find(|(name, _)| *name == section.name)
+                .map(|(_, keys)| *keys)
+                .unwrap_or_else(|| panic!("{file} table [{}] is not allow-listed", section.name));
+            for (key, _) in &section.entries {
+                assert!(
+                    allowed.contains(&key.as_str()),
+                    "{file} key {}.{key} is not allow-listed",
+                    section.name
+                );
+            }
         }
     }
+}
+
+// GEDT-AR-00004, T-02: the policies check the Fedora x86_64 graph only.
+// Another target list could hide or add platform-specific crates without a review.
+#[test]
+fn test_ar_00025_t02_deny_graph_targets_linux_only() {
+    for (file, cfg) in [
+        ("deny.toml", deny_toml()),
+        ("deny-gui_editor.toml", gui_deny_toml()),
+    ] {
+        assert_eq!(
+            toml_string_array(table(&cfg, "graph"), "targets"),
+            ["x86_64-unknown-linux-gnu"],
+            "{file} graph.targets"
+        );
+    }
+}
+
+// --- GEDT-AR-00025, T-02: deny-gui_editor.toml and deny.toml do not drift ---
+
+/// Replaces the array value of `key` in `[table]` with `[]` and keeps every other line,
+/// including comments, so only that one value can differ after the replacement.
+fn empty_array_value(text: &str, table: &str, key: &str) -> String {
+    let header = format!("[{table}]");
+    let prefix = format!("{key} = [");
+    let mut in_table = false;
+    let mut out = Vec::new();
+    let mut lines = text.lines();
+    while let Some(line) = lines.next() {
+        if line.starts_with('[') {
+            in_table = line == header;
+        }
+        if in_table && line.starts_with(&prefix) {
+            let mut depth = bracket_depth(strip_toml_comment(line));
+            while depth > 0 {
+                let next = lines
+                    .next()
+                    .unwrap_or_else(|| panic!("{table}.{key} is not closed"));
+                depth += bracket_depth(strip_toml_comment(next));
+            }
+            out.push(format!("{key} = []"));
+            continue;
+        }
+        out.push(line.to_string());
+    }
+    out.join("\n") + "\n"
+}
+
+/// deny-gui_editor.toml with its gui_editor-only values emptied.
+fn gui_deny_text_without_own_entries() -> String {
+    let gui = read(&gui_dir().join("deny-gui_editor.toml"));
+    let gui = empty_array_value(&gui, "licenses", "exceptions");
+    empty_array_value(&gui, "bans", "skip")
+}
+
+// GEDT-AR-00025, T-02 security constraint:
+// the policy files differ only in licenses.exceptions and bans.skip,
+// which cargo-deny would report as unused in the other crates;
+// every other setting and comment is identical.
+#[test]
+fn test_ar_00025_t02_deny_policies_differ_only_in_gui_entries() {
+    let shared = read(&gui_dir().join("deny.toml"));
+    let gui = gui_deny_text_without_own_entries();
+    if gui != shared {
+        let first = gui
+            .lines()
+            .zip(shared.lines())
+            .position(|(a, b)| a != b)
+            .map_or("length".to_string(), |i| format!("line {}", i + 1));
+        panic!("deny-gui_editor.toml differs from deny.toml outside its own entries at {first}");
+    }
+}
+
+// GEDT-AR-00025, T-02: the drift normaliser empties only the named value.
+#[test]
+fn test_ar_00025_t02_empty_array_value_keeps_other_lines() {
+    let text = "[bans]\nskip = [\n    { crate = \"a@1\", reason = \"[x]\" },\n]\n\
+                wildcards = \"allow\"\n[other]\nskip = [\"b\"]\n";
+    assert_eq!(
+        empty_array_value(text, "bans", "skip"),
+        "[bans]\nskip = []\nwildcards = \"allow\"\n[other]\nskip = [\"b\"]\n"
+    );
+}
+
+/// Duplicates in deny-gui_editor.toml bans.skip, approved by the product owner for T-02.
+/// Measured with cargo-deny 0.22.0 on the x86_64-unknown-linux-gnu graph of eframe 0.37.
+/// Each entry goes in T-43.
+const APPROVED_GUI_SKIPS: [&str; 5] = [
+    "linux-raw-sys@0.4.15",
+    "rustix@0.38.44",
+    "syn@2.0.119",
+    "thiserror-impl@1.0.69",
+    "thiserror@1.0.69",
+];
+
+// GEDT-AR-00025, T-02: every gui_editor skip entry is approved,
+// has a reason naming the eframe cause and its removal task, and nothing else is skipped.
+#[test]
+fn test_ar_00025_t02_gui_bans_skip_is_approved_set_with_reasons() {
+    let cfg = gui_deny_toml();
+    let bans = table(&cfg, "bans");
+    assert!(
+        toml_array_is_empty(bans, "skip-tree"),
+        "bans.skip-tree is not empty"
+    );
+    let mut crates = Vec::new();
+    for fields in toml_inline_table_array(bans, "skip") {
+        let keys: Vec<&str> = fields.iter().map(|(k, _)| k.as_str()).collect();
+        assert_eq!(keys, ["crate", "reason"], "skip entry keys: {fields:?}");
+        let name = unquote(&fields[0].1).unwrap_or_else(|| panic!("crate {}", fields[0].1));
+        let reason = unquote(&fields[1].1).unwrap_or_else(|| panic!("reason {}", fields[1].1));
+        for needle in ["eframe 0.37", "remove in T-43"] {
+            assert!(reason.contains(needle), "{name} reason lacks {needle}");
+        }
+        crates.push(name.to_string());
+    }
+    crates.sort();
+    assert_eq!(crates, APPROVED_GUI_SKIPS, "deny-gui_editor.toml bans.skip");
 }
 
 // --- GEDT-AR-00025, T-52: path dependencies carry a version ---
@@ -1358,7 +1596,7 @@ fn build_sh_assignment(name: &str) -> String {
 /// Every crate passes the ignore-list check, the `$CARGO_HOME/audit.toml` guard,
 /// the pinned tool installs, `cargo audit`, and `cargo deny`,
 /// before any of its code compiles.
-const TEST_JOB_COMMANDS: [(Option<&str>, &str); 7] = [
+const TEST_JOB_COMMANDS: [(Option<&str>, &str); 9] = [
     (None, "bash gui_editor/check_advisory_ignores.sh"),
     (None, "test ! -e \"${CARGO_HOME:?}/audit.toml\""),
     (None, "cargo install --locked cargo-audit --version 0.23.0"),
@@ -1369,7 +1607,15 @@ const TEST_JOB_COMMANDS: [(Option<&str>, &str); 7] = [
     ),
     (
         Some("${{ matrix.crate }}"),
-        "cargo deny --locked --config ../gui_editor/deny.toml check --deny warnings",
+        "deny_config=../gui_editor/deny.toml",
+    ),
+    (
+        Some("${{ matrix.crate }}"),
+        "if [ \"$CRATE\" = gui_editor ]; then deny_config=../gui_editor/deny-gui_editor.toml; fi",
+    ),
+    (
+        Some("${{ matrix.crate }}"),
+        "cargo deny --locked --config \"$deny_config\" check --deny warnings",
     ),
     (Some("${{ matrix.crate }}"), "cargo test --locked"),
 ];

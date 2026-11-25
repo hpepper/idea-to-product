@@ -1,0 +1,71 @@
+# cargo-deny policy (GEDT-AR-00025), kept in two files.
+# - deny.toml: shared by sad2md, sad_xml_sql, and tui_editor.
+# - deny-gui_editor.toml: gui_editor only.
+# The files differ only in licenses.exceptions and bans.skip,
+# which stay empty in deny.toml.
+# cargo-deny reports an exception or a skip entry that a crate does not need,
+# so the gui_editor entries would fail the other crates.
+# `tests/test_build_pipeline_config.rs` fails when the files differ in anything else,
+# so edit both files together.
+# CI and `build.sh` pass the file with `--config` and run `check --deny warnings`,
+# so every finding fails the build.
+# Add an exception only as an explicit entry with a reason, never by lowering a level.
+# Reference: https://embarkstudios.github.io/cargo-deny/checks/cfg.html
+
+[graph]
+all-features = true
+# Fedora on x86_64 is the only target (GEDT-AR-00004),
+# so duplicates on other platforms, such as macOS objc2 or windows-sys, are out of scope.
+targets = ["x86_64-unknown-linux-gnu"]
+
+[advisories]
+version = 2
+yanked = "deny"
+unmaintained = "all"
+# Each entry needs { id = "RUSTSEC-...", reason = "..." } on one line.
+# Mirroring rule: .cargo/audit.toml must list the same IDs,
+# each with this reason as a comment, because `cargo audit` reads only that file.
+# `check_advisory_ignores.sh` fails the build when the lists differ,
+# for this file and for the other policy file.
+ignore = []
+
+[licenses]
+version = 2
+# Applies the license policy to dev-dependencies too,
+# so crates used only by tests need an allowed license as well.
+include-dev = true
+# Licenses compatible with the repository Apache-2.0 license.
+# Extend the list only when a new dependency needs another license.
+# ISC: libloading through glutin, x11rb, and wayland-sys,
+# by product owner decision for T-02.
+# Unicode-3.0: unicode-ident, through proc-macro2.
+# Zlib: foldhash, through hashbrown, rusqlite, and ratatui.
+allow = ["Apache-2.0", "ISC", "MIT", "Unicode-3.0", "Zlib"]
+confidence-threshold = 0.93
+# Keeps the shared allow list valid for crates that do not use every license.
+unused-allowed-license = "allow"
+# Only deny-gui_editor.toml lists an exception, by product owner decision for T-02:
+# OFL-1.1 and Ubuntu-font-1.0 for the font files that epaint_default_fonts embeds.
+# The font licenses never apply to code crates, so they stay out of the allow list.
+exceptions = [
+    { crate = "epaint_default_fonts", allow = ["OFL-1.1", "Ubuntu-font-1.0"] },
+]
+
+[bans]
+multiple-versions = "deny"
+wildcards = "deny"
+# Each entry needs { crate = "name@version", reason = "..." }.
+# Only deny-gui_editor.toml lists entries: Linux duplicates of the eframe windowing stack.
+skip = [
+    { crate = "linux-raw-sys@0.4.15", reason = "eframe 0.37 needs winit 0.30 and calloop 0.13, which pin rustix 0.38 and so linux-raw-sys 0.4, while x11rb, wayland-backend, and polling need rustix 1; remove in T-43" },
+    { crate = "rustix@0.38.44", reason = "eframe 0.37 needs winit 0.30 and calloop 0.13, which pin rustix 0.38, while x11rb, wayland-backend, and polling need rustix 1; remove in T-43" },
+    { crate = "syn@2.0.119", reason = "eframe 0.37 needs winit 0.30 and calloop 0.13, which pin thiserror 1 and so syn 2 through thiserror-impl 1, while bytemuck_derive 1.12 needs syn 3; remove in T-43" },
+    { crate = "thiserror-impl@1.0.69", reason = "eframe 0.37 needs winit 0.30 and calloop 0.13, which pin thiserror 1 and so thiserror-impl 1, while vello_cpu 0.2 through epaint 0.37 needs thiserror 2; remove in T-43" },
+    { crate = "thiserror@1.0.69", reason = "eframe 0.37 needs winit 0.30 and calloop 0.13, which pin thiserror 1, also through smithay-client-toolkit 0.19, while vello_cpu 0.2 through epaint 0.37 needs thiserror 2; remove in T-43" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
