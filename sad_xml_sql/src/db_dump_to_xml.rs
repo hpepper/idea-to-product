@@ -374,10 +374,22 @@ mod tests {
         conn
     }
 
+    /// Returns the path of `name` in the git-ignored `test-output` folder of the crate,
+    /// and creates the folder.
+    /// `gui_editor/container/tool_image.sh run` mounts the crate read-only,
+    /// except this folder (T-54), so the tests cannot write into the crate root.
+    /// Each test passes its own `name`, so parallel tests do not share a file.
+    fn test_output_file(name: &str) -> String {
+        let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/test-output");
+        fs::create_dir_all(dir).unwrap_or_else(|err| panic!("cannot create {dir}: {err}"));
+        format!("{dir}/{name}")
+    }
+
     #[test]
     fn test_dump_db_to_xml_creates_file() {
         let conn = setup_test_db();
-        let output_file = "test_output.xml";
+        let output_file = test_output_file("test_output.xml");
+        let output_file = output_file.as_str();
         // A stale file from an earlier run would hide a failed dump.
         if let Err(error) = fs::remove_file(output_file) {
             assert_eq!(
@@ -397,7 +409,8 @@ mod tests {
         let team_id = crate::convert_from_address_to_id("1.0.3.1".to_string(), "test");
         crate::insert_into_team(&conn, team_id, "Squad A", "");
         crate::insert_into_component(&conn, 1, 1, "ComponentA", "Purpose", "Summary", team_id, "");
-        let output_file = "test_output_team.xml";
+        let output_file = test_output_file("test_output_team.xml");
+        let output_file = output_file.as_str();
         dump_db_to_xml(&conn, output_file).unwrap();
         let xml_content = fs::read_to_string(output_file).unwrap();
         fs::remove_file(output_file).unwrap();
@@ -427,7 +440,8 @@ mod tests {
     #[test]
     fn test_dump_db_to_xml_xml_structure() {
         let conn = setup_test_db();
-        let output_file = "test_output_structure.xml";
+        let output_file = test_output_file("test_output_structure.xml");
+        let output_file = output_file.as_str();
         // A stale file from an earlier run would hide a failed dump.
         if let Err(error) = fs::remove_file(output_file) {
             assert_eq!(
@@ -518,7 +532,8 @@ mod tests {
         )
         .unwrap();
         crate::insert_into_team(&conn, 3, "Session team", "");
-        let output_file = "test_output_main_file_teams.xml";
+        let output_file = test_output_file("test_output_main_file_teams.xml");
+        let output_file = output_file.as_str();
         dump_db_to_xml(&conn, output_file).unwrap();
         let xml_content = fs::read_to_string(output_file).unwrap();
         fs::remove_file(output_file).unwrap();

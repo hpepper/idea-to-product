@@ -106,7 +106,24 @@ Proposed measurable outcomes, pending confirmation, see open question 1:
   - Opening, then saving without edits, keeps every component, viewpacket, and relation.
   - `sad2md` processes a file saved by the editor without errors.
 - Dependent on: GEDT-STORY-00001, GEDT-STORY-00022
-- Requirements: GEDT-AR-00001, GEDT-AR-00002, GEDT-AR-00030, GEDT-AR-00035, GEDT-FR-00004, GEDT-FR-00005, GEDT-FR-00006, GEDT-FR-00009, GEDT-FR-00043, GEDT-FR-00044, GEDT-FR-00045, GEDT-FR-00046, GEDT-FR-00047, GEDT-FR-00048
+- Requirements: GEDT-AR-00001, GEDT-AR-00002, GEDT-AR-00030, GEDT-FR-00004, GEDT-FR-00005, GEDT-FR-00006, GEDT-FR-00009, GEDT-FR-00045, GEDT-FR-00046, GEDT-FR-00047, GEDT-FR-00048
+
+#### GEDT-STORY-00026 - As a maintainer, I want component edits saved into the included file that defines the component so that other SAD tools see edits to included components
+
+- Description: Write the Component elements of an included file back to that file on save.
+  - Split from GEDT-STORY-00002 on 2026-11-25, by product owner answer to plan open question 19, for the first increment after the MVP.
+- VoC: Save in common storage format (currently XML).
+  - Product owner decision: "only components and teams are read from an include file and only those are written back. This may change in the future."
+- Priority: Critical
+- Root reason: Components defined in an included file belong to the SAD, so edits to those components must reach that file.
+- What if not done: Every save skips edits to included components, and the GEDT-FR-00045 warning stays.
+- Acceptance criteria:
+  - Saving after an edit to a component of an included file writes the edit to that included file.
+  - The save leaves the teams, viewpackets, relations, and behaviors of the included file unchanged.
+  - The save writes no included file outside the directory of the including project file.
+  - When the included file changed on disk since the last load or save, the editor asks before overwriting that file.
+- Dependent on: GEDT-STORY-00002, GEDT-STORY-00021
+- Requirements: GEDT-AR-00035, GEDT-FR-00009, GEDT-FR-00043, GEDT-FR-00044
 
 #### GEDT-STORY-00003 - As a maintainer, I want the editor to save automatically so that I lose at most one minute of work
 

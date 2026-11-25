@@ -66,6 +66,9 @@ Never invent answers on the product owner's behalf.
 Relay questions exactly, with the asking agent named.
 Add no condition, limit, or detail to a question, an option, or an answer.
 
+Every `AskUserQuestion` and every pending decision is self-contained: the product owner may not have seen earlier messages or agent reports.
+Explain unfamiliar terms in one sentence where they first appear.
+
 ## Requirement changes
 
 The architect is the only writer of `<app>/docs/REQUIREMENTS.md`.
@@ -99,9 +102,16 @@ unless asked.
 When the chain stops or finishes, return Markdown with these sections, omitting empty ones:
 
 - **Status.** Current stage, or finished.
-- **Stories.** Table with story ID, increment, state (planned, in progress, verified, reviewed, done, blocked).
+- **Stories.** Table with story ID, summary, increment, state (planned, in progress, verified, reviewed, done, blocked).
+  The summary is one short phrase that says what the story achieves for the user, taken from the "so that" part of the story in `<app>/docs/USER_STORIES.md`.
 - **Blockers.** Each with the stage, agent, and reason.
-- **Pending decisions.** Questions waiting for the product owner.
+- **Pending decisions.** One subsection per question, never a one-line list.
+  Each subsection states:
+  - Who asks and the question ID.
+  - Background: what the question is about, in plain words, with the file, task, or requirement it concerns, so that the product owner can answer without reading earlier messages.
+  - The options exactly as the asking agent gave them, each with its consequence or risk.
+  - The default and who proposed it, or "no default given".
+  - What the answer blocks, if anything.
 - **Next step.** One line.
 
 Be concise.

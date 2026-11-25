@@ -83,9 +83,11 @@ Verb meanings:
 
 ## Quality rules
 
+- Abstract: States the purpose or outcome, never the how.
+  The implementation team decides the how.
+  A constraint may bound the outcome, for example a limit or a mandated interface, but does not prescribe a design.
 - Single: One requirement per ID.
   Split a statement that covers two needs, for example two languages or two platforms, into two IDs.
-- Abstract: States what, not how.
 - Clear: One interpretation, one function, one sentence, one verb.
   "And", "or", "also", "unless", and "except" signal combined requirements; never use "and/or".
 - Complete: No TBD.

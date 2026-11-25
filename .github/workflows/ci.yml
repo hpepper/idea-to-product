@@ -8,8 +8,11 @@
 #   `cargo audit --deny warnings` and `cargo deny --locked check --deny warnings`,
 #   with deny-gui_editor.toml for gui_editor and the shared deny.toml otherwise,
 #   so no code or build script of the crate compiles or runs before both checks pass.
+# Both build jobs build the tool image of gui_editor/container/Containerfile in each run,
+# check it, and run every cargo step in it (GEDT-AR-00034); no job pushes an image.
 # Actions are pinned by commit SHA and images by digest, so a moved tag cannot change CI.
-# Keep the Rust image in sync with PINNED_RUST_IMAGE in gui_editor/build.sh.
+# The pinned Rust base image is the BASE_IMAGE default in
+# gui_editor/container/Containerfile.
 name: CI
 
 on:
@@ -37,7 +40,7 @@ jobs:
 
   gui-editor-build:
     runs-on: ubuntu-24.04
-    # build.sh compiles cargo-audit and cargo-deny from source on every run.
+    # The tool image build compiles cargo-audit and cargo-deny from source on every run.
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -53,10 +56,8 @@ jobs:
     # Waits for the gui_editor gate, then gates each crate on its own before it compiles.
     needs: gui-editor-build
     runs-on: ubuntu-24.04
-    # Each matrix job compiles cargo-audit and cargo-deny from source, like build.sh.
+    # Each matrix job builds the tool image, which compiles cargo-audit and cargo-deny.
     timeout-minutes: 60
-    container:
-      image: docker.io/library/rust:1.100.0-trixie@sha256:223cc32ddca8f3ee90c436dbc94b6b5f052ea7f9653c5201e9612f08ad7d21b8
     strategy:
       # Report every crate, so a shared-core change shows all broken consumers at once.
       fail-fast: false
@@ -64,37 +65,39 @@ jobs:
         crate: [gui_editor, sad2md, sad_xml_sql, tui_editor]
     env:
       CRATE: ${{ matrix.crate }}
+      CONTAINER_ENGINE: docker
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # Builds the image from the pinned base and checks the base label and tool versions.
+      # Each later `tool_image.sh run` checks the image again before it runs a command.
+      - name: Build and check the tool image
+        run: bash gui_editor/container/tool_image.sh build
       # Supply-chain gate (GEDT-AR-00025): every crate uses the gui_editor policy files,
       # whose advisory exception lists the check keeps mirrored for all four crates.
-      # The image has no $CARGO_HOME/audit.toml;
+      # The tool image has no $CARGO_HOME/audit.toml;
       # a list there would bypass the mirrored lists.
       - name: Check the shared advisory exception lists
         run: |
           bash gui_editor/check_advisory_ignores.sh
-          test ! -e "${CARGO_HOME:?}/audit.toml"
-      # Keep the versions in sync with build.sh (CARGO_AUDIT_VERSION, CARGO_DENY_VERSION).
-      - name: Install cargo-audit and cargo-deny
-        run: |
-          cargo install --locked cargo-audit --version 0.23.0
-          cargo install --locked cargo-deny --version 0.22.0
+          bash gui_editor/container/tool_image.sh run . sh -c 'test ! -e "${CARGO_HOME:?}/audit.toml"'
+      # cargo-audit and cargo-deny run by the absolute paths that the image check covers,
+      # because `cargo audit` and `cargo deny` follow an [alias] in a cargo config file.
       # cargo audit reads .cargo/audit.toml from the working directory,
       # so it runs in gui_editor and reads the lock file of the matrix crate.
+      # Both tools keep their advisory databases in the container /tmp (R-T54-01):
+      # cargo-audit through --db, and cargo-deny through ADVISORY_DB_DIR,
+      # which `env` sets in the container for the db-path of the policy files.
       - name: Audit the lock file
-        working-directory: gui_editor
-        run: cargo audit --deny warnings --file "../$CRATE/Cargo.lock"
+        run: bash gui_editor/container/tool_image.sh run gui_editor /usr/local/cargo/bin/cargo-audit audit --db /tmp/advisory-dbs/cargo-audit --deny warnings --file "../$CRATE/Cargo.lock"
       # --config replaces the default <cwd>/deny.toml.
       # gui_editor uses deny-gui_editor.toml, the other crates the shared deny.toml;
       # a config test keeps the two files identical outside the gui_editor entries.
       - name: Check licenses, bans, sources, and advisories
-        working-directory: ${{ matrix.crate }}
         run: |
           deny_config=../gui_editor/deny.toml
           if [ "$CRATE" = gui_editor ]; then deny_config=../gui_editor/deny-gui_editor.toml; fi
-          cargo deny --locked --config "$deny_config" check --deny warnings
+          bash gui_editor/container/tool_image.sh run "$CRATE" env ADVISORY_DB_DIR=/tmp/advisory-dbs /usr/local/cargo/bin/cargo-deny --locked --config "$deny_config" check --deny warnings
       - name: Test ${{ matrix.crate }}
-        working-directory: ${{ matrix.crate }}
-        run: cargo test --locked
+        run: bash gui_editor/container/tool_image.sh run "$CRATE" cargo test --locked

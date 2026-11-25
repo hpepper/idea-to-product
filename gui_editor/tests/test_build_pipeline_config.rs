@@ -1,7 +1,9 @@
-//! Static checks of the T-01 build pipeline configuration for GEDT-STORY-00019.
-//! Covers GEDT-AR-00024, GEDT-AR-00025, and GEDT-AR-00030,
-//! by inspecting `deny.toml`, `deny-gui_editor.toml`, and `.github/workflows/ci.yml`.
-//! The pipeline script tests the behaviour of `build.sh` and `check_advisory_ignores.sh`:
+//! Static checks of the build pipeline configuration for GEDT-STORY-00019: T-01 and T-54.
+//! Covers GEDT-AR-00024, GEDT-AR-00025, GEDT-AR-00030, GEDT-AR-00032, GEDT-AR-00033,
+//! and GEDT-AR-00034, by inspecting `deny.toml`, `deny-gui_editor.toml`,
+//! `.github/workflows/ci.yml`, and the tool image files in `container/`.
+//! The pipeline script tests the behaviour of `build.sh`, `container/tool_image.sh`,
+//! and `check_advisory_ignores.sh`:
 //! `tests/pipeline/test_build_pipeline.sh` runs them against a fake container engine.
 //! CI runs this file through `cargo test --locked` in the `test` job.
 //!
@@ -166,7 +168,8 @@ fn deny_toml() -> Vec<TomlTable> {
     parse_toml(&read(&gui_dir().join("deny.toml")))
 }
 
-/// The gui_editor policy: the shared policy plus the gui_editor `bans.skip` list (T-02).
+/// The gui_editor policy: the shared policy,
+/// plus the gui_editor `licenses.exceptions` and `bans.skip` entries (T-02).
 fn gui_deny_toml() -> Vec<TomlTable> {
     parse_toml(&read(&gui_dir().join("deny-gui_editor.toml")))
 }
@@ -652,6 +655,40 @@ fn test_ar_00025_ac4_deny_advisories_deny_yanked_and_unmaintained() {
     assert_eq!(toml_str(advisories, "unmaintained"), Some("all"));
 }
 
+// GEDT-AR-00025, T-54 R-T54-01:
+// cargo-deny keeps its advisory databases in the container /tmp.
+// An earlier container could edit a database in the writable .cargo-home,
+// which would then hide advisories from a later build.
+// db-path names ADVISORY_DB_DIR, which build.sh and the CI deny step set;
+// cargo-deny fails when the variable is unset, so no run falls back to another path.
+// TEST_JOB_COMMANDS pins the CI commands, including their database paths.
+#[test]
+fn test_ar_00025_t54_deny_advisory_db_in_container_tmp() {
+    for (file, cfg) in [
+        ("deny.toml", deny_toml()),
+        ("deny-gui_editor.toml", gui_deny_toml()),
+    ] {
+        assert_eq!(
+            toml_str(table(&cfg, "advisories"), "db-path"),
+            Some("$ADVISORY_DB_DIR/cargo-deny"),
+            "{file} advisories.db-path does not use ADVISORY_DB_DIR"
+        );
+    }
+    for (tool, db_arg) in [
+        ("cargo-audit", " --db /tmp/advisory-dbs/cargo-audit "),
+        ("cargo-deny", " env ADVISORY_DB_DIR=/tmp/advisory-dbs "),
+    ] {
+        let command = TEST_JOB_COMMANDS
+            .iter()
+            .find(|c| c.contains(&format!("/usr/local/cargo/bin/{tool} ")))
+            .unwrap_or_else(|| panic!("no CI command runs {tool}"));
+        assert!(
+            command.contains(db_arg),
+            "the CI {tool} command does not keep its database in /tmp: {command}"
+        );
+    }
+}
+
 #[test]
 fn test_ar_00025_ac4_deny_advisories_ignore_empty() {
     let cfg = deny_toml();
@@ -934,15 +971,16 @@ fn test_ar_00025_ac4_deny_licenses_include_dev() {
 
 /// Tables and keys that `deny.toml` may hold, taken from the committed file.
 /// Any other key can weaken a check without a RUSTSEC ID or a level change in sight,
-/// for example `graph.exclude`, `licenses.private`, `bans.allow`,
-/// or `advisories.db-path`.
+/// for example `graph.exclude`, `licenses.private`, or `bans.allow`.
 /// Adding a key here is a policy change that needs review
 /// (product owner decision for T-01).
 /// T-02 added `graph.targets` and `licenses.exceptions` by product owner decision.
+/// T-54 added `advisories.db-path` by product owner decision for R-T54-01;
+/// `test_ar_00025_t54_deny_advisory_db_in_container_tmp` pins its value.
 const DENY_ALLOWED_KEYS: [(&str, &[&str]); 5] = [
     (
         "advisories",
-        &["ignore", "unmaintained", "version", "yanked"],
+        &["db-path", "ignore", "unmaintained", "version", "yanked"],
     ),
     ("bans", &["multiple-versions", "skip", "wildcards"]),
     ("graph", &["all-features", "targets"]),
@@ -1444,6 +1482,8 @@ fn is_tag_and_digest_pinned(image: &str) -> bool {
 }
 
 // GEDT-AR-00025 AC2: every image in ci.yml is pinned, wherever the workflow names one.
+// GEDT-AR-00034, T-54: no job declares a job container;
+// the cargo steps run in the tool image, whose base the Containerfile tests pin.
 #[test]
 fn test_ar_00025_ac2_ci_images_pinned_by_digest() {
     let wf = workflow();
@@ -1452,12 +1492,10 @@ fn test_ar_00025_ac2_ci_images_pinned_by_digest() {
             job.get("services").is_none(),
             "{name} declares services, whose images this test does not pin"
         );
-        if name != "test" {
-            assert!(
-                job.get("container").is_none(),
-                "{name} declares a container; only the test job may"
-            );
-        }
+        assert!(
+            job.get("container").is_none(),
+            "{name} declares a container instead of using the tool image"
+        );
         for step in steps(job) {
             let run = run_text(step);
             for image in run
@@ -1474,19 +1512,6 @@ fn test_ar_00025_ac2_ci_images_pinned_by_digest() {
             }
         }
     }
-    let container = wf.at("jobs").at("test").at("container");
-    let container_keys: Vec<&str> = container
-        .as_map()
-        .unwrap_or_else(|| panic!("test container is not a mapping: {container:?}"))
-        .iter()
-        .map(|(k, _)| k.as_str())
-        .collect();
-    assert_eq!(container_keys, ["image"], "test container keys");
-    let test_image = container.at("image").as_str().unwrap_or("");
-    assert!(
-        is_version_and_digest_pinned(test_image),
-        "test image not pinned: {test_image}"
-    );
 }
 
 // GEDT-AR-00025 AC2: the run-text image finder sees images outside docker.io/ too.
@@ -1575,53 +1600,46 @@ fn test_ar_00030_ac6_ci_tests_four_crates_without_fail_fast() {
         .rev()
         .find(|s| s.get("run").is_some())
         .expect("test job has a run step");
-    assert_eq!(run_text(last_run).trim(), "cargo test --locked");
     assert_eq!(
-        last_run.at("working-directory").as_str(),
-        Some("${{ matrix.crate }}")
+        run_text(last_run).trim(),
+        "bash gui_editor/container/tool_image.sh run \"$CRATE\" cargo test --locked"
+    );
+    assert!(
+        last_run.get("working-directory").is_none(),
+        "the test step sets a working directory; tool_image.sh takes the crate directory"
     );
 }
 
-/// Reads `NAME="value"` from `build.sh`, so CI and the local build pin the same tools.
-fn build_sh_assignment(name: &str) -> String {
-    let text = read(&gui_dir().join("build.sh"));
+/// Reads `NAME="value"` from `container/tool_image.sh`,
+/// which pins the base image and the tool versions for build.sh and CI.
+fn tool_image_sh_assignment(name: &str) -> String {
+    let text = read(&gui_dir().join("container/tool_image.sh"));
     let prefix = format!("{name}=\"");
     text.lines()
         .find_map(|l| l.strip_prefix(&prefix)?.strip_suffix('"'))
-        .unwrap_or_else(|| panic!("build.sh has no {name}=\"...\" line"))
+        .unwrap_or_else(|| panic!("tool_image.sh has no {name}=\"...\" line"))
         .to_string()
 }
 
-/// The `test` job commands in order, each with the step working directory.
-/// Every crate passes the ignore-list check, the `$CARGO_HOME/audit.toml` guard,
-/// the pinned tool installs, `cargo audit`, and `cargo deny`,
-/// before any of its code compiles.
-const TEST_JOB_COMMANDS: [(Option<&str>, &str); 9] = [
-    (None, "bash gui_editor/check_advisory_ignores.sh"),
-    (None, "test ! -e \"${CARGO_HOME:?}/audit.toml\""),
-    (None, "cargo install --locked cargo-audit --version 0.23.0"),
-    (None, "cargo install --locked cargo-deny --version 0.22.0"),
-    (
-        Some("gui_editor"),
-        "cargo audit --deny warnings --file \"../$CRATE/Cargo.lock\"",
-    ),
-    (
-        Some("${{ matrix.crate }}"),
-        "deny_config=../gui_editor/deny.toml",
-    ),
-    (
-        Some("${{ matrix.crate }}"),
-        "if [ \"$CRATE\" = gui_editor ]; then deny_config=../gui_editor/deny-gui_editor.toml; fi",
-    ),
-    (
-        Some("${{ matrix.crate }}"),
-        "cargo deny --locked --config \"$deny_config\" check --deny warnings",
-    ),
-    (Some("${{ matrix.crate }}"), "cargo test --locked"),
+/// The `test` job commands in order.
+/// The first command builds and checks the tool image (GEDT-AR-00034, T-54).
+/// Every crate then passes the ignore-list check, the `$CARGO_HOME/audit.toml` guard,
+/// `cargo audit`, and `cargo deny` in the tool image, before any of its code compiles.
+/// Both checks run the tools by absolute path, so no cargo `[alias]` can replace them.
+const TEST_JOB_COMMANDS: [&str; 8] = [
+    "bash gui_editor/container/tool_image.sh build",
+    "bash gui_editor/check_advisory_ignores.sh",
+    "bash gui_editor/container/tool_image.sh run . sh -c 'test ! -e \"${CARGO_HOME:?}/audit.toml\"'",
+    "bash gui_editor/container/tool_image.sh run gui_editor /usr/local/cargo/bin/cargo-audit audit --db /tmp/advisory-dbs/cargo-audit --deny warnings --file \"../$CRATE/Cargo.lock\"",
+    "deny_config=../gui_editor/deny.toml",
+    "if [ \"$CRATE\" = gui_editor ]; then deny_config=../gui_editor/deny-gui_editor.toml; fi",
+    "bash gui_editor/container/tool_image.sh run \"$CRATE\" env ADVISORY_DB_DIR=/tmp/advisory-dbs /usr/local/cargo/bin/cargo-deny --locked --config \"$deny_config\" check --deny warnings",
+    "bash gui_editor/container/tool_image.sh run \"$CRATE\" cargo test --locked",
 ];
 
 // GEDT-AR-00025 and GEDT-AR-00030:
 // the CI supply-chain gate runs, in order, before the tests.
+// GEDT-AR-00034, T-54: every cargo step runs in the checked tool image.
 #[test]
 fn test_ar_00025_ar_00030_ci_test_job_gates_each_crate_in_order() {
     let wf = workflow();
@@ -1636,28 +1654,152 @@ fn test_ar_00025_ar_00030_ci_test_job_gates_each_crate_in_order() {
         Some("${{ matrix.crate }}"),
         "CRATE is not taken from the matrix through env"
     );
-    let mut commands: Vec<(Option<&str>, &str)> = Vec::new();
+    assert_eq!(
+        test.at("env").at("CONTAINER_ENGINE").as_str(),
+        Some("docker"),
+        "the test job does not select docker for the tool image"
+    );
+    let mut commands: Vec<&str> = Vec::new();
     for step in steps(test) {
         assert!(
             step.get("env").is_none(),
             "test step overrides env: {step:?}"
+        );
+        assert!(
+            step.get("working-directory").is_none(),
+            "test step sets a working directory; tool_image.sh takes the directory: {step:?}"
         );
         let run = run_text(step);
         assert!(
             !run.contains("${{"),
             "test interpolates expressions into run"
         );
-        let dir = step.at("working-directory").as_str();
-        commands.extend(
-            run.lines()
-                .map(str::trim)
-                .filter(|l| !l.is_empty())
-                .map(|l| (dir, l)),
-        );
+        commands.extend(run.lines().map(str::trim).filter(|l| !l.is_empty()));
     }
     assert_eq!(commands, TEST_JOB_COMMANDS, "test job commands and order");
-    assert_eq!(build_sh_assignment("CARGO_AUDIT_VERSION"), "0.23.0");
-    assert_eq!(build_sh_assignment("CARGO_DENY_VERSION"), "0.22.0");
+}
+
+// --- GEDT-AR-00034, T-54: the tool image ---
+
+fn containerfile_text() -> String {
+    let text = read(&gui_dir().join("container/Containerfile"));
+    assert_plain_text("Containerfile", &text);
+    text
+}
+
+/// The Containerfile instructions without comments and blank lines.
+/// Panics on a line continuation or a heredoc, which would hide commands from the tests.
+fn containerfile_instructions() -> Vec<String> {
+    containerfile_text()
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty() && !l.starts_with('#'))
+        .map(|l| {
+            assert!(
+                !l.ends_with('\\') && !l.contains("<<"),
+                "Containerfile line continuation or heredoc: {l}"
+            );
+            l.to_string()
+        })
+        .collect()
+}
+
+/// The whole tool image definition.
+/// The exact list keeps the image to the pinned base plus the four pinned tools:
+/// no other package, no other source, and no other instruction.
+const CONTAINERFILE_INSTRUCTIONS: [&str; 8] = [
+    "ARG BASE_IMAGE=docker.io/library/rust:1.100.0-trixie@sha256:223cc32ddca8f3ee90c436dbc94b6b5f052ea7f9653c5201e9612f08ad7d21b8",
+    "FROM ${BASE_IMAGE}",
+    "ARG BASE_IMAGE",
+    "LABEL org.opencontainers.image.base.name=\"${BASE_IMAGE}\"",
+    "RUN cargo install --locked --version 0.23.0 cargo-audit && rm -rf \"$CARGO_HOME/registry\"",
+    "RUN cargo install --locked --version 0.22.0 cargo-deny && rm -rf \"$CARGO_HOME/registry\"",
+    "RUN rustup component add clippy",
+    "RUN rustup component add rustfmt",
+];
+
+// GEDT-AR-00034: the tool image adds only the four pinned tools to the pinned base.
+#[test]
+fn test_ar_00034_t54_containerfile_adds_only_pinned_tools() {
+    assert_eq!(
+        containerfile_instructions(),
+        CONTAINERFILE_INSTRUCTIONS,
+        "Containerfile instructions"
+    );
+}
+
+// GEDT-AR-00034: the base is the official Rust image, pinned by version tag and digest,
+// and the Containerfile, tool_image.sh, and the checked versions agree.
+#[test]
+fn test_ar_00034_t54_base_and_tool_pins_agree() {
+    let pinned = tool_image_sh_assignment("PINNED_RUST_IMAGE");
+    assert!(
+        pinned.starts_with("docker.io/library/rust:"),
+        "base is not the official Rust image: {pinned}"
+    );
+    assert!(
+        is_version_and_digest_pinned(&pinned),
+        "base not pinned by version and digest: {pinned}"
+    );
+    assert_eq!(
+        CONTAINERFILE_INSTRUCTIONS[0],
+        format!("ARG BASE_IMAGE={pinned}"),
+        "Containerfile base differs from tool_image.sh"
+    );
+    assert_eq!(tool_image_sh_assignment("CARGO_AUDIT_VERSION"), "0.23.0");
+    assert_eq!(tool_image_sh_assignment("CARGO_DENY_VERSION"), "0.22.0");
+    let toolchain = pinned
+        .split_once(':')
+        .and_then(|(_, tag)| tag.split_once('-'))
+        .map(|(version, _)| version)
+        .unwrap_or_default();
+    let clippy_minor = toolchain.split('.').nth(1).unwrap_or_default();
+    assert!(
+        tool_image_sh_assignment("CLIPPY_VERSION_LINE")
+            .starts_with(&format!("clippy 0.1.{clippy_minor} (")),
+        "clippy version does not follow toolchain {toolchain}"
+    );
+    assert!(
+        tool_image_sh_assignment("RUSTFMT_VERSION_LINE").starts_with("rustfmt "),
+        "RUSTFMT_VERSION_LINE is not a rustfmt version"
+    );
+}
+
+// GEDT-AR-00034, T-54: build.sh and CI use the tool image and install no tool per run;
+// CI pushes no image and logs in to no registry.
+#[test]
+fn test_ar_00034_t54_no_tool_install_and_no_image_push() {
+    let files = [
+        ("build.sh", read(&gui_dir().join("build.sh"))),
+        ("tool_image.sh", read(&gui_dir().join("container/tool_image.sh"))),
+        ("ci.yml", workflow_text()),
+    ];
+    for (file, text) in &files {
+        assert!(!text.contains("cargo install"), "{file} runs cargo install");
+    }
+    let ci = workflow_text();
+    for needle in ["docker push", "podman push", "docker login", "podman login", "packages:"] {
+        assert!(!ci.contains(needle), "ci.yml contains {needle}");
+    }
+}
+
+// GEDT-AR-00032 and GEDT-AR-00033, T-54:
+// the container directory holds only the Containerfile,
+// a configuration format, and Bash scripts.
+#[test]
+fn test_ar_00032_ar_00033_t54_container_files_are_config_or_bash() {
+    let dir = gui_dir().join("container");
+    let mut names: Vec<String> = fs::read_dir(&dir)
+        .unwrap_or_else(|err| panic!("cannot read {}: {err}", dir.display()))
+        .map(|entry| entry.expect("directory entry").file_name().to_string_lossy().into_owned())
+        .collect();
+    names.sort_unstable();
+    assert_eq!(names, ["Containerfile", "tool_image.sh"], "container files");
+    let script = read(&dir.join("tool_image.sh"));
+    assert!(
+        script.starts_with("#!/usr/bin/env bash\n"),
+        "tool_image.sh is not a Bash script"
+    );
 }
 
 // GEDT-AR-00025: a hung step cannot hold a runner indefinitely.
@@ -1673,16 +1815,70 @@ fn test_ar_00025_ci_every_job_has_timeout() {
 }
 
 // Product owner decision for T-01: no Python in CI or in the pipeline tests.
+// T-54 extends the rule to build.sh and the tool image files.
 #[test]
 fn test_ar_00025_ac6_ci_and_pipeline_tests_use_no_python() {
-    let script = read(&gui_dir().join("tests/pipeline/test_build_pipeline.sh"));
     for (file, text) in [
         ("ci.yml", workflow_text()),
-        ("test_build_pipeline.sh", script),
+        (
+            "test_build_pipeline.sh",
+            read(&gui_dir().join("tests/pipeline/test_build_pipeline.sh")),
+        ),
+        ("build.sh", read(&gui_dir().join("build.sh"))),
+        ("Containerfile", containerfile_text()),
+        ("tool_image.sh", read(&gui_dir().join("container/tool_image.sh"))),
     ] {
         let text = text.to_lowercase();
         for needle in ["python", "pyyaml"] {
             assert!(!text.contains(needle), "{file} mentions {needle}");
         }
     }
+}
+
+// GEDT-AR-00034, T-54, decision "CI cache, T-54 follow-up":
+// CI uses no action other than the pinned checkout,
+// and no job imports or exports a layer cache.
+#[test]
+fn test_ar_00034_t54_ci_adds_no_action_and_no_layer_cache() {
+    let wf = workflow();
+    for (name, job) in jobs(&wf) {
+        for step in steps(job) {
+            if let Some(uses) = step.get("uses") {
+                let uses = uses.as_str().unwrap_or_default();
+                assert!(
+                    uses.starts_with("actions/checkout@"),
+                    "{name} uses an action other than actions/checkout: {uses}"
+                );
+            }
+        }
+    }
+    let tool_image_sh = read(&gui_dir().join("container/tool_image.sh"));
+    for (file, text) in [("ci.yml", workflow_text()), ("tool_image.sh", tool_image_sh)] {
+        for needle in ["--cache-from", "--cache-to", "buildx", "actions/cache", "docker load"] {
+            assert!(!text.contains(needle), "{file} contains {needle}");
+        }
+    }
+}
+
+// GEDT-AR-00025 and GEDT-AR-00034, T-54:
+// the gui-editor-build job runs the pipeline tests, then build.sh with docker,
+// and nothing else.
+#[test]
+fn test_ar_00025_ar_00034_t54_gui_editor_build_job_commands() {
+    let wf = workflow();
+    let job = wf.at("jobs").at("gui-editor-build");
+    let commands: Vec<&str> = steps(job)
+        .iter()
+        .flat_map(|step| run_text(step).lines())
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .collect();
+    assert_eq!(
+        commands,
+        [
+            "./gui_editor/tests/pipeline/test_build_pipeline.sh",
+            "CONTAINER_ENGINE=docker ./gui_editor/build.sh",
+        ],
+        "gui-editor-build commands"
+    );
 }

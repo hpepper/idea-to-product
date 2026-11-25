@@ -30,7 +30,13 @@ fn test_xml_load_and_dump() {
     db_create_in_mem_db(&db_conn);
     db_populate_from_xml(&db_conn, &filename);
     print_db_info(&db_conn);
-    let output_file = "dump_test_output.xml";
+    // `gui_editor/container/tool_image.sh run` mounts the crate read-only,
+    // except the git-ignored test-output folder (T-54).
+    let output_dir = concat!(env!("CARGO_MANIFEST_DIR"), "/test-output");
+    fs::create_dir_all(output_dir)
+        .unwrap_or_else(|err| panic!("cannot create {output_dir}: {err}"));
+    let output_file = format!("{output_dir}/dump_test_output.xml");
+    let output_file = output_file.as_str();
     // A failed dump must fail the test, otherwise a stale output file from an earlier run
     // would be parsed and the assertions below would pass on old data.
     dump_db_to_xml(&db_conn, output_file).expect("dump_db_to_xml failed");

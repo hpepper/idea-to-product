@@ -1,0 +1,27 @@
+# Tool image of gui_editor (GEDT-AR-00034, T-54).
+# Adds to the pinned official Rust image only these tools:
+# cargo-audit, cargo-deny, clippy, and rustfmt.
+# The image runs the supply-chain checks, the build, and the tests; it is not a dev shell,
+# and the GUI does not run in a container.
+# container/tool_image.sh builds the image,
+# tags it with the sha256 over this file and the base,
+# and checks the base label and the tool versions before each use.
+#
+# The base is pinned by version tag and digest,
+# so a retagged upstream image cannot change it.
+# Update the tag and the digest together,
+# and with them PINNED_RUST_IMAGE in container/tool_image.sh.
+# tool_image.sh passes BASE_IMAGE only after checking that it is pinned the same way.
+ARG BASE_IMAGE=docker.io/library/rust:1.100.0-trixie@sha256:223cc32ddca8f3ee90c436dbc94b6b5f052ea7f9653c5201e9612f08ad7d21b8
+FROM ${BASE_IMAGE}
+ARG BASE_IMAGE
+# tool_image.sh compares the digest in this label with the pinned digest before each use.
+LABEL org.opencontainers.image.base.name="${BASE_IMAGE}"
+
+# --locked builds each tool from its own committed Cargo.lock.
+# Removing the registry cache keeps the downloaded sources out of the image.
+RUN cargo install --locked --version 0.23.0 cargo-audit && rm -rf "$CARGO_HOME/registry"
+RUN cargo install --locked --version 0.22.0 cargo-deny && rm -rf "$CARGO_HOME/registry"
+# Both components follow the toolchain version of the pinned base.
+RUN rustup component add clippy
+RUN rustup component add rustfmt

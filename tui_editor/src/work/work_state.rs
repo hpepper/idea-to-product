@@ -16,6 +16,9 @@ pub struct WorkState {
     pub component_text_areas: ComponentTextAreas,
     pub viewpacket_editor_fields: ViewPacketEditorFieldData,
     // pub diagram_text_areas: DiagramTextAreas,       // Future
+    /// The file F7 saves the project to, relative to the working directory.
+    /// Only tests change the default, to keep their save out of the crate root.
+    pub save_path: String,
 }
 
 impl WorkState {
@@ -36,6 +39,7 @@ impl WorkState {
             number_of_cloned_objects: 0,
             component_text_areas: ComponentTextAreas::new(),
             viewpacket_editor_fields: ViewPacketEditorFieldData::new(),
+            save_path: "tui_out.xml".to_string(),
         }
     }
 }

@@ -19,13 +19,24 @@ use crate::app_state::AppState;
 use crate::load_project;
 use crate::work::{handle_work_input, render_work, WorkState};
 
-/// The file the F7 handler in `work.rs` dumps the project to,
-/// relative to the working directory.
-/// `cargo test` runs unit tests in the crate root,
-/// so the file is `tui_editor/tui_out.xml`.
-const SAVE_FILE: &str = "tui_out.xml";
+/// The file name the F7 handler in `work.rs` saves the project to by default.
+const SAVE_FILE_NAME: &str = "tui_out.xml";
 
-/// Serializes the tests that press F7, because every save writes the same `SAVE_FILE`.
+/// Returns the save path the F7 tests set on `WorkState`,
+/// `test-output/tui_out.xml` under the crate root, and creates its folder.
+/// The tool image mounts the crate root read-only and only `test-output` writable (T-54).
+fn save_file() -> String {
+    let output_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("test-output");
+    fs::create_dir_all(&output_dir)
+        .unwrap_or_else(|err| panic!("cannot create {}: {err}", output_dir.display()));
+    output_dir
+        .join(SAVE_FILE_NAME)
+        .to_str()
+        .expect("non UTF-8 crate path")
+        .to_string()
+}
+
+/// Serializes the tests that press F7, because every save writes the same `save_file()`.
 static SAVE_FILE_LOCK: Mutex<()> = Mutex::new(());
 
 /// A component of the fixture with a purpose, a summary, and a title.
@@ -132,16 +143,18 @@ fn count_rows(db_conn: &Connection, table: &str) -> i64 {
         .unwrap_or_else(|err| panic!("cannot count {table}: {err}"))
 }
 
-/// Keeps a `SAVE_FILE` a developer left in the crate root,
+/// Keeps a save file an earlier run left behind,
 /// and restores it after the test.
 struct SaveFileGuard {
+    path: String,
     previous_content: Option<Vec<u8>>,
 }
 
 impl SaveFileGuard {
-    fn new() -> Self {
+    fn new(path: &str) -> Self {
         Self {
-            previous_content: fs::read(SAVE_FILE).ok(),
+            path: path.to_string(),
+            previous_content: fs::read(path).ok(),
         }
     }
 }
@@ -152,14 +165,14 @@ impl Drop for SaveFileGuard {
     /// A restore error therefore fails the test loudly only when no panic is in progress.
     fn drop(&mut self) {
         let restored = match &self.previous_content {
-            Some(content) => fs::write(SAVE_FILE, content),
-            None => match fs::remove_file(SAVE_FILE) {
+            Some(content) => fs::write(&self.path, content),
+            None => match fs::remove_file(&self.path) {
                 Err(err) if err.kind() == ErrorKind::NotFound => Ok(()),
                 removed => removed,
             },
         };
         if let Err(err) = restored {
-            let message = format!("cannot restore {SAVE_FILE}: {err}");
+            let message = format!("cannot restore {}: {err}", self.path);
             if std::thread::panicking() {
                 eprintln!("{message}");
             } else {
@@ -193,8 +206,10 @@ fn ar_00030_tui_editor_edit_updates_component() {
     let _lock = SAVE_FILE_LOCK
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    let _save_file = SaveFileGuard::new();
+    let save_file = save_file();
+    let _save_file_guard = SaveFileGuard::new(&save_file);
     let mut editor = Editor::open(&fixture_path());
+    editor.work_state.save_path = save_file.clone();
     let original = get_component_by_name(&editor.db_conn, EDITED_COMPONENT.to_string())
         .expect("fixture component");
 
@@ -258,7 +273,7 @@ fn component_element<'xml>(xml: &'xml str, name: &str) -> &'xml str {
 /// holding a copy of the save file next to a copy of the included fixture,
 /// as the files of a real project sit side by side.
 /// The reader resolves an `Include` relative to the directory of the including file,
-/// and `work.rs` saves to the crate root.
+/// and the F7 tests save to `test-output` under the crate root.
 /// Reloading a byte copy from this directory avoids writing the included file
 /// into the crate root, where it could overwrite a developer's file.
 /// The directory is removed on drop.
@@ -288,7 +303,7 @@ impl ReloadProjectDir {
     }
 
     fn main_file(&self) -> PathBuf {
-        self.path.join(SAVE_FILE)
+        self.path.join(SAVE_FILE_NAME)
     }
 }
 
@@ -315,8 +330,10 @@ fn ar_00030_tui_editor_save_writes_edit_to_xml() {
     let _lock = SAVE_FILE_LOCK
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    let _save_file = SaveFileGuard::new();
+    let save_file = save_file();
+    let _save_file_guard = SaveFileGuard::new(&save_file);
     let mut editor = Editor::open(&fixture_path());
+    editor.work_state.save_path = save_file.clone();
     let original = get_component_by_name(&editor.db_conn, EDITED_COMPONENT.to_string())
         .expect("fixture component");
     let original_ids: Vec<(&str, Vec<u64>)> = ["component", "component_relation", "view_packet"]
@@ -327,16 +344,16 @@ fn ar_00030_tui_editor_save_writes_edit_to_xml() {
     // `work.rs` ignores a failed save,
     // so a stale save file from an earlier run must not stand in for this save.
     // The guard restores the earlier file afterwards.
-    match fs::remove_file(SAVE_FILE) {
+    match fs::remove_file(&save_file) {
         Err(err) if err.kind() != ErrorKind::NotFound => {
-            panic!("cannot remove stale {SAVE_FILE}: {err}")
+            panic!("cannot remove stale {save_file}: {err}")
         }
         _ => {}
     }
     editor.select_component(EDITED_COMPONENT);
     editor.append_to_purpose_and_save("T39-saved");
 
-    let saved = fs::read_to_string(SAVE_FILE).expect("F7 wrote no save file");
+    let saved = fs::read_to_string(&save_file).expect("F7 wrote no save file");
     assert_eq!(saved.lines().nth(1), Some(SAD_DOCTYPE), "saved file lacks the SAD DOCTYPE");
     let root_tag = saved
         .split("<SoftwareArchitectureDocumentation ")
@@ -357,7 +374,7 @@ fn ar_00030_tui_editor_save_writes_edit_to_xml() {
         );
     }
 
-    let reload_dir = ReloadProjectDir::new(SAVE_FILE);
+    let reload_dir = ReloadProjectDir::new(&save_file);
     let reloaded_db = load_project(
         &reload_dir
             .main_file()
@@ -539,4 +556,13 @@ fn t41_ar_00030_tui_editor_esc_discards_unsaved_edit() {
         .expect("fixture component");
     assert_eq!(stored.purpose, "");
     assert_eq!(stored.summary, EDITED_SUMMARY);
+}
+
+/// T-54 keeps production behaviour: F7 saves to `tui_out.xml` in the working directory,
+/// and only the tests above point `save_path` into `test-output` (AR-00030).
+#[test]
+fn t54_ar_00030_tui_editor_default_save_path_is_tui_out_xml() {
+    assert_eq!(WorkState::new().save_path, SAVE_FILE_NAME);
+    let editor = Editor::open(&fixture_path());
+    assert_eq!(editor.work_state.save_path, SAVE_FILE_NAME);
 }

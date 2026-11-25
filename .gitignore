@@ -48,3 +48,4 @@ vibe.tui_editor
 bin/sad2md
 target
 *.json
+test-output/

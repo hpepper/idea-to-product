@@ -11,7 +11,9 @@ Readers are the planner, the developers, and the testers of `gui_editor`.
 ### Scope
 
 - In scope: native Linux app, later local web app, editing and viewing of SAD XML projects.
-- Out of scope: multi-user service, authentication of users, storage formats other than SAD XML.
+- Out of scope: multi-user service, authentication of users, storage formats other than SAD XML, the repository-root build scripts `build.sh` and `build_in_docker.sh`.
+  - Product owner answer to plan open question 10 on 2026-11-25, quoted: "leave the root scripts alone".
+  - No requirement covers the repository-root build scripts; GEDT-AR-00025 and GEDT-AR-00034 cover the `gui_editor` build only.
 - Included files: the editor loads Component and Team elements and writes back Component elements only,
   see GEDT-FR-00042 to GEDT-FR-00045.
   The product owner states this scope may change in the future.
@@ -25,6 +27,9 @@ Readers are the planner, the developers, and the testers of `gui_editor`.
 ### Vocabulary
 
 - Address: Element ID in the form `a.b.c.d`, each part a decimal number from 0 to 255.
+- Checked crates: The `gui_editor`, `sad2md`, `sad_xml_sql`, and `tui_editor` crates.
+- Checked dependency graph: Resolved dependency graph of a checked crate, with all features and dev-dependencies, for the target `x86_64-unknown-linux-gnu`.
+- Committed: Tracked by git in the `idea-to-product` repository, in any top-level directory.
 - Core: Project model, XML reader, XML writer, and in-memory SQLite database.
 - DTD rules: Element order, required elements, and required attributes of the SAD DTD,
   plus the field rules of GEDT-AR-00013.
@@ -33,14 +38,19 @@ Readers are the planner, the developers, and the testers of `gui_editor`.
 - SAD: Software Architecture Documentation.
 - SAD DTD: `sad_xml_sql/tests/software_architecture_documentation.dtd`, version 0.1.0.
 - Session: One run of the editor, with one or more loaded projects.
+- Supported platform: Operating system and processor architecture on which the project verifies the build or the run of an app, see GEDT-AR-00049 and GEDT-AR-00050.
+  - The project gives no build or run commitment for any other platform.
 - Skipped edit: Edit to a Component or Team element loaded from an included file,
   which no save writes to that file.
 - SRS: Software Requirements Specification.
 - STS: Software Testing Specification.
+- Test output directory: Git-ignored `test-output` directory at the root of a crate.
+- Tool image: Build image of GEDT-AR-00034.
 
 ### References
 
 - Story cards: [USER_STORIES.md](USER_STORIES.md)
+- Design decisions awaiting product owner review: [DESIGN.md](DESIGN.md)
 - Opportunity assessment: [02_opportunity_assesmemt.md](02_opportunity_assesmemt.md)
 - SAD DTD: [software_architecture_documentation.dtd](../../sad_xml_sql/tests/software_architecture_documentation.dtd)
 - SAD concepts: [SoftwareArchitectureDocumentationOverview.md](../../docs/SoftwareArchitectureDocumentationOverview.md)
@@ -62,7 +72,7 @@ Readers are the planner, the developers, and the testers of `gui_editor`.
 | Story | Requirements |
 | --- | --- |
 | GEDT-STORY-00001 | GEDT-AR-00001, GEDT-AR-00012, GEDT-AR-00013, GEDT-AR-00027, GEDT-FR-00001, GEDT-FR-00002, GEDT-FR-00003, GEDT-FR-00042 |
-| GEDT-STORY-00002 | GEDT-AR-00001, GEDT-AR-00002, GEDT-AR-00030, GEDT-AR-00035, GEDT-FR-00004, GEDT-FR-00005, GEDT-FR-00006, GEDT-FR-00009, GEDT-FR-00043, GEDT-FR-00044, GEDT-FR-00045, GEDT-FR-00046, GEDT-FR-00047, GEDT-FR-00048 |
+| GEDT-STORY-00002 | GEDT-AR-00001, GEDT-AR-00002, GEDT-AR-00030, GEDT-FR-00004, GEDT-FR-00005, GEDT-FR-00006, GEDT-FR-00009, GEDT-FR-00045, GEDT-FR-00046, GEDT-FR-00047, GEDT-FR-00048 |
 | GEDT-STORY-00003 | GEDT-AR-00007, GEDT-AR-00029, GEDT-FR-00007, GEDT-FR-00008, GEDT-FR-00009, GEDT-FR-00047, GEDT-FR-00048 |
 | GEDT-STORY-00004 | GEDT-FR-00010, GEDT-FR-00011, GEDT-FR-00012, GEDT-FR-00013 |
 | GEDT-STORY-00005 | GEDT-FR-00013, GEDT-FR-00014, GEDT-FR-00015, GEDT-FR-00016, GEDT-FR-00045 |
@@ -86,19 +96,33 @@ Readers are the planner, the developers, and the testers of `gui_editor`.
 | GEDT-STORY-00023 | GEDT-AR-00017, GEDT-AR-00018, GEDT-AR-00019, GEDT-AR-00020 |
 | GEDT-STORY-00024 | GEDT-AR-00021 |
 | GEDT-STORY-00025 | GEDT-AR-00009, GEDT-AR-00015, GEDT-AR-00023, GEDT-AR-00024 |
+| GEDT-STORY-00026 | GEDT-AR-00035, GEDT-FR-00009, GEDT-FR-00043, GEDT-FR-00044 |
+
+GEDT-STORY-00026 holds the included-file write split from GEDT-STORY-00002 on 2026-11-25, product owner answer to plan open question 19, quoted: "go with the default".
 
 Traceability gaps:
 
 - Secondary: GEDT-AR-00025, supply-chain hygiene.
   - No story asks for GEDT-AR-00025; the repository security policy mandates the requirement.
-- Secondary: GEDT-AR-00032, program code in Rust.
+- Secondary: GEDT-AR-00032, committed program code in Rust.
   - No story asks for GEDT-AR-00032; the product owner mandates the requirement as a process parameter.
-- Secondary: GEDT-AR-00033, scripts in Bash.
+- Secondary: GEDT-AR-00033, committed scripts in Bash.
   - No story asks for GEDT-AR-00033; the product owner mandates the requirement as a process parameter.
 - Secondary: GEDT-AR-00034, build image derived from the pinned official Rust image.
   - No story asks for GEDT-AR-00034; the product owner mandates the requirement as a process parameter.
 - Secondary: GEDT-AR-00036, version bump on change.
   - No story asks for GEDT-AR-00036; the product owner mandates the requirement as a process parameter.
+- Secondary: GEDT-AR-00037, zero lint warnings in the four crates.
+  - No story asks for GEDT-AR-00037; the product owner mandates the requirement as a process parameter.
+  - `PLAN.md` task T-44 implements GEDT-AR-00037; T-44 traced provisionally to GEDT-AR-00030 before.
+- Secondary: GEDT-AR-00038, standard formatting in the four crates.
+  - No story asks for GEDT-AR-00038; the product owner mandates the requirement as a process parameter.
+  - `PLAN.md` task T-44 implements GEDT-AR-00038.
+- Secondary: GEDT-AR-00039 to GEDT-AR-00048, build and supply-chain policy.
+  - No story asks for GEDT-AR-00039 to GEDT-AR-00048; product owner answers on 2026-11-24 and 2026-11-25 mandate the requirements, see [Build and supply chain](#build-and-supply-chain).
+- Secondary: GEDT-AR-00049 and GEDT-AR-00050, x86_64 Linux as the only supported platform for build and run.
+  - No story asks for GEDT-AR-00049 or GEDT-AR-00050; the product owner mandates the requirements as a process parameter on 2026-11-25.
+  - GEDT-STORY-00019 and the story Out of Scope entry "Native app on platforms other than Linux" agree, but cover the native `gui_editor` only, so neither is the trace source.
 - Orphaned requirements: none.
 - Stories without a requirement: none.
 - Removed: GEDT-AR-00006 and GEDT-AR-00022, together with the web app architecture decision.
@@ -146,7 +170,7 @@ Requirements traced only to GEDT-STORY-00023 or GEDT-STORY-00024 are Critical fo
 | GEDT-AR-00008 | A save shall keep the permission mode bits of the existing project file. | 00022 | Critical | Test |
 | GEDT-AR-00009 | The editor shall write project data only to project files and to temporary files in the same directory, with permission mode bits no wider than the project file. | 00022, 00025 | Critical | Test, inspection |
 | GEDT-AR-00030 | The core shall extend the shared `sad_xml_sql` library, keeping the `sad2md` and `tui_editor` test suites passing. | 00002 | Critical | Test |
-| GEDT-AR-00035 | The editor shall write an included file only when the resolved path, after symlink resolution at write time, is inside the directory of the including project file. | 00002, 00021 | Critical | Test, traversal and symlink swap fixtures |
+| GEDT-AR-00035 | The editor shall write an included file only when the resolved path, after symlink resolution at write time, is inside the directory of the including project file. | 00021, 00026 | Critical | Test, traversal and symlink swap fixtures |
 | GEDT-FR-00001 | When the user selects a SAD XML file, the editor shall load every Component, ViewPacket, ComponentRelation, Behavior, Team, Requirement, and Include element into the session. | 00001 | Critical | Test |
 | GEDT-FR-00002 | When a file fails XML parsing or the DTD rules, the editor shall reject the whole file with an error naming the file path, line, column, and failed rule. | 00001 | Critical | Test |
 | GEDT-FR-00003 | The editor shall open a project file without writing to the file. | 00001 | Critical | Test, compare hash and mtime |
@@ -155,10 +179,10 @@ Requirements traced only to GEDT-STORY-00023 or GEDT-STORY-00024 are Critical fo
 | GEDT-FR-00006 | Before writing, the editor shall check the project against the DTD rules and, on failure, keep the existing file and show the failing element ID. | 00002, 00022 | Critical | Test |
 | GEDT-FR-00007 | With unsaved changes, the editor shall save the project within 60 seconds of the first unsaved change. | 00003 | Value adding | Test |
 | GEDT-FR-00008 | Without unsaved changes, the editor shall not write the project file. | 00003 | Value adding | Test |
-| GEDT-FR-00009 | Before each save, including autosave, the editor shall ask the user before overwriting a file that changed on disk since the last load or save. | 00002, 00003 | Critical | Test |
+| GEDT-FR-00009 | Before each save, including autosave, the editor shall ask the user before overwriting a file that changed on disk since the last load or save. | 00002, 00003, 00026 | Critical | Test |
 | GEDT-FR-00042 | From an included file, the core shall load only the Component and Team elements into the editor session, keeping the default read of the shared `sad_xml_sql` reader unchanged. | 00001 | Critical | Test, `sad2md` golden tests |
-| GEDT-FR-00043 | When a save writes an included file, the editor shall write to that file only the Component elements loaded from that file. | 00002 | Critical | Test |
-| GEDT-FR-00044 | When a save writes an included file, the editor shall keep the Document, Include, Team, ViewPacket, ComponentRelation, Behavior, and Requirement elements of that file unchanged. | 00002 | Critical | Test, canonical XML compare |
+| GEDT-FR-00043 | When a save writes an included file, the editor shall write to that file only the Component elements loaded from that file. | 00026 | Critical | Test |
+| GEDT-FR-00044 | When a save writes an included file, the editor shall keep the Document, Include, Team, ViewPacket, ComponentRelation, Behavior, and Requirement elements of that file unchanged. | 00026 | Critical | Test, canonical XML compare |
 | GEDT-FR-00045 | When the user selects Save, directly or through exit, while the session holds a skipped edit, the editor shall show a warning that names the address and the source file of each element with a skipped edit. | 00002, 00005 | Critical | Test: direct Save shows a non-modal warning; exit shows a modal warning that lets the user cancel the exit; autosave shows no warning |
 | GEDT-FR-00046 | The core shall return every save failure as an error value that names the project file and the failure cause. | 00002 | Critical | Test, read-only directory and full disk fixtures |
 | GEDT-FR-00047 | When a save fails, the editor shall show the user the error of GEDT-FR-00046. | 00002, 00003 | Critical | Test |
@@ -190,7 +214,8 @@ Included files:
 - GEDT-FR-00044 follows the product owner answer to open question 6.
   The SAD DTD requires `ViewPacket+` in every file, so a file with only Component elements fails the DTD rules.
 - GEDT-FR-00044 keeps Team elements as the included file defines them on disk, because the `sad_xml_sql` model does not hold Team `Member`.
-- Architect default, pending product owner review in open question 13: GEDT-FR-00009 applies to each included file before a save writes that file.
+- Product owner answer to open question 13 on 2026-11-25, option a of [DESIGN.md](DESIGN.md#external-change-of-an-included-file), quoted: "provide a prompt of file changed on disk with an option to overwrite".
+  GEDT-FR-00009 applies to each included file before a save writes that file.
   The prompt names the included file.
   When the user declines, the save leaves that included file as the file is on disk.
   When the user confirms, GEDT-FR-00044 keeps the other elements as the included file holds them on disk at write time.
@@ -327,20 +352,53 @@ so the allowed set comes from `sad_xml_sql`, the list that `sad2md` processes.
 | GEDT-AR-00004 | The native app shall open, edit, and save a project on the current Fedora release, on Wayland and on X11. | 00019 | Critical | Demonstration |
 | GEDT-AR-00005 | The web app shall run in the current Firefox release and the current Chromium release. | 00020 | Value adding | Demonstration |
 | GEDT-FR-00041 | The web app shall offer every edit and view function of the native app. | 00020 | Value adding | Test, shared UI suite |
-| GEDT-AR-00032 | Hand-written program code of `gui_editor` shall be written in Rust. | Secondary | Critical | Inspection of repository |
-| GEDT-AR-00033 | When `gui_editor` needs a hand-written script, the script shall be written in Bash. | Secondary | Critical | Inspection of repository |
+| GEDT-AR-00032 | Every committed file of hand-written program code shall be written in Rust. | Secondary | Critical | Test, automated repository check |
+| GEDT-AR-00033 | Every committed hand-written script shall be written in Bash. | Secondary | Critical | Test, automated repository check |
 | GEDT-AR-00034 | The build shall compile `gui_editor` in an image built from the Docker Official Image `docker.io/library/rust`, pinned by version tag and `sha256` digest, that adds to the base only the version-pinned build and check tools `cargo-audit`, `cargo-deny`, `clippy`, and `rustfmt`. | Secondary | Critical | Inspection of build and image definition |
 | GEDT-AR-00036 | When a branch changes a file under `gui_editor/src` or `gui_editor/Cargo.toml`, the branch shall set the `gui_editor` package version in `Cargo.toml` to a semantic version higher than the version on `master`. | Secondary | Critical | Inspection of the branch diff against `master` |
+| GEDT-AR-00037 | Each commit that merges into `master` shall produce zero warnings from the default lint set of the compiler and of the official Rust linter of the GEDT-AR-00034 toolchain, in every library, binary, test, example, and benchmark target of the `gui_editor`, `sad2md`, `sad_xml_sql`, and `tui_editor` crates. | Secondary | Value adding | Inspection of the build gate; test: a commit with one lint warning fails the gate |
+| GEDT-AR-00038 | Each commit that merges into `master` shall hold the Rust source of the `gui_editor`, `sad2md`, `sad_xml_sql`, and `tui_editor` crates in the default style of the official Rust formatter of the GEDT-AR-00034 toolchain. | Secondary | Value adding | Inspection of the build gate; test: a commit with one formatting deviation fails the gate |
+| GEDT-AR-00049 | Linux on the x86_64 processor architecture shall be the only supported platform of the build environment of the checked crates. | Secondary | Critical | Inspection: the tool image of GEDT-AR-00034 and every CI runner are x86_64 Linux, and the build documentation names x86_64 Linux as the only supported build platform |
+| GEDT-AR-00050 | Linux on the x86_64 processor architecture shall be the only supported host platform for running the `gui_editor`, `sad2md`, and `tui_editor` apps. | Secondary | Critical | Inspection: every release demonstration and test run is on x86_64 Linux, and the user documentation of each app names x86_64 Linux as the only supported platform |
 
 Rationale for GEDT-AR-00032 and GEDT-AR-00033: the product owner limits the languages to reduce toolchains, reviewer skills, and supply-chain surface.
+The product owner widened the scope on 2026-11-25 from `gui_editor` to every committed file, quoted: "the important part is that only Rust and Bash is what is committed as part of the committed product."
+The scope therefore covers `aws2xml`, `gui_editor`, `sad2md`, `sad_xml_sql`, `tui_editor`, the CI definitions, and the container files.
+The IDs stay, because the need and the source stay the same; only the scope widens.
+Two IDs stay, because each requirement names one language, per the Single quality rule.
+Third-party sources fetched by cargo are not committed and not hand-written.
 Data and configuration formats are not program code or scripts, for example TOML, YAML, XML, Markdown, Mermaid, and `Containerfile`.
-The `RUN` lines of a `Containerfile` stay short and run with the shell of the base image.
 Code generated by the Rust toolchain, for example `wasm-bindgen` JavaScript glue, is not hand-written.
 
 Rationale for GEDT-AR-00034: the product owner limits the build base to one trusted upstream image to reduce supply-chain surface.
 The digest pin makes each build reproducible against the same base.
 The derived image changes no base package, installs no other package, and pins `cargo-audit` and `cargo-deny` by version with `--locked`.
 `clippy` and `rustfmt` come from `rustup component add` and follow the toolchain version of the pinned base.
+
+Rationale for GEDT-AR-00037 and GEDT-AR-00038: the product owner wants the four crates to follow the standard Rust lint and formatting conventions.
+GEDT-AR-00037 keeps defects that static analysis finds out of every release, for example a discarded `Result` like the silent `tui_editor` save failure that GEDT-FR-00046 fixes.
+GEDT-AR-00038 keeps every change reviewable without style noise.
+Two IDs, because lint and format serve two needs, per the Single quality rule.
+Both requirements name the outcome; the implementation team picks the gate.
+Priority Value adding: no story fails without the requirements, and code review is a workaround.
+GEDT-AR-00037 supports the Critical GEDT-AR-00012 and GEDT-FR-00046; reconsider GEDT-AR-00037 if those change.
+`aws2xml` is outside the scope, product owner answer to open question 16 on 2026-11-25, quoted: "no leave aws2xml out, it is still a proof-of-concept".
+
+Rationale for GEDT-AR-00049 and GEDT-AR-00050:
+
+- Source: product owner request on 2026-11-25, quoted: "If there is no AR please create an AR stating that linux is the only support platform for build and running the apps".
+- Two IDs, because the build and the run are two needs, per the Single quality rule.
+- GEDT-AR-00049 names the checked crates, because the build gate builds and tests all four, including the `sad_xml_sql` library that every app compiles in.
+- GEDT-AR-00050 names the three apps with a binary that a user runs; `sad_xml_sql` is a library and never runs alone.
+- `aws2xml` is outside both requirements, product owner answer to open question 20 on 2026-11-25, quoted: "q20 fucking forget about aws2xml until it is specifically requested".
+- Both requirements name x86_64, product owner answer to open question 19 on 2026-11-25, quoted: "q19a".
+  - The checked dependency graph covers `x86_64-unknown-linux-gnu`, so the supported platform and the checked platform match.
+- The web app of GEDT-STORY-00020 stays in scope.
+  - A "host platform" is the system that runs the app process or the browser, so a browser target such as WebAssembly does not breach GEDT-AR-00050.
+  - GEDT-AR-00017 binds the web server to the local machine, so GEDT-AR-00005 applies to Firefox and Chromium on an x86_64 Linux host.
+- Priority Critical: the requirements bound the platform that GEDT-AR-00039 and GEDT-AR-00041 check, and those support the Critical GEDT-AR-00025.
+  - A dependency used only on another operating system or processor architecture escapes the checked dependency graph, so the build gate gives no supply-chain assurance for that platform.
+- GEDT-AR-00004 stays, and narrows GEDT-AR-00050 for `gui_editor` to the current Fedora release on Wayland and on X11.
 
 The web app architecture is decided with the product owner when the web release starts.
 
@@ -365,6 +423,48 @@ The web app architecture is decided with the product owner when the web release 
 | GEDT-AR-00025 | The build shall use the committed `Cargo.lock` with `--locked`, and shall fail on any unignored `cargo audit` or `cargo deny` finding. | Secondary | Critical | Inspection of build |
 | GEDT-AR-00031 | The XML reader shall reject a file larger than 64 MiB, or with element nesting deeper than 32 levels, with an error. | 00021 | Critical | Test |
 
+### Build and supply chain
+
+| ID | Requirement | Traces to | Priority | Verification |
+| --- | --- | --- | --- | --- |
+| GEDT-AR-00039 | The build shall fail when the checked dependency graph of any checked crate holds two or more versions of one crate that GEDT-AR-00040 does not exempt. | Secondary | Value adding | Inspection of the build gate; test: an unexempted duplicate fails the gate |
+| GEDT-AR-00040 | The GEDT-AR-00039 check shall exempt only the `gui_editor` duplicates `linux-raw-sys` 0.4, `rustix` 0.38, `syn` 2, `thiserror` 1, and `thiserror-impl` 1. | Secondary | Value adding | Test: the policy test fails on any other exemption entry |
+| GEDT-AR-00041 | The build shall fail when the checked dependency graph of any checked crate holds a crate under a licence outside the list Apache-2.0, ISC, MIT, Unicode-3.0, and Zlib that GEDT-AR-00042 does not exempt. | Secondary | Critical | Inspection of the build gate; test: a crate under another licence fails the gate |
+| GEDT-AR-00042 | The GEDT-AR-00041 check shall accept the licences OFL-1.1 and Ubuntu-font-1.0 only for the `epaint_default_fonts` crate in the checked dependency graph of `gui_editor`. | Secondary | Critical | Test: the policy test fails on any other licence exception |
+| GEDT-AR-00043 | Code that runs in the tool image during a build, test, or check run shall have write access only to the host paths `target/`, `.cargo-home`, and the test output directory of each crate. | Secondary | Critical | Test: a write to any other mounted host path fails |
+| GEDT-AR-00044 | The build shall start a run in a directory that holds `.cargo/config.toml` or `.cargo/config` only when git tracks that file at the start of the run. | Secondary | Critical | Test: untracked file, tracked file, no git available |
+| GEDT-AR-00045 | The build shall refuse to start a run when the repository root holds `.cargo/config.toml`. | Secondary | Critical | Test |
+| GEDT-AR-00046 | Each `cargo audit` check and each `cargo deny` check shall read advisory databases fetched in the same run into the temporary file system of the run container. | Secondary | Critical | Inspection of build and CI; test: a database left by an earlier run is not read |
+| GEDT-AR-00047 | The manifest of each of the `aws2xml`, `gui_editor`, `sad2md`, `sad_xml_sql`, and `tui_editor` crates shall state a version requirement on every path dependency. | Secondary | Value adding | Test, manifest check |
+| GEDT-AR-00048 | The CI workflow shall build the tool image in each run, without publishing the image to a registry. | Secondary | Critical | Inspection of the CI workflow and its token permissions |
+
+Sources, each a product owner answer quoted verbatim:
+
+- GEDT-AR-00039 and GEDT-AR-00040: question 20, "Upgrades only": remove duplicates only by upgrading crates, never by skipping them.
+  - T-02 question "Duplicates", "a: targets + own policy", revises question 20 for `gui_editor`: the `gui_editor` duplicates that eframe 0.37 forces stay exempt until eframe moves to a newer winit.
+  - The `[graph] targets` part of the same answer sets the target of the checked dependency graph.
+- GEDT-AR-00041 and GEDT-AR-00042: T-42, Zlib and Unicode-3.0 allowed; T-02, "Allow ISC"; T-02, "Exception, one crate" for OFL-1.1 and Ubuntu-font-1.0 in `epaint_default_fonts`.
+  - Apache-2.0 and MIT come from the committed policy of T-01.
+- GEDT-AR-00043: T-54 question 1, "1a", with the follow-up "Folder + change tests".
+- GEDT-AR-00044: T-54 question 2, "2a": refuse the file when the file is untracked.
+  - Question 22, "c": no extra check on tracked files; a change to a tracked file goes through review.
+- GEDT-AR-00045: T-54 question 2, option A, as recorded in the `PLAN.md` row "Cargo config check, T-54 follow-up".
+- GEDT-AR-00046: T-54 R-T54-01, "B: fresh DB per run", stored in the container `/tmp`.
+- GEDT-AR-00047: T-52 question, "Add and fix".
+- GEDT-AR-00048: T-54 CI image, "Build each run".
+
+Rationale and notes:
+
+- GEDT-AR-00039 to GEDT-AR-00048 support the Critical GEDT-AR-00025; reconsider them if GEDT-AR-00025 changes.
+- GEDT-AR-00040 has Stability Low: `PLAN.md` task T-43 removes the exemptions when eframe moves to a newer winit, and the architect then retires GEDT-AR-00040.
+- GEDT-AR-00043 keeps code in the container from rewriting host scripts, security defect D-T54-04, High.
+- GEDT-AR-00044 and GEDT-AR-00045 keep an unreviewed cargo configuration from redirecting the build, for example to another registry or runner.
+- GEDT-AR-00046 keeps code under test from editing the advisory data of a later check, finding R-T54-01.
+- GEDT-AR-00047 includes `aws2xml`, which CI does not build; open question 16 keeps `aws2xml` out of GEDT-AR-00037 and GEDT-AR-00038 only.
+- GEDT-AR-00048 needs no registry write permission for the CI token.
+- Implementation choices recorded in `PLAN.md`, not requirements: the two cargo-deny policy files, the `flate2` 1.1.9 lock, the `rfd` 0.18 `xdg-portal` feature, the `ADVISORY_DB_DIR` variable, the tool image tag hash, and the CI build without a layer cache.
+- Accepted risks without a requirement: cache poisoning, O-1, O-2, and the `zenity` fallback, see [Risks](#risks).
+
 ### Performance
 
 | ID | Requirement | Traces to | Priority | Verification |
@@ -382,10 +482,10 @@ The project size targets are assumptions; see [open questions](#open-questions).
 | --- | --- | --- |
 | Availability | Malformed input never terminates the process, GEDT-AR-00012. | Fuzzing of the XML reader, 1 hour without crash. |
 | Compatibility | 100% of saved files pass `xmllint --noout --nonet --valid` and `sad2md`. | CI test on every fixture. |
-| Maintainability | One shared core for `gui_editor`, `sad2md`, and `tui_editor`, GEDT-AR-00030. | CI runs all three test suites. |
+| Maintainability | One shared core for `gui_editor`, `sad2md`, and `tui_editor`, GEDT-AR-00030; zero lint warnings and zero formatting deviations, GEDT-AR-00037 and GEDT-AR-00038. | CI runs all three test suites and the lint and format gate. |
 | Observability | Every error names the file, and the line and column or the address. | Test of each error path. |
 | Performance | Load within 2 seconds, search within 100 ms, UI frame under 100 ms. | Benchmarks in CI. |
-| Portability | Native on Fedora Wayland and X11; web in Firefox and Chromium. | Release demonstration. |
+| Portability | Build and run on x86_64 Linux only, GEDT-AR-00049 and GEDT-AR-00050; native on Fedora Wayland and X11; web in Firefox and Chromium. | Release demonstration; inspection of the tool image, CI runners, and user documentation. |
 | Reliability | Zero corrupted files after 1,000 kills during save. | Kill-loop test. |
 | Security | Zero outbound connections; all security tests pass. | Network namespace test, security fixtures. |
 
@@ -478,17 +578,24 @@ Web app interfaces are defined with the web app architecture.
 | --- | --- | --- | --- |
 | Address parts that are not numbers silently become 0 in `convert_from_address_to_id`. | High | High | GEDT-AR-00013. |
 | Autosave overwrites a file changed by `aws2xml` or a hand edit. | Medium | High | GEDT-FR-00009. |
+| Cached crate sources in the writable `.cargo-home/registry/src` are poisoned by code under test and pass audit and deny in a later build. | Low | High | Accepted for the MVP by product owner answer "A: accept for MVP" on 2026-11-25; `PLAN.md` holds an unassigned backlog item. |
 | Changes to `sad_xml_sql` break `sad2md` or `tui_editor`. | Medium | Medium | GEDT-AR-00030; CI runs all suites. |
 | Component reorder on first save produces large git diffs in existing files. | Medium | Low | One-time reorder commit before first use. |
+| Dependencies used only by the web app escape the duplicate and licence checks, because the checked dependency graph covers `x86_64-unknown-linux-gnu` only. | Medium | Medium | Review the target of GEDT-AR-00039 and GEDT-AR-00041 when the web release starts. |
 | Dump in `sad_xml_sql` drops DTD-defined items on save. | Certain | High | T-40 restores Include elements, ViewPacket `TeamId`, and Behavior `DiagramKey`; T-03 lists the remaining gaps; GEDT-FR-00005 golden-file round-trip tests; the rest is in [Known save limitations](#known-save-limitations). |
 | Dump in `sad_xml_sql` regresses to the root attribute `version="0.1.1"`, fixed by T-40; the DTD requires `Version`. | Low | High | GEDT-FR-00006; round-trip tests. |
 | Dump in `sad_xml_sql` regresses to writing elements out of DTD order, fixed by T-40. | Low | High | GEDT-FR-00006; round-trip tests. |
 | Edits to components of an included file are lost, because no save writes included files yet. | High | Medium | GEDT-FR-00045 warns on each explicit Save or exit; a later save task writes included files. |
 | Edits to teams of an included file are lost, because no save writes Team elements to an included file. | High | Medium | GEDT-FR-00045 warns on each explicit Save or exit. |
+| File dialog falls back to `zenity` from `PATH` when the xdg portal fails, so a planted `zenity` earlier in `PATH` runs. | Low | Medium | Accepted by product owner answer "Accept, documented"; documented in `gui_editor/README.md`. |
+| Git config check of the build trusts the `PATH` and shell functions of the caller, O-1. | Low | Medium | Accepted by product owner answer "A: accept, document"; documented in `gui_editor/README.md`. |
+| Host-side `cargo test` follows symlinks that a container planted in a test output directory, O-2. | Low | Medium | Accepted by product owner answer "A: accept, document"; documented in `gui_editor/README.md`. |
 | Include path traversal, marked TODO in `db_populate_from_xml.rs`. | High | High | GEDT-AR-00014 before first release. |
 | Included file written with only Component elements fails the SAD DTD rule `ViewPacket+` and loses content. | Medium | High | GEDT-FR-00044. |
+| Linux build for an architecture other than x86_64, for example aarch64, pulls dependencies that the checked dependency graph does not check. | Low | Medium | GEDT-AR-00049 and GEDT-AR-00050 support x86_64 Linux only, which the checked dependency graph covers, product owner answer to open question 19. |
 | Loader in `sad_xml_sql` panics or exits on malformed input, losing unsaved work. | Certain | High | GEDT-AR-00012. |
 | Multiple egui windows misbehave on Wayland. | Medium | Medium | Prototype GEDT-FR-00032 early. |
+| Repository-root `build.sh` uses the unpinned `rust:latest` image, and `build_in_docker.sh` pins `rust:1.98` without a digest. | Medium | Medium | None; the product owner keeps the root scripts unchanged, plan open question 10; the scripts do not build `gui_editor`. |
 | Restricting the shared reader to Component and Team elements removes the external viewpacket links that `sad2md` writes for included files. | Low | Medium | GEDT-FR-00042 with an editor-only reader option; GEDT-AR-00030. |
 | Save in `tui_editor/src/work.rs` line 314 discards the `Result` of `dump_db_to_xml`, so a failed save is silent and the user loses edits. | Certain | High | GEDT-FR-00046 to GEDT-FR-00048; new task under GEDT-STORY-00002. |
 | Save in `tui_editor/src/work.rs` line 314 writes to the fixed relative path `tui_out.xml` in the working directory, not to the loaded project file. | Certain | Medium | GEDT-FR-00004 for the editor; for `tui_editor`, the product owner keeps `tui_out.xml`, open question 10, so `PLAN.md` task T-48 is deferred and unscheduled. |
@@ -536,7 +643,7 @@ Web app interfaces are defined with the web app architecture.
 
 ## Open questions
 
-None blocks the first release; the proposed defaults are in the requirements above.
+No open question blocks the first release or a `PLAN.md` task.
 
 - 1: Address scheme.
   `sad_xml_sql` assumes the first address part is the FileId; `template_sad.xml` uses IDs such as `1101`.
@@ -559,11 +666,17 @@ None blocks the first release; the proposed defaults are in the requirements abo
 - 10: Answered: `tui_editor` keeps `tui_out.xml`; task T-48 is deferred and unscheduled, see [Save failures](#storage).
 - 11: Answered: warn when the user selects Save, directly or through exit, see GEDT-FR-00045.
 - 12: Answered: a non-modal warning on direct Save; on exit, a modal warning that lets the user cancel the exit, see GEDT-FR-00045.
-- 13: External change of an included file before a save writes that file, GEDT-FR-00009 and GEDT-FR-00044.
-  Options: the GEDT-FR-00009 prompt covers each included file; the save skips a changed included file without a prompt; the save fails.
-  Architect default: the GEDT-FR-00009 prompt covers each included file, and a confirmed save keeps the other elements as on disk at write time.
-  The default needs product owner review before the save task that writes included files.
+- 13: Answered on 2026-11-25: option a, a prompt for each changed included file with an option to overwrite; no requirement changes, see [DESIGN.md](DESIGN.md#external-change-of-an-included-file).
 - 14: Answered on 2026-11-25: the build may run in a tool image derived from the digest-pinned `docker.io/library/rust` base, see GEDT-AR-00034.
   The product owner chose option A of `PLAN.md` open question 21, for task T-54.
 - 15: Answered on 2026-11-25, product owner decision: a `Containerfile` is a configuration format, not a script, for GEDT-AR-00032 and GEDT-AR-00033.
-  The `RUN` lines of a `Containerfile` stay short and run with the shell of the base image.
+- 16: Answered on 2026-11-25: `aws2xml` stays out of GEDT-AR-00037 and GEDT-AR-00038, because `aws2xml` is still a proof of concept.
+- 17: Answered on 2026-11-25: option a of `PLAN.md` open question 26, T-43 removes the `tui_editor` `syn` duplicate by upgrade or pin; GEDT-AR-00039 and GEDT-AR-00040 are unchanged.
+  - Product owner answer, quoted: "Q26a".
+- 18: Answered on 2026-11-25: option a of `PLAN.md` open question 27, GEDT-AR-00035 traces to GEDT-STORY-00021 and GEDT-STORY-00026, with the plan recording delivery in INC-1 by T-51; no requirement or trace changes.
+  - Product owner answer, quoted: "q27a."
+- 19: Answered on 2026-11-25: option a, GEDT-AR-00049 and GEDT-AR-00050 name x86_64; GEDT-AR-00039 and GEDT-AR-00041 are unchanged.
+  - Product owner answer, quoted: "q19a".
+- 20: Answered on 2026-11-25: option a, `aws2xml` stays out of GEDT-AR-00049 and GEDT-AR-00050.
+  - Product owner answer, quoted: "q20 fucking forget about aws2xml until it is specifically requested".
+  - The answer reaches beyond open question 20; the other `aws2xml` scope statements in this document and in USER_STORIES.md wait for a product owner decision.

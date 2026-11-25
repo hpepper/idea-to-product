@@ -22,6 +22,10 @@ targets = ["x86_64-unknown-linux-gnu"]
 version = 2
 yanked = "deny"
 unmaintained = "all"
+# build.sh and the CI deny step set ADVISORY_DB_DIR to a folder in the container /tmp,
+# so every run fetches a clean database that no earlier container could edit (R-T54-01).
+# cargo-deny fails when the variable is unset, so other runs must set it too.
+db-path = "$ADVISORY_DB_DIR/cargo-deny"
 # Each entry needs { id = "RUSTSEC-...", reason = "..." } on one line.
 # Mirroring rule: .cargo/audit.toml must list the same IDs,
 # each with this reason as a comment, because `cargo audit` reads only that file.

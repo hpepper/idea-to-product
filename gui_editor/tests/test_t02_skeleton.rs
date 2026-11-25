@@ -7,6 +7,9 @@
 
 // The binary crate has no library target,
 // so the test compiles the picker module from its source file.
+// The include also compiles the inline test module of path_picker.rs,
+// so its picker tests run twice, here and in the binary; accepted (T02-N-02),
+// because a library target only to avoid the repeat is not worth the extra crate layout.
 #[path = "../src/path_picker.rs"]
 mod path_picker;
 

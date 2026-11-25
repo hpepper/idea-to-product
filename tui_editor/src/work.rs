@@ -311,7 +311,7 @@ pub fn handle_work_input(
                             db_conn,
                             &component,
                         );
-                        dump_db_to_xml(&db_conn, "tui_out.xml");
+                        dump_db_to_xml(&db_conn, &work_state.save_path);
                         true
                     }
                     _ => false, // No edit functionality for other tabs yet
