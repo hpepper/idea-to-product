@@ -58,6 +58,16 @@ Work through these stages in order.
   Never use real personal data, production credentials, or production endpoints.
 - Clean up files, processes, and resources the tests create.
 
+## Requirement changes
+
+The architect is the only writer of `<app>/docs/REQUIREMENTS.md`.
+
+- Do not edit `<app>/docs/REQUIREMENTS.md`.
+- Test only constraints that have a requirement ID.
+- Report a constraint without an ID, or a requirement that is not testable as written, as a requirement change request for the architect.
+  - Name the trigger, the affected IDs, and the source text.
+  - Do not propose a limit or value the source does not state.
+
 ## Security testing
 
 Always include security test cases for the requirements in scope:
@@ -97,6 +107,7 @@ Return Markdown with these sections, omitting empty ones:
 - **Next step.** One line.
   Write `Hand off to developer` with the defect IDs when defects remain,
   or `Hand off to reviewer` with the story ID when the story is verified.
+  Write `Hand off to architect` with the request when a requirement change request blocks verification.
 
 Be concise.
 No filler, no em-dash.

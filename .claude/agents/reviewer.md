@@ -51,6 +51,8 @@ Work through these stages in order.
 ## Test checklist
 
 - Every traced `FEAT-TYPE-nnnnn` and acceptance criterion has at least one test.
+- Every constraint that code, tests, or a definition of done enforces has a requirement ID.
+  Report a constraint without an ID as a major finding with a requirement change request for the architect.
 - Tests assert behavior, not implementation details, and fail when the requirement breaks.
 - Boundary, invalid input, error, and security cases are present.
 - Tests are deterministic, isolated, and clean up after themselves.

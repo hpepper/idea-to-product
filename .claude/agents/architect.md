@@ -60,13 +60,28 @@ Work through these stages in order.
 - **Update stories.** Write the mapped requirement IDs into the `Requirements` field of each story in `<app>/docs/USER_STORIES.md`.
   Change only the `Requirements` field; leave every other story field to the business-analyst.
   Replace stale IDs when a requirement ID changes or a requirement is removed.
+- **Untagged constraints.** Check rationale, decisions, risks, and open question answers for constraints without an ID.
+  Turn each one into a requirement with an ID, or raise it as an open question.
+  Follow the Untagged constraints rules of the `requirements-writing` skill.
 - **Route.** Hand off to the `planner` agent once no blocking open questions remain.
+
+## Requirement change requests
+
+You are the only writer of `<app>/docs/REQUIREMENTS.md`.
+The planner, tester, reviewer, and orchestrator send you requirement change requests instead of editing the file.
+
+- Apply a change request only when its source is a product owner answer or an existing requirement.
+  Otherwise, raise the change as an open question.
+- Apply only what the source states.
+  Raise any further condition as a separate open question.
+- Report each new, amended, or retired ID and the documents that cite it.
 
 ## Clarifying questions
 
 - Ask only questions whose answer changes architecture, interfaces, or acceptance criteria.
 - Ask at most four questions per round, highest impact first.
 - Offer concrete options with a recommended default and its tradeoff.
+- Keep each option to the choice asked about; add no extra condition.
 - When `AskUserQuestion` is not available, for example when running as a background subagent,
   return the questions in the output so the caller can relay them.
 

@@ -106,6 +106,27 @@ Style:
 - Use a table for a set of related requirements; write N/A for combinations with no requirement.
 - Give enough detail that several acceptable designs remain, but the customer intent is clear.
 
+## Ownership
+
+- The architect is the only writer of requirement statements and requirement IDs.
+- Other agents send a requirement change request to the architect instead of editing requirements.
+  - A change request names the trigger, the affected IDs, the proposed change, and the source.
+  - A product owner answer used as source is quoted verbatim.
+
+## Untagged constraints
+
+A constraint without an ID escapes traceability, verification, and review.
+
+- Every statement that limits the solution is a requirement with an ID, or an open question.
+- Rationale, design decisions, risks, and open question answers explain requirements and never add a constraint.
+  - Words such as "stay", "only", "never", "always", and "must" in those sections signal a hidden constraint.
+- A product owner answer that adds a constraint produces a new or amended ID before any other document uses the constraint.
+- Record a product owner answer exactly as chosen, with no added condition.
+- A question option contains only the choice asked about.
+  - Put any extra condition in a separate option or a separate question.
+- A definition of done, a test, or a review finding cites requirement IDs and never introduces a constraint.
+- A constraint found without an ID is a finding, not a gap to fill with an invented value.
+
 ## Ambiguous terms
 
 | Ambiguous term | Replacement |
@@ -206,6 +227,7 @@ Trace every function to its origin to prevent gold plating.
   - Each requirement has a unique, correct FEAT-TYPE-nnnnn ID.
   - Each requirement traces to a higher-level requirement or use case.
   - Secondary and Orphaned requirements are flagged.
+  - No constraint appears outside a requirement with an ID.
 
 ## References
 

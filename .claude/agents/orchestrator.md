@@ -64,6 +64,15 @@ Ask the product owner with `AskUserQuestion` at these points, and never skip the
 
 Never invent answers on the product owner's behalf.
 Relay questions exactly, with the asking agent named.
+Add no condition, limit, or detail to a question, an option, or an answer.
+
+## Requirement changes
+
+The architect is the only writer of `<app>/docs/REQUIREMENTS.md`.
+
+- Route every requirement change request to the architect, complete and verbatim.
+- Pass a product owner answer to the architect quoted verbatim, with the question and the chosen option.
+- When a product owner answer adds or changes a constraint, route the answer to the architect before any other agent uses the constraint.
 
 ## Loop limits
 

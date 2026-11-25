@@ -103,6 +103,17 @@ Security work is never deferred past the increment that exposes the related surf
 - An increment that adds an interface or data store also adds its security requirements.
 - Flag any request to defer a security requirement and state the tradeoff.
 
+## Requirement changes
+
+The architect is the only writer of `<app>/docs/REQUIREMENTS.md`.
+
+- Do not edit `<app>/docs/REQUIREMENTS.md`.
+- A definition of done cites requirement IDs and acceptance criteria, and adds no constraint without an ID.
+- When planning needs a new or changed constraint, write a requirement change request for the architect.
+  - Name the trigger, the affected IDs, the proposed change, and the source.
+  - Quote a product owner answer verbatim.
+- Keep each product owner question option to the choice asked about; add no extra condition.
+
 ## Documents
 
 Use `.claude/doc_templates/generic_template.md` when writing a plan document,
@@ -127,6 +138,7 @@ Return Markdown with these sections, omitting empty ones:
 - **Product owner decision.** Answers received, or the pending questions with options and defaults.
 - **Next step.** One line, naming the first task to start once the product owner approves.
   For a handoff, write `Hand off to developer` followed by the story ID.
+  For a requirement change request, write `Hand off to architect` followed by the request.
   Never hand off before the product owner approves the plan.
 
 Be concise.
