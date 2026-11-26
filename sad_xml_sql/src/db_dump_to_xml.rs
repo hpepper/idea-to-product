@@ -1,6 +1,7 @@
 use crate::convert_from_id_to_address;
 use rusqlite::Connection;
 use simple_xml_builder::XMLElement;
+use std::fmt;
 use std::fs::File;
 use std::io::Write;
 
@@ -19,6 +20,54 @@ use crate::db_retrieval::{
 const SAD_DOCTYPE: &str =
     "<!DOCTYPE SoftwareArchitectureDocumentation SYSTEM \"software_architecture_documentation.dtd\">\n";
 
+/// A failed save of the project file, naming the file and the cause (GEDT-FR-00046).
+/// The message holds only the file path and the cause,
+/// so a caller can show it to the user.
+#[derive(Debug)]
+pub struct SaveError {
+    /// The path `dump_db_to_xml` was asked to write.
+    pub output_file: String,
+    pub cause: SaveErrorCause,
+}
+
+/// Why a save failed.
+#[derive(Debug)]
+pub enum SaveErrorCause {
+    /// Reading the project from the database failed, before the file was opened.
+    Database(rusqlite::Error),
+    /// Opening or writing the file failed,
+    /// for example in a read-only directory or on a full disk.
+    Io(std::io::Error),
+}
+
+impl fmt::Display for SaveErrorCause {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SaveErrorCause::Database(error) => write!(formatter, "{error}"),
+            SaveErrorCause::Io(error) => write!(formatter, "{error}"),
+        }
+    }
+}
+
+impl fmt::Display for SaveError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            formatter,
+            "cannot save {}: {}",
+            self.output_file, self.cause
+        )
+    }
+}
+
+impl std::error::Error for SaveError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match &self.cause {
+            SaveErrorCause::Database(error) => Some(error),
+            SaveErrorCause::Io(error) => Some(error),
+        }
+    }
+}
+
 /// Writes the main SAD file of the database to `output_file`.
 ///
 /// The saved file keeps the `Include` elements of the main file,
@@ -29,34 +78,43 @@ const SAD_DOCTYPE: &str =
 /// Include paths come from file content and are not validated yet (GEDT-AR-00014, T-07),
 /// so writing to them could let a crafted file overwrite any file the user can write.
 ///
-/// # Panics
+/// The whole document is built in memory before `output_file` is opened,
+/// so a database failure leaves an existing file untouched.
+/// A failed write can still leave `output_file` truncated or partly written.
 ///
-/// Panics when the database has no `document` row, or when a table cannot be read.
-pub fn dump_db_to_xml(db_conn: &Connection, output_file: &str) -> Result<(), std::io::Error> {
-    let mut file = File::create(output_file)?;
+/// # Errors
+///
+/// Returns a `SaveError` naming `output_file` when the database has no `document` row,
+/// when a table cannot be read,
+/// or when the file cannot be created or written (GEDT-FR-00046).
+pub fn dump_db_to_xml(db_conn: &Connection, output_file: &str) -> Result<(), SaveError> {
+    let xml_root = build_xml_root(db_conn).map_err(|cause| SaveError {
+        output_file: output_file.to_string(),
+        cause: SaveErrorCause::Database(cause),
+    })?;
+    File::create(output_file)
+        .and_then(|mut file| write_with_doctype(&xml_root, &mut file))
+        .map_err(|cause| SaveError {
+            output_file: output_file.to_string(),
+            cause: SaveErrorCause::Io(cause),
+        })
+}
 
-    println!("DDD Dumping database to XML file: {}", output_file);
-
+fn build_xml_root(db_conn: &Connection) -> Result<XMLElement, rusqlite::Error> {
     let mut xml_root = XMLElement::new("SoftwareArchitectureDocumentation");
     // The DTD requires the attribute name `Version`, see GEDT-AR-00001.
     xml_root.add_attribute("Version", "0.1.1");
 
-    let main_file_id =
-        dump_document_to_xml(&mut xml_root, db_conn).expect("Failed to dump document");
-    dump_table_include_to_xml(&mut xml_root, db_conn).expect("Failed to dump includes");
+    let main_file_id = dump_document_to_xml(&mut xml_root, db_conn)?;
+    dump_table_include_to_xml(&mut xml_root, db_conn)?;
     // TODO dump the top architecture
-    dump_table_viewpacket_to_xml(&mut xml_root, db_conn, main_file_id)
-        .expect("Failed to dump view packets");
-    println!("DDD Dumped view packets");
-    dump_table_component_to_xml(&mut xml_root, db_conn, main_file_id)
-        .expect("Failed to dump components");
-    println!("DDD Dumped components");
-    dump_table_componentrelation_to_xml(&mut xml_root, db_conn).expect("Failed to dump component relations");
-    dump_table_behavior_to_xml(&mut xml_root, db_conn, main_file_id)
-        .expect("Failed to dump behaviors");
-    dump_table_team_to_xml(&mut xml_root, db_conn, main_file_id).expect("Failed to dump teams");
+    dump_table_viewpacket_to_xml(&mut xml_root, db_conn, main_file_id)?;
+    dump_table_component_to_xml(&mut xml_root, db_conn, main_file_id)?;
+    dump_table_componentrelation_to_xml(&mut xml_root, db_conn)?;
+    dump_table_behavior_to_xml(&mut xml_root, db_conn, main_file_id)?;
+    dump_table_team_to_xml(&mut xml_root, db_conn, main_file_id)?;
     // TODO dump_table_requirement_to_xml(&mut xml_root, db_conn)?;
-    write_with_doctype(&xml_root, &mut file)
+    Ok(xml_root)
 }
 
 /// Writes the XML declaration, the SAD DOCTYPE, and then the document element.
@@ -127,8 +185,8 @@ fn dump_table_include_to_xml(
     Ok(())
 }
 
-/// Returns `stored_key` without the `{file_id}-` prefix the XML reader adds to a behavior
-/// `DiagramKey`, so a save writes the key as the source file had it.
+/// Removes the `{file_id}-` prefix the XML reader adds to a behavior `DiagramKey`,
+/// so a save writes the key as the source file had it.
 /// Without this, each save and reload adds one more prefix.
 /// A key without the prefix,
 /// for example one created in the session, is returned unchanged.

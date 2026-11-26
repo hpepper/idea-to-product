@@ -82,6 +82,10 @@ note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 * F5 - refresh/reload
 * F6 - switch panes/focus
 * F7 - Save (Close)
+  * A failed save shows the error, with the file and the cause, at the start of the status line.
+  * The edit stays in the session, and the editor pane stays open, so the next F7 saves the edit.
+  * A successful save closes the editor pane.
+  * The status line shows `[modified]` while the project has changes that no save has written.
   * shift-f7 - save as
   * alt-f7 - export
 * F8 - selection/mark
@@ -95,7 +99,9 @@ note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 * Run `cargo test --locked` in `tui_editor/`.
 * `src/editor_tests.rs` loads `../sad_xml_sql/tests/test_sad.xml`, edits a component with F4 and F7, and checks the saved `tui_out.xml`.
 * The tests render to a ratatui `TestBackend`, so they need no terminal.
-* The save tests write `tui_out.xml` in `tui_editor/` and restore any existing copy afterwards.
+* The save tests write `tui_out.xml` in `tui_editor/test-output/` and restore any existing copy afterwards.
+* The save failure tests save into a read-only directory and to `/dev/full`, which acts as a full disk.
+  * In the tool image, the tests run as root, which ignores directory modes, so the read-only crate mount serves as the read-only directory.
 
 ## Design
 

@@ -19,6 +19,17 @@ pub struct WorkState {
     /// The file F7 saves the project to, relative to the working directory.
     /// Only tests change the default, to keep their save out of the crate root.
     pub save_path: String,
+    /// The error of the last failed F7 save,
+    /// shown in the status line until a save succeeds.
+    /// The edits stay in the in-memory database,
+    /// so the next F7 saves them (GEDT-FR-00048).
+    pub save_error: Option<String>,
+    /// Whether the session database holds edits that no save has written yet.
+    /// A failed save leaves the flag on (GEDT-FR-00048).
+    pub project_modified: bool,
+    /// Whether the editor pane holds text changes that F7 has not applied yet.
+    /// Esc discards those changes, so Esc clears this flag but not `project_modified`.
+    pub pending_edit: bool,
 }
 
 impl WorkState {
@@ -40,7 +51,16 @@ impl WorkState {
             component_text_areas: ComponentTextAreas::new(),
             viewpacket_editor_fields: ViewPacketEditorFieldData::new(),
             save_path: "tui_out.xml".to_string(),
+            save_error: None,
+            project_modified: false,
+            pending_edit: false,
         }
+    }
+
+    /// Whether the project has changes that no save has written,
+    /// in the session database or in the editor pane.
+    pub fn is_modified(&self) -> bool {
+        self.project_modified || self.pending_edit
     }
 }
 

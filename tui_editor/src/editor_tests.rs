@@ -16,11 +16,14 @@ use rusqlite::Connection;
 use sad_xml_sql::get_component_by_name;
 
 use crate::app_state::AppState;
-use crate::load_project;
-use crate::work::{handle_work_input, render_work, WorkState};
+use crate::work::{handle_work_input, render_work, WorkState, MODIFIED_MARK};
+use crate::{load_project, render_status};
 
 /// The file name the F7 handler in `work.rs` saves the project to by default.
 const SAVE_FILE_NAME: &str = "tui_out.xml";
+
+/// The height of the status pane, as `main` lays it out.
+const STATUS_PANE_HEIGHT: u16 = 3;
 
 /// Returns the save path the F7 tests set on `WorkState`,
 /// `test-output/tui_out.xml` under the crate root, and creates its folder.
@@ -61,7 +64,7 @@ impl Editor {
     fn open(filename: &String) -> Self {
         let mut editor = Self {
             db_conn: load_project(filename),
-            terminal: Terminal::new(TestBackend::new(160, 40)).expect("test backend"),
+            terminal: Terminal::new(TestBackend::new(200, 40)).expect("test backend"),
             work_state: WorkState::new(),
             app_state: AppState::new(),
         };
@@ -70,6 +73,7 @@ impl Editor {
     }
 
     /// Rendering fills the selection list and the tab counts that key handling reads.
+    /// The status pane at the bottom shows the status message as `main` does.
     fn render(&mut self) {
         let Self {
             db_conn,
@@ -83,10 +87,16 @@ impl Editor {
                 let tab_pane = Rect { height: 1, ..area };
                 let work_pane = Rect {
                     y: area.y + 1,
-                    height: area.height - 1,
+                    height: area.height - 1 - STATUS_PANE_HEIGHT,
+                    ..area
+                };
+                let status_pane = Rect {
+                    y: area.y + area.height - STATUS_PANE_HEIGHT,
+                    height: STATUS_PANE_HEIGHT,
                     ..area
                 };
                 render_work(db_conn, frame, tab_pane, work_pane, work_state, app_state);
+                render_status(frame, status_pane, app_state);
             })
             .expect("render to test backend");
     }
@@ -224,7 +234,8 @@ fn ar_00030_tui_editor_edit_updates_component() {
     assert_eq!(edited.title, original.title);
 }
 
-/// The file `test_sad.xml` includes, resolved relative to the directory of the including file.
+/// The file `test_sad.xml` includes,
+/// resolved relative to the directory of the including file.
 const INCLUDED_FIXTURE: &str = "test_infrastructure_sad.xml";
 
 /// The DOCTYPE line of the SAD fixtures, see `sad_xml_sql/tests/test_sad.xml`.
@@ -274,8 +285,8 @@ fn component_element<'xml>(xml: &'xml str, name: &str) -> &'xml str {
 /// as the files of a real project sit side by side.
 /// The reader resolves an `Include` relative to the directory of the including file,
 /// and the F7 tests save to `test-output` under the crate root.
-/// Reloading a byte copy from this directory avoids writing the included file
-/// into the crate root, where it could overwrite a developer's file.
+/// Reloading a copy here keeps the included file out of the crate root,
+/// where the copy could overwrite a developer's file.
 /// The directory is removed on drop.
 struct ReloadProjectDir {
     path: PathBuf,
@@ -321,8 +332,9 @@ impl Drop for ReloadProjectDir {
     }
 }
 
-/// Saves an edit with F7, then reloads the saved file through `sad_xml_sql`
-/// with its included file beside it, as a real project would (GEDT-AR-00002, T-40).
+/// Saves an edit with F7,
+/// then reloads the saved file through `sad_xml_sql` with its included file beside it,
+/// as a real project would (GEDT-AR-00002, T-40).
 /// The saved main file holds only its own items,
 /// so the reload, not the saved file alone, must give back every original ID.
 #[test]
@@ -341,7 +353,7 @@ fn ar_00030_tui_editor_save_writes_edit_to_xml() {
         .map(|table| (table, sorted_ids(&editor.db_conn, table)))
         .collect();
 
-    // `work.rs` ignores a failed save,
+    // A failed save leaves an earlier file in place,
     // so a stale save file from an earlier run must not stand in for this save.
     // The guard restores the earlier file afterwards.
     match fs::remove_file(&save_file) {
@@ -399,7 +411,7 @@ fn ar_00030_tui_editor_save_writes_edit_to_xml() {
 }
 
 // Tester checks for GEDT-STORY-00019, task T-41 (GEDT-AR-00030):
-// editor key handling after the swap from `tui-textarea` 0.7 to `ratatui-textarea` 0.9
+// editor key handling after the swap from `tui-textarea` 0.7 to `ratatui-textarea` 0.9,
 // and from `ratatui` 0.29 to 0.30.
 // The component field type is private to the `work` module,
 // so the tests compare the `Debug` name of the active field.
@@ -422,6 +434,10 @@ impl Editor {
 
     fn active_field(&self) -> String {
         format!("{:?}", self.work_state.component_text_areas.active_field)
+    }
+
+    fn active_pane(&self) -> String {
+        format!("{:?}", self.work_state.active_pane)
     }
 
     /// Opens `EDITED_COMPONENT` in the editor with F4, without saving anything.
@@ -565,4 +581,596 @@ fn t54_ar_00030_tui_editor_default_save_path_is_tui_out_xml() {
     assert_eq!(WorkState::new().save_path, SAVE_FILE_NAME);
     let editor = Editor::open(&fixture_path());
     assert_eq!(editor.work_state.save_path, SAVE_FILE_NAME);
+}
+
+// Save failure checks for GEDT-STORY-00002, task T-47:
+// GEDT-FR-00046 to GEDT-FR-00048 applied to `tui_editor` through the shared core
+// (GEDT-AR-00030).
+// The fixtures need no terminal and no root:
+// a directory that refuses new files, and the Linux device `/dev/full`,
+// which fails every write with "no space left", like a full disk.
+
+/// A Linux character device that fails every write with `ENOSPC`.
+const FULL_DISK_FILE: &str = "/dev/full";
+
+/// Returns whether `dir` refuses a new file, and removes the probe file when it does not.
+fn refuses_new_files(dir: &Path) -> bool {
+    let probe = dir.join(".t47_write_probe");
+    match fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&probe)
+    {
+        Ok(_) => {
+            fs::remove_file(&probe)
+                .unwrap_or_else(|err| panic!("cannot remove {}: {err}", probe.display()));
+            false
+        }
+        Err(err)
+            if matches!(
+                err.kind(),
+                ErrorKind::PermissionDenied | ErrorKind::ReadOnlyFilesystem
+            ) =>
+        {
+            true
+        }
+        Err(err) => panic!("cannot probe {}: {err}", dir.display()),
+    }
+}
+
+/// A directory that refuses new files, for the read-only directory fixture.
+/// Mode 0o555 stops an unprivileged user.
+/// The tool image runs the tests as root of a rootless user namespace,
+/// whose `CAP_DAC_OVERRIDE` ignores the mode,
+/// so the crate root, which the tool image mounts read-only, stands in there.
+/// Drop restores the mode, so the directory can be removed.
+struct ReadOnlyDir {
+    path: PathBuf,
+    chmod_dir: PathBuf,
+}
+
+impl ReadOnlyDir {
+    fn new() -> Self {
+        use std::os::unix::fs::PermissionsExt;
+
+        let crate_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let chmod_dir = crate_root
+            .join("test-output")
+            .join(format!("t47_read_only_{}", std::process::id()));
+        if chmod_dir.exists() {
+            fs::set_permissions(&chmod_dir, fs::Permissions::from_mode(0o755))
+                .unwrap_or_else(|err| panic!("cannot chmod {}: {err}", chmod_dir.display()));
+            fs::remove_dir_all(&chmod_dir)
+                .unwrap_or_else(|err| panic!("cannot remove {}: {err}", chmod_dir.display()));
+        }
+        fs::create_dir_all(&chmod_dir)
+            .unwrap_or_else(|err| panic!("cannot create {}: {err}", chmod_dir.display()));
+        fs::set_permissions(&chmod_dir, fs::Permissions::from_mode(0o555))
+            .unwrap_or_else(|err| panic!("cannot chmod {}: {err}", chmod_dir.display()));
+        let path = [chmod_dir.clone(), crate_root]
+            .into_iter()
+            .find(|candidate| refuses_new_files(candidate))
+            .unwrap_or_else(|| {
+                panic!("no read-only directory: run the tests unprivileged or in the tool image")
+            });
+        Self { path, chmod_dir }
+    }
+
+    /// A name no developer file uses, because the fallback directory is the crate root.
+    fn save_file(&self) -> String {
+        self.path
+            .join("t47_read_only_save.xml")
+            .to_str()
+            .expect("non UTF-8 crate path")
+            .to_string()
+    }
+}
+
+impl Drop for ReadOnlyDir {
+    /// Same rule as `SaveFileGuard`: no second panic while unwinding.
+    fn drop(&mut self) {
+        use std::os::unix::fs::PermissionsExt;
+
+        let cleanup = fs::set_permissions(&self.chmod_dir, fs::Permissions::from_mode(0o755))
+            .and_then(|()| fs::remove_dir_all(&self.chmod_dir));
+        if let Err(err) = cleanup {
+            let message = format!("cannot remove {}: {err}", self.chmod_dir.display());
+            if std::thread::panicking() {
+                eprintln!("{message}");
+            } else {
+                panic!("{message}");
+            }
+        }
+    }
+}
+
+/// Saves an edit with F7 to `failing_save_file`, which cannot be written,
+/// and checks that the screen shows the error, naming the file and `expected_cause`.
+/// Then checks that the edit stays in the session,
+/// so the next F7 to a writable file saves the edit and clears the error.
+fn assert_failed_save_is_shown_and_keeps_edit(failing_save_file: &str, expected_cause: &str) {
+    let _lock = SAVE_FILE_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let save_file = save_file();
+    let _save_file_guard = SaveFileGuard::new(&save_file);
+    let mut editor = Editor::open(&fixture_path());
+    editor.work_state.save_path = failing_save_file.to_string();
+    let original = get_component_by_name(&editor.db_conn, EDITED_COMPONENT.to_string())
+        .expect("fixture component");
+
+    editor.select_component(EDITED_COMPONENT);
+    editor.append_to_purpose_and_save("T47-kept");
+
+    let expected_error = format!("cannot save {failing_save_file}: {expected_cause}");
+    assert!(
+        editor.app_state.status_message.contains(&expected_error),
+        "status lacks {expected_error:?}: {}",
+        editor.app_state.status_message
+    );
+    let screen = editor.screen_rows();
+    assert!(
+        screen.iter().any(|row| row.contains(&expected_error)),
+        "screen lacks {expected_error:?}:\n{}",
+        screen.join("\n")
+    );
+    let kept = get_component_by_name(&editor.db_conn, EDITED_COMPONENT.to_string())
+        .expect("edited component");
+    assert_eq!(kept.purpose, format!("{}T47-kept", original.purpose));
+    assert!(
+        editor.work_state.is_modified(),
+        "a failed save cleared the modified flag"
+    );
+    // The failed F7 keeps the editor pane open, so F7 is pressed again without F4.
+    assert_eq!(editor.active_pane(), "Editor");
+
+    match fs::remove_file(&save_file) {
+        Err(err) if err.kind() != ErrorKind::NotFound => {
+            panic!("cannot remove stale {save_file}: {err}")
+        }
+        _ => {}
+    }
+    editor.work_state.save_path = save_file.clone();
+    editor.press(KeyModifiers::NONE, KeyCode::F(7));
+
+    let saved = fs::read_to_string(&save_file).expect("F7 wrote no save file");
+    let component = component_element(&saved, EDITED_COMPONENT);
+    let expected_purpose = format!("<Purpose>{}T47-kept</Purpose>", original.purpose);
+    assert!(
+        component.contains(&expected_purpose),
+        "{expected_purpose} missing in:\n{component}"
+    );
+    assert!(
+        !editor.app_state.status_message.contains("cannot save"),
+        "a successful save kept the error: {}",
+        editor.app_state.status_message
+    );
+}
+
+/// Returns the error that creating `failing_save_file` gives,
+/// the cause a failed save shows.
+/// `create_new` never truncates an existing file,
+/// and a file created by an unexpected success is removed before the test fails.
+fn expected_create_error(failing_save_file: &str) -> String {
+    match fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(failing_save_file)
+    {
+        Ok(_) => {
+            fs::remove_file(failing_save_file)
+                .unwrap_or_else(|err| panic!("cannot remove {failing_save_file}: {err}"));
+            panic!("{failing_save_file} accepted a new file");
+        }
+        Err(err) => err.to_string(),
+    }
+}
+
+#[test]
+fn t47_fr_00047_fr_00048_read_only_directory_save_shows_error_and_keeps_edit() {
+    let read_only_dir = ReadOnlyDir::new();
+    let failing_save_file = read_only_dir.save_file();
+    let expected_cause = expected_create_error(&failing_save_file);
+
+    assert_failed_save_is_shown_and_keeps_edit(&failing_save_file, &expected_cause);
+
+    assert!(
+        !Path::new(&failing_save_file).exists(),
+        "{failing_save_file} was written"
+    );
+}
+
+#[test]
+fn t47_fr_00047_fr_00048_full_disk_save_shows_error_and_keeps_edit() {
+    let expected_cause = fs::write(FULL_DISK_FILE, b"probe")
+        .expect_err("a write to the full disk succeeded")
+        .to_string();
+
+    assert_failed_save_is_shown_and_keeps_edit(FULL_DISK_FILE, &expected_cause);
+}
+
+// Tester checks for GEDT-STORY-00002, task T-47:
+// the save error stays on screen, once, until a save succeeds (GEDT-FR-00047),
+// and every edit made across failed saves stays in the session (GEDT-FR-00048).
+
+/// Counts the screen rows and status messages that hold `text`.
+fn count_on_screen(editor: &Editor, text: &str) -> (usize, usize) {
+    let rows = editor
+        .screen_rows()
+        .iter()
+        .filter(|row| row.contains(text))
+        .count();
+    let in_status = editor.app_state.status_message.matches(text).count();
+    (rows, in_status)
+}
+
+#[test]
+fn t47_fr_00047_save_error_stays_once_on_screen_across_renders_and_navigation() {
+    let _lock = SAVE_FILE_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let mut editor = Editor::open(&fixture_path());
+    editor.work_state.save_path = FULL_DISK_FILE.to_string();
+
+    editor.select_component(EDITED_COMPONENT);
+    editor.append_to_purpose_and_save("T47-nav");
+    let expected_error = format!("cannot save {FULL_DISK_FILE}: ");
+    assert_eq!(count_on_screen(&editor, &expected_error), (1, 1));
+
+    for _ in 0..3 {
+        editor.render();
+    }
+    // The failed F7 keeps the editor pane open,
+    // so Esc returns to the list before navigating.
+    editor.press(KeyModifiers::NONE, KeyCode::Esc);
+    editor.press(KeyModifiers::NONE, KeyCode::Down);
+    editor.press(KeyModifiers::NONE, KeyCode::Up);
+
+    assert_eq!(
+        count_on_screen(&editor, &expected_error),
+        (1, 1),
+        "status: {}",
+        editor.app_state.status_message
+    );
+}
+
+#[test]
+fn t47_fr_00047_fr_00048_missing_directory_save_shows_error_and_keeps_edit() {
+    let missing_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("test-output")
+        .join(format!("t47_missing_dir_{}", std::process::id()));
+    assert!(!missing_dir.exists(), "{} exists", missing_dir.display());
+    let failing_save_file = missing_dir
+        .join("tui_out.xml")
+        .to_str()
+        .expect("non UTF-8 crate path")
+        .to_string();
+    let expected_cause = expected_create_error(&failing_save_file);
+
+    assert_failed_save_is_shown_and_keeps_edit(&failing_save_file, &expected_cause);
+
+    assert!(
+        !missing_dir.exists(),
+        "{} was created",
+        missing_dir.display()
+    );
+}
+
+#[test]
+fn t47_fr_00048_edits_across_two_failed_saves_stay_until_a_save_succeeds() {
+    let _lock = SAVE_FILE_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let save_file = save_file();
+    let _save_file_guard = SaveFileGuard::new(&save_file);
+    let mut editor = Editor::open(&fixture_path());
+    editor.work_state.save_path = FULL_DISK_FILE.to_string();
+    let original = get_component_by_name(&editor.db_conn, EDITED_COMPONENT.to_string())
+        .expect("fixture component");
+
+    editor.select_component(EDITED_COMPONENT);
+    editor.append_to_purpose_and_save("T47-first");
+    // The failed F7 keeps the editor pane open on the purpose field,
+    // so F4 and Tab are not pressed.
+    assert_eq!(editor.active_pane(), "Editor");
+    assert_eq!(editor.active_field(), "Purpose");
+    // Without F4, the text area still holds the first edit,
+    // so the session database is checked directly.
+    let after_first = get_component_by_name(&editor.db_conn, EDITED_COMPONENT.to_string())
+        .expect("edited component");
+    assert_eq!(
+        after_first.purpose,
+        format!("{}T47-first", original.purpose)
+    );
+    editor.type_text("T47-second");
+    editor.press(KeyModifiers::NONE, KeyCode::F(7));
+    assert!(
+        editor.app_state.status_message.contains("cannot save"),
+        "second failed save not shown: {}",
+        editor.app_state.status_message
+    );
+
+    match fs::remove_file(&save_file) {
+        Err(err) if err.kind() != ErrorKind::NotFound => {
+            panic!("cannot remove stale {save_file}: {err}")
+        }
+        _ => {}
+    }
+    editor.work_state.save_path = save_file.clone();
+    editor.press(KeyModifiers::NONE, KeyCode::F(7));
+
+    let saved = fs::read_to_string(&save_file).expect("F7 wrote no save file");
+    let expected_purpose = format!("<Purpose>{}T47-firstT47-second</Purpose>", original.purpose);
+    let component = component_element(&saved, EDITED_COMPONENT);
+    assert!(
+        component.contains(&expected_purpose),
+        "{expected_purpose} missing in:\n{component}"
+    );
+    assert!(
+        !editor.app_state.status_message.contains("cannot save"),
+        "a successful save kept the error: {}",
+        editor.app_state.status_message
+    );
+}
+
+// Developer checks for GEDT-STORY-00002, task T-47, round 2:
+// the modified flag and its status line mark (GEDT-FR-00048),
+// and the pane after F7 (GEDT-FR-00049).
+
+/// Whether the status message and exactly one screen row show the modified mark.
+fn shows_modified_mark(editor: &Editor) -> bool {
+    match count_on_screen(editor, MODIFIED_MARK) {
+        (0, 0) => false,
+        (1, 1) => true,
+        counts => panic!("modified mark shown {counts:?} times, rows and status"),
+    }
+}
+
+/// Removes `save_file` left by an earlier test, so a test sees only its own save.
+fn remove_stale(save_file: &str) {
+    match fs::remove_file(save_file) {
+        Err(err) if err.kind() != ErrorKind::NotFound => {
+            panic!("cannot remove stale {save_file}: {err}")
+        }
+        _ => {}
+    }
+}
+
+#[test]
+fn t47_fr_00048_modified_flag_is_off_after_load_and_on_after_edit() {
+    let mut editor = Editor::open(&fixture_path());
+    assert!(!editor.work_state.is_modified());
+    assert!(!shows_modified_mark(&editor));
+
+    editor.select_component(EDITED_COMPONENT);
+    editor.press(KeyModifiers::NONE, KeyCode::F(4));
+    assert!(
+        !editor.work_state.is_modified(),
+        "F4 alone marked the project modified"
+    );
+    assert!(!shows_modified_mark(&editor));
+
+    editor.press(KeyModifiers::NONE, KeyCode::Tab);
+    editor.type_text("T47-mark");
+    assert!(editor.work_state.is_modified());
+    assert!(shows_modified_mark(&editor));
+}
+
+#[test]
+fn t47_fr_00048_failed_save_keeps_modified_mark_and_successful_save_clears_it() {
+    let _lock = SAVE_FILE_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let save_file = save_file();
+    let _save_file_guard = SaveFileGuard::new(&save_file);
+    let mut editor = Editor::open(&fixture_path());
+    editor.work_state.save_path = FULL_DISK_FILE.to_string();
+
+    editor.select_component(EDITED_COMPONENT);
+    editor.append_to_purpose_and_save("T47-flag");
+    assert!(
+        editor.work_state.is_modified(),
+        "a failed save cleared the modified flag"
+    );
+    assert!(shows_modified_mark(&editor));
+
+    // The edit is in the session database after the failed save, so Esc keeps the mark.
+    editor.press(KeyModifiers::NONE, KeyCode::Esc);
+    assert!(
+        editor.work_state.is_modified(),
+        "Esc after a failed save cleared the flag"
+    );
+    assert!(shows_modified_mark(&editor));
+
+    remove_stale(&save_file);
+    editor.work_state.save_path = save_file.clone();
+    editor.press(KeyModifiers::NONE, KeyCode::F(4));
+    editor.press(KeyModifiers::NONE, KeyCode::F(7));
+    assert!(fs::metadata(&save_file).is_ok(), "F7 wrote no save file");
+    assert!(
+        !editor.work_state.is_modified(),
+        "a successful save kept the flag"
+    );
+    assert!(!shows_modified_mark(&editor));
+}
+
+#[test]
+fn t47_fr_00048_esc_discards_unsaved_edit_and_its_modified_mark() {
+    let mut editor = Editor::open(&fixture_path());
+    editor.select_component(EDITED_COMPONENT);
+    editor.press(KeyModifiers::NONE, KeyCode::F(4));
+    editor.press(KeyModifiers::NONE, KeyCode::Tab);
+    editor.type_text("T47-esc");
+    assert!(shows_modified_mark(&editor));
+
+    editor.press(KeyModifiers::NONE, KeyCode::Esc);
+    assert!(
+        !editor.work_state.is_modified(),
+        "Esc kept the flag of a discarded edit"
+    );
+    assert!(!shows_modified_mark(&editor));
+}
+
+/// GEDT-FR-00049: after a failed F7 save, the editor pane stays open.
+#[test]
+fn t47_fr_00049_failed_save_keeps_editor_pane_open() {
+    let _lock = SAVE_FILE_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let mut editor = Editor::open(&fixture_path());
+    editor.work_state.save_path = FULL_DISK_FILE.to_string();
+
+    editor.select_component(EDITED_COMPONENT);
+    editor.append_to_purpose_and_save("T47-pane");
+    assert!(editor.app_state.status_message.contains("cannot save"));
+    assert_eq!(editor.active_pane(), "Editor");
+    assert_eq!(editor.active_field(), "Purpose");
+    let purpose = editor
+        .work_state
+        .component_text_areas
+        .purpose
+        .lines()
+        .join("\n");
+    assert!(
+        purpose.ends_with("T47-pane"),
+        "editor lost the edit: {purpose:?}"
+    );
+}
+
+/// Guards existing behaviour noted in REQUIREMENTS.md, not a requirement:
+/// after a successful F7 save, `tui_editor` returns to the previous pane.
+/// The test keeps the GEDT-FR-00049 change from altering the successful save path.
+#[test]
+fn t47_existing_successful_save_returns_to_previous_pane() {
+    let _lock = SAVE_FILE_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let save_file = save_file();
+    let _save_file_guard = SaveFileGuard::new(&save_file);
+    remove_stale(&save_file);
+    let mut editor = Editor::open(&fixture_path());
+    editor.work_state.save_path = save_file.clone();
+
+    editor.select_component(EDITED_COMPONENT);
+    let pane_before_edit = editor.active_pane();
+    editor.append_to_purpose_and_save("T47-back");
+    assert!(fs::metadata(&save_file).is_ok(), "F7 wrote no save file");
+    assert_eq!(editor.active_pane(), pane_before_edit);
+    assert_eq!(pane_before_edit, "Selector");
+}
+
+// Tester checks for GEDT-STORY-00002, task T-47, round 2 (GEDT-FR-00047, GEDT-FR-00048):
+// which keys set the modified mark, and that only a successful save clears it.
+
+/// A key that changes no text is not an edit, so the mark stays off.
+#[test]
+fn t47_fr_00048_keys_without_text_change_leave_mark_off() {
+    let mut editor = Editor::open_edited_component();
+    assert_eq!(editor.active_field(), "Name");
+
+    for (modifiers, code) in [
+        (KeyModifiers::NONE, KeyCode::Home),
+        (KeyModifiers::NONE, KeyCode::Backspace),
+        (KeyModifiers::NONE, KeyCode::End),
+        (KeyModifiers::NONE, KeyCode::Delete),
+        (KeyModifiers::NONE, KeyCode::Left),
+        (KeyModifiers::NONE, KeyCode::Right),
+        (KeyModifiers::NONE, KeyCode::Up),
+        (KeyModifiers::NONE, KeyCode::Down),
+    ] {
+        editor.send(modifiers, code);
+    }
+    editor.press(KeyModifiers::NONE, KeyCode::Tab);
+    editor.press(KeyModifiers::SHIFT, KeyCode::BackTab);
+
+    assert_eq!(
+        editor.work_state.component_text_areas.name.lines(),
+        [EDITED_COMPONENT],
+        "a key changed the name"
+    );
+    assert!(
+        !editor.work_state.is_modified(),
+        "a key without a text change marked the project modified"
+    );
+    assert!(!shows_modified_mark(&editor));
+}
+
+/// After a failed save, the edit is in the session database,
+/// so neither a discarded second edit nor another component clears the mark.
+#[test]
+fn t47_fr_00048_mark_survives_esc_of_later_edit_and_component_change() {
+    let _lock = SAVE_FILE_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let mut editor = Editor::open(&fixture_path());
+    editor.work_state.save_path = FULL_DISK_FILE.to_string();
+
+    editor.select_component(EDITED_COMPONENT);
+    editor.append_to_purpose_and_save("T47-survive");
+    assert!(editor.app_state.status_message.contains("cannot save"));
+    editor.press(KeyModifiers::NONE, KeyCode::Esc);
+
+    editor.press(KeyModifiers::NONE, KeyCode::F(4));
+    editor.type_text("T47-discarded");
+    editor.press(KeyModifiers::NONE, KeyCode::Esc);
+    assert!(
+        editor.work_state.is_modified(),
+        "Esc of a later edit cleared the mark of the failed save"
+    );
+    assert!(shows_modified_mark(&editor));
+
+    editor.press(KeyModifiers::NONE, KeyCode::Up);
+    editor.press(KeyModifiers::NONE, KeyCode::F(4));
+    editor.press(KeyModifiers::NONE, KeyCode::Esc);
+    assert!(
+        editor.work_state.is_modified(),
+        "opening another component cleared the mark"
+    );
+    assert!(shows_modified_mark(&editor));
+    let stored = get_component_by_name(&editor.db_conn, EDITED_COMPONENT.to_string())
+        .expect("edited component");
+    assert!(
+        stored.purpose.ends_with("T47-survive"),
+        "the failed save lost the edit: {:?}",
+        stored.purpose
+    );
+}
+
+/// A failed F7 without an edit still shows the error (GEDT-FR-00047),
+/// and marks nothing modified, because nothing changed.
+#[test]
+fn t47_fr_00047_failed_save_without_edit_shows_error() {
+    let _lock = SAVE_FILE_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let mut editor = Editor::open_edited_component();
+    editor.work_state.save_path = FULL_DISK_FILE.to_string();
+
+    editor.press(KeyModifiers::NONE, KeyCode::F(7));
+
+    let expected_error = format!("cannot save {FULL_DISK_FILE}: ");
+    assert_eq!(count_on_screen(&editor, &expected_error), (1, 1));
+    assert_eq!(editor.active_pane(), "Editor");
+    assert!(!shows_modified_mark(&editor));
+}
+
+/// A first successful save of an edit clears the mark and leaves no error on screen.
+#[test]
+fn t47_fr_00048_successful_save_of_edit_clears_mark() {
+    let _lock = SAVE_FILE_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let save_file = save_file();
+    let _save_file_guard = SaveFileGuard::new(&save_file);
+    remove_stale(&save_file);
+    let mut editor = Editor::open(&fixture_path());
+    editor.work_state.save_path = save_file.clone();
+
+    editor.select_component(EDITED_COMPONENT);
+    editor.append_to_purpose_and_save("T47-clean");
+
+    assert!(fs::metadata(&save_file).is_ok(), "F7 wrote no save file");
+    assert!(!editor.work_state.is_modified());
+    assert!(!shows_modified_mark(&editor));
+    assert!(!editor.app_state.status_message.contains("cannot save"));
 }

@@ -106,7 +106,7 @@ Proposed measurable outcomes, pending confirmation, see open question 1:
   - Opening, then saving without edits, keeps every component, viewpacket, and relation.
   - `sad2md` processes a file saved by the editor without errors.
 - Dependent on: GEDT-STORY-00001, GEDT-STORY-00022
-- Requirements: GEDT-AR-00001, GEDT-AR-00002, GEDT-AR-00030, GEDT-FR-00004, GEDT-FR-00005, GEDT-FR-00006, GEDT-FR-00009, GEDT-FR-00045, GEDT-FR-00046, GEDT-FR-00047, GEDT-FR-00048
+- Requirements: GEDT-AR-00001, GEDT-AR-00002, GEDT-AR-00030, GEDT-FR-00004, GEDT-FR-00005, GEDT-FR-00006, GEDT-FR-00009, GEDT-FR-00045, GEDT-FR-00046, GEDT-FR-00047, GEDT-FR-00048, GEDT-FR-00049
 
 #### GEDT-STORY-00026 - As a maintainer, I want component edits saved into the included file that defines the component so that other SAD tools see edits to included components
 

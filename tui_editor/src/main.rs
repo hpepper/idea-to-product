@@ -5,11 +5,11 @@ use crossterm::terminal::{
 
 use ratatui::{
     backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout},
+    layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
-    Terminal,
+    Frame, Terminal,
 };
 
 use std::io;
@@ -49,6 +49,23 @@ fn load_project(filename: &String) -> Connection {
     db_conn
 }
 
+/// Renders the status message, which also shows a failed save (GEDT-FR-00047).
+/// Kept apart from `main` so the tests render the same status line without a terminal.
+fn render_status(frame: &mut Frame, status_pane: Rect, app_state: &AppState) {
+    let status_line = Line::from(vec![Span::styled(
+        &app_state.status_message,
+        Style::default().fg(Color::Red).bg(Color::Gray),
+    )]);
+
+    let status_widget = Paragraph::new(status_line).block(
+        Block::default()
+            .title_bottom(format!("v{}", env!("CARGO_PKG_VERSION")))
+            .borders(Borders::ALL)
+            .style(Style::default().bg(Color::Gray)),
+    );
+    frame.render_widget(status_widget, status_pane);
+}
+
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
 
@@ -85,8 +102,6 @@ fn main() -> color_eyre::Result<()> {
             let work_pane = panes[2];
             let status_pane = panes[3];
 
-            let version = env!("CARGO_PKG_VERSION");
-
             // ------------------------------- Menu pane
             render_menu(f, menu_pane, &menu_state);
 
@@ -101,18 +116,7 @@ fn main() -> color_eyre::Result<()> {
             );
 
             // ------------------------------- Status pane
-            let status_line = Line::from(vec![Span::styled(
-                &app_state.status_message,
-                Style::default().fg(Color::Red).bg(Color::Gray),
-            )]);
-
-            let status_widget = Paragraph::new(status_line).block(
-                Block::default()
-                    .title_bottom(format!("v{}", version))
-                    .borders(Borders::ALL)
-                    .style(Style::default().bg(Color::Gray)),
-            );
-            f.render_widget(status_widget, status_pane);
+            render_status(f, status_pane, &app_state);
         })?;
 
         match crossterm::event::read()? {

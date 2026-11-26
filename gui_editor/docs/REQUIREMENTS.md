@@ -32,6 +32,7 @@ Readers are the planner, the developers, and the testers of `gui_editor`.
 - Checked dependency graph: Resolved dependency graph of a checked crate, with all features and dev-dependencies, for the target `x86_64-unknown-linux-gnu`.
 - Committed: Tracked by git in the `idea-to-product` repository, in any top-level directory.
 - Core: Project model, XML reader, XML writer, and in-memory SQLite database.
+- Dev account: Host account under which the developer works on the development machine, product owner term "devaccount".
 - DTD rules: Element order, required elements, and required attributes of the SAD DTD,
   plus the field rules of GEDT-AR-00013.
 - FileId: Number in `<Document><FileId>` that identifies a project.
@@ -76,7 +77,7 @@ Readers are the planner, the developers, and the testers of `gui_editor`.
 | Story | Requirements |
 | --- | --- |
 | GEDT-STORY-00001 | GEDT-AR-00001, GEDT-AR-00012, GEDT-AR-00013, GEDT-AR-00027, GEDT-FR-00001, GEDT-FR-00002, GEDT-FR-00003, GEDT-FR-00042 |
-| GEDT-STORY-00002 | GEDT-AR-00001, GEDT-AR-00002, GEDT-AR-00030, GEDT-FR-00004, GEDT-FR-00005, GEDT-FR-00006, GEDT-FR-00009, GEDT-FR-00045, GEDT-FR-00046, GEDT-FR-00047, GEDT-FR-00048 |
+| GEDT-STORY-00002 | GEDT-AR-00001, GEDT-AR-00002, GEDT-AR-00030, GEDT-FR-00004, GEDT-FR-00005, GEDT-FR-00006, GEDT-FR-00009, GEDT-FR-00045, GEDT-FR-00046, GEDT-FR-00047, GEDT-FR-00048, GEDT-FR-00049 |
 | GEDT-STORY-00003 | GEDT-AR-00007, GEDT-AR-00029, GEDT-FR-00007, GEDT-FR-00008, GEDT-FR-00009, GEDT-FR-00047, GEDT-FR-00048 |
 | GEDT-STORY-00004 | GEDT-FR-00010, GEDT-FR-00011, GEDT-FR-00012, GEDT-FR-00013 |
 | GEDT-STORY-00005 | GEDT-FR-00013, GEDT-FR-00014, GEDT-FR-00015, GEDT-FR-00016, GEDT-FR-00045 |
@@ -127,8 +128,10 @@ Traceability gaps:
 - Secondary: GEDT-AR-00049 and GEDT-AR-00050, x86_64 Linux as the only supported platform for build and run.
   - No story asks for GEDT-AR-00049 or GEDT-AR-00050; the product owner mandates the requirements as a process parameter on 2026-11-25.
   - GEDT-STORY-00019 and the story Out of Scope entry "Native app on platforms other than Linux" agree, but cover the native `gui_editor` only, so neither is the trace source.
-- Secondary: GEDT-AR-00051, build containers only on a rootless container engine.
-  - No story asks for GEDT-AR-00051; the product owner mandates the requirement on 2026-11-25.
+- Secondary: GEDT-AR-00051, dev account access to rootless container engines only.
+  - No story asks for GEDT-AR-00051; the product owner mandates the requirement on 2026-11-25 and restates the requirement on 2026-11-26.
+- Secondary: GEDT-AR-00052, no `sudo` access for the dev account.
+  - No story asks for GEDT-AR-00052; the product owner mandates the requirement on 2026-11-26, answer to open question 22.
 - Orphaned requirements: none.
 - Stories without a requirement: none.
 - Removed: GEDT-AR-00006 and GEDT-AR-00022, together with the web app architecture decision.
@@ -193,6 +196,7 @@ Requirements traced only to GEDT-STORY-00023 or GEDT-STORY-00024 are Critical fo
 | GEDT-FR-00046 | The core shall return every save failure as an error value that names the project file and the failure cause. | 00002 | Critical | Test, read-only directory and full disk fixtures |
 | GEDT-FR-00047 | When a save fails, the editor shall show the user the error of GEDT-FR-00046. | 00002, 00003 | Critical | Test |
 | GEDT-FR-00048 | After a failed save, the editor shall keep the project marked as modified. | 00002, 00003 | Critical | Test |
+| GEDT-FR-00049 | After a failed F7 save, `tui_editor` shall keep the editor pane open. | 00002 | Value adding | Test: an F7 save that fails leaves the editor pane open |
 
 TOOD fix this AI generated shit show. Update the requirements skill to adhere to a correct req doc formatting, including where to put requirement notes.
 
@@ -255,6 +259,14 @@ Save failures:
 - Product owner decision, open question 10: `tui_editor` keeps the save target `tui_out.xml`.
   `PLAN.md` task T-48, which changes the `tui_editor` save target to the loaded project file, is deferred and unscheduled.
   T-48 is a `tui_editor` task outside the `gui_editor` scope, with no GEDT story or requirement.
+- GEDT-FR-00049 follows a product owner answer on 2026-11-26 to a developer question during `PLAN.md` task T-47.
+  - Question, quoted: "After the failed save, should tui_editor go back to the previous pane, as it always has, or stay in the editor pane so you can press F7 again right away?"
+  - Product owner answer, quoted: "b: stay in editor".
+  - Option b, quoted: "A failed F7 keeps the editor pane open so you can retry at once; the developer changes the F7 handler and tests."
+  - GEDT-FR-00049 traces to GEDT-STORY-00002 only, because F7 is an explicit save request and GEDT-STORY-00003 covers autosave.
+  - Priority Value adding is the architect's choice, because the product owner gave none and the edits stay in the session after a failed save.
+- After a successful F7 save, `tui_editor` returns to the previous pane.
+  - The return is existing behaviour that the product owner answer leaves unchanged, not a requirement.
 
 GEDT-FR-00005 note:
 
@@ -443,7 +455,8 @@ The web app architecture is decided with the product owner when the web release 
 | GEDT-AR-00046 | Each `cargo audit` check and each `cargo deny` check shall read advisory databases fetched in the same run into the temporary file system of the run container. | Secondary | Critical | Inspection of build and CI; test: a database left by an earlier run is not read |
 | GEDT-AR-00047 | The manifest of each of the `aws2xml`, `gui_editor`, `sad2md`, `sad_xml_sql`, and `tui_editor` crates shall state a version requirement on every path dependency. | Secondary | Value adding | Test, manifest check |
 | GEDT-AR-00048 | The CI workflow shall build the tool image in each run, without publishing the image to a registry. | Secondary | Critical | Inspection of the CI workflow and its token permissions |
-| GEDT-AR-00051 | Each build run shall start a container only on a container engine that the build run has verified as a rootless container engine. | Secondary | Critical | Test: a build run against an engine that reports rootful mode, or whose mode the build run cannot read, starts no container and fails with an error naming the engine; inspection: every container step of the CI workflow goes through the verified engine; demonstration: one local build run and one CI run show a non-root host uid for the engine process |
+| GEDT-AR-00051 | The dev account shall have access only to rootless container engines. | Secondary | Critical | Inspection of the development machine: every container engine that the dev account can reach runs under a host user other than root |
+| GEDT-AR-00052 | The dev account shall have no `sudo` access. | Secondary | Critical | Inspection of the development machine: the `sudo` configuration grants the dev account no right to run a command through `sudo` |
 
 Sources, each a product owner answer quoted verbatim:
 
@@ -460,6 +473,9 @@ Sources, each a product owner answer quoted verbatim:
 - GEDT-AR-00047: T-52 question, "Add and fix".
 - GEDT-AR-00048: T-54 CI image, "Build each run".
 - GEDT-AR-00051: product owner request on 2026-11-25, "Please create an AR that the docker containers have to run rootless and the create a plan for how to implement it and make that the top priority".
+  - Plan approval answer on 2026-11-26 replaces the build-run check: "That requirement is wrong, running a verification is useless and time wasting. The requirement is: The devaccount must only have access to rootles container engine."
+  - Plan open question 29 answer on 2026-11-26, on the CI container engine: "There is no specifica requirement to the pipeline, whatever is available."
+- GEDT-AR-00052: open question 22 answer on 2026-11-26, "Add a new AR stating the development account must not have sudo access."
 
 Rationale and notes:
 
@@ -470,15 +486,17 @@ Rationale and notes:
 - GEDT-AR-00046 keeps code under test from editing the advisory data of a later check, finding R-T54-01.
 - GEDT-AR-00047 includes `aws2xml`, which CI does not build; open question 16 keeps `aws2xml` out of GEDT-AR-00037 and GEDT-AR-00038 only.
 - GEDT-AR-00048 needs no registry write permission for the CI token.
-- GEDT-AR-00051 keeps the container engine, and every process in a build container, from holding root privileges on the host.
-  - A rootful engine with a non-root `--user` still runs the daemon as root, so an engine or container escape reaches host root.
-  - The requirement names the outcome; the product owner wrote "docker", and rootless podman meets the same outcome, so both engines qualify.
-  - The requirement covers local and CI build runs as one need, because both run the same build scripts against the same threat; the location is a condition, not a second need.
-  - "Verified" means the build run reads the mode from the engine before the first container start; an unreadable mode counts as not verified.
-  - Docker reports rootless mode as the `name=rootless` entry of `docker info --format '{{json .SecurityOptions}}'`; podman reports the mode in `podman info`; the implementation team picks the check.
+- GEDT-AR-00051 keeps the dev account, and every container the dev account starts, from holding root privileges on the host.
+  - An account with access to a rootful engine holds root-equivalent access to the host, also with a non-root `--user` in the container.
+  - The product owner wrote "docker" in the first request; rootless podman meets the same outcome, so both engines qualify.
+  - GEDT-AR-00051 bounds the account, not a script, so the requirement covers every container the dev account starts, the repository-root `build.sh` and `build_in_docker.sh` included.
+  - GEDT-AR-00051 asks for no check of the engine mode in a build run; the product owner rejected the earlier build-run check on 2026-11-26.
+  - The CI pipeline has no container engine requirement, product owner answer to plan open question 29.
   - GEDT-AR-00043 stays unchanged and applies inside the rootless engine.
   - Priority Critical: the product owner names the implementation as the top priority; the plan order follows that request.
-  - The repository-root scripts `build.sh` and `build_in_docker.sh` stay outside GEDT-AR-00051 until open question 21 is answered.
+- GEDT-AR-00052 keeps the dev account from gaining root privileges on the host through `sudo`.
+  - A `sudo` right lets the dev account start a rootful container engine, which GEDT-AR-00051 does not bound.
+  - GEDT-AR-00052 supports the Critical GEDT-AR-00051, so GEDT-AR-00052 is Critical; reconsider GEDT-AR-00052 if GEDT-AR-00051 changes.
 - Implementation choices recorded in `PLAN.md`, not requirements: the two cargo-deny policy files, the `flate2` 1.1.9 lock, the `rfd` 0.18 `xdg-portal` feature, the `ADVISORY_DB_DIR` variable, the tool image tag hash, and the CI build without a layer cache.
 - Accepted risks without a requirement: cache poisoning, O-1, O-2, and the `zenity` fallback, see [Risks](#risks).
 
@@ -504,7 +522,7 @@ The project size targets are assumptions; see [open questions](#open-questions).
 | Performance | Load within 2 seconds, search within 100 ms, UI frame under 100 ms. | Benchmarks in CI. |
 | Portability | Build and run on x86_64 Linux only, GEDT-AR-00049 and GEDT-AR-00050; native on Fedora Wayland and X11; web in Firefox and Chromium. | Release demonstration; inspection of the tool image, CI runners, and user documentation. |
 | Reliability | Zero corrupted files after 1,000 kills during save. | Kill-loop test. |
-| Security | Zero outbound connections; all security tests pass; zero build containers on a rootful engine, GEDT-AR-00051. | Network namespace test, security fixtures, rootful-engine refusal test. |
+| Security | Zero outbound connections; all security tests pass; zero rootful container engines reachable by the dev account, GEDT-AR-00051; zero `sudo` access for the dev account, GEDT-AR-00052. | Network namespace test, security fixtures, inspection of the development machine. |
 
 ## Interfaces
 
@@ -593,12 +611,13 @@ Web app interfaces are defined with the web app architecture.
 
 | Risk | Likelihood | Impact | Mitigation |
 | --- | --- | --- | --- |
-| Account on the development machine reaches the rootful Docker daemon without being root, so every process of the account holds root-equivalent access to the host, also outside build runs. | Certain | High | None in this document; GEDT-AR-00051 covers build runs only; the machine setup is the product owner's decision. |
+| Account on the development machine reaches a rootful container engine without being root, so every process of the account holds root-equivalent access to the host. | Medium | High | GEDT-AR-00051; `PLAN.md` task T-56 sets up rootless Docker for the dev account; inspection confirms that no rootful engine stays reachable. |
+| Account on the development machine starts a rootful container engine through `sudo`, so the account holds root access to the host despite GEDT-AR-00051. | Medium | High | GEDT-AR-00052; inspection of the development machine confirms that the dev account has no `sudo` access. |
 | Address parts that are not numbers silently become 0 in `convert_from_address_to_id`. | High | High | GEDT-AR-00013. |
 | Autosave overwrites a file changed by `aws2xml` or a hand edit. | Medium | High | GEDT-FR-00009. |
 | Cached crate sources in the writable `.cargo-home/registry/src` are poisoned by code under test and pass audit and deny in a later build. | Low | High | Accepted for the MVP by product owner answer "A: accept for MVP" on 2026-11-25; `PLAN.md` holds an unassigned backlog item. |
 | Changes to `sad_xml_sql` break `sad2md` or `tui_editor`. | Medium | Medium | GEDT-AR-00030; CI runs all suites. |
-| CI runner account has passwordless sudo on GitHub-hosted runners, so a container escape to the runner account still reaches root on the runner. | Low | Medium | GEDT-AR-00051 keeps container processes off host root; the runner is discarded after each job. |
+| CI pipeline runs build containers on whatever container engine the runner offers, for example rootful Docker on GitHub-hosted runners, where the runner account also has passwordless sudo, so a container escape reaches root on the runner. | Low | Medium | Accepted by product owner answer to plan open question 29, "There is no specifica requirement to the pipeline, whatever is available."; the runner is discarded after each job. |
 | Component reorder on first save produces large git diffs in existing files. | Medium | Low | One-time reorder commit before first use. |
 | Dependencies used only by the web app escape the duplicate and licence checks, because the checked dependency graph covers `x86_64-unknown-linux-gnu` only. | Medium | Medium | Review the target of GEDT-AR-00039 and GEDT-AR-00041 when the web release starts. |
 | Dump in `sad_xml_sql` drops DTD-defined items on save. | Certain | High | T-40 restores Include elements, ViewPacket `TeamId`, and Behavior `DiagramKey`; T-03 lists the remaining gaps; GEDT-FR-00005 golden-file round-trip tests; the rest is in [Known save limitations](#known-save-limitations). |
@@ -613,7 +632,6 @@ Web app interfaces are defined with the web app architecture.
 | Included file written with only Component elements fails the SAD DTD rule `ViewPacket+` and loses content. | Medium | High | GEDT-FR-00044. |
 | Linux build for an architecture other than x86_64, for example aarch64, pulls dependencies that the checked dependency graph does not check. | Low | Medium | GEDT-AR-00049 and GEDT-AR-00050 support x86_64 Linux only, which the checked dependency graph covers, product owner answer to open question 19. |
 | Loader in `sad_xml_sql` panics or exits on malformed input, losing unsaved work. | Certain | High | GEDT-AR-00012. |
-| Local build runs fail on the development machine once GEDT-AR-00051 is in place, because the machine offers only a rootful Docker daemon. | Certain | High | The plan provides a rootless container engine on the development machine before the GEDT-AR-00051 check lands. |
 | Multiple egui windows misbehave on Wayland. | Medium | Medium | Prototype GEDT-FR-00032 early. |
 | Repository-root `build.sh` uses the unpinned `rust:latest` image, and `build_in_docker.sh` pins `rust:1.98` without a digest. | Medium | Medium | None; the product owner keeps the root scripts unchanged, plan open question 10; the scripts do not build `gui_editor`. |
 | Restricting the shared reader to Component and Team elements removes the external viewpacket links that `sad2md` writes for included files. | Low | Medium | GEDT-FR-00042 with an editor-only reader option; GEDT-AR-00030. |
@@ -700,13 +718,10 @@ No open question blocks the first release or a `PLAN.md` task.
 - 20: Answered on 2026-11-25: option a, `aws2xml` stays out of GEDT-AR-00049 and GEDT-AR-00050.
   - Product owner answer, quoted: "q20 fucking forget about aws2xml until it is specifically requested".
   - The answer reaches beyond open question 20; the other `aws2xml` scope statements in this document and in USER_STORIES.md wait for a product owner decision.
-- 21: Do the repository-root build scripts fall under GEDT-AR-00051?
-  - Background: you asked on 2026-11-25 that the docker containers run rootless, see GEDT-AR-00051.
-    - Earlier, on plan open question 10, you answered "leave the root scripts alone" for the repository-root `build.sh` and `build_in_docker.sh`.
-    - The root scripts start docker containers too, but do not build `gui_editor`, so GEDT-AR-00051 leaves the root scripts out for now.
-  - Option a: keep the root scripts out of GEDT-AR-00051.
-    - Consequence: no change to the root scripts; a root script run can still use a rootful engine.
-  - Option b: bring the root scripts under GEDT-AR-00051.
-    - Consequence: the root scripts change, which reverses the answer to plan open question 10; the plan adds a task for the root scripts.
-  - Default: a, because your answer to plan open question 10 is explicit, and the root scripts build no checked crate.
-  - Blocks: nothing in the `gui_editor` plan; a root script task waits for the answer.
+- 21: Closed on 2026-11-26 as moot: the question asked whether the repository-root `build.sh` and `build_in_docker.sh` fall under GEDT-AR-00051.
+  - The product owner restated GEDT-AR-00051 on 2026-11-26 as a limit on the dev account, not on a script.
+  - Every container the dev account starts runs on a rootless container engine, root script runs included, with no change to the root scripts.
+  - The answer to plan open question 10, "leave the root scripts alone", stays intact.
+- 22: Answered on 2026-11-26: the question asked whether the access limit of GEDT-AR-00051 covers access through `sudo`.
+  - Product owner answer, quoted: "Add a new AR stating the development account must not have sudo access."
+  - The answer adds GEDT-AR-00052 instead of choosing option a or option b; GEDT-AR-00051 is unchanged.

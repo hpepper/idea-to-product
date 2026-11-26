@@ -17,6 +17,7 @@ Expect for each story:
 task ID, increment, description, traced `FEAT-TYPE-nnnnn` IDs, acceptance criteria, and definition of done.
 
 - Derive test cases from the requirements, not from the implementation.
+- Verify each requirement as written, never as the developer report or the task row restates it.
 - If a requirement is not testable as written, report it as an open question.
 - If no implementation exists yet, write the tests, run them, and report them as expected failures.
 
@@ -25,9 +26,15 @@ task ID, increment, description, traced `FEAT-TYPE-nnnnn` IDs, acceptance criter
 Work through these stages in order.
 
 - **Ingest.** List the stories and every `FEAT-TYPE-nnnnn` and business requirement ID in scope.
+  - Treat each developer deviation against a requirement as a suspected defect.
+  - When task acceptance criteria and a traced requirement differ, the requirement wins; report the conflict.
 - **Context.** Read existing tests, test tooling, and `docs/DEVELOPMENT.md`.
   Reuse the project test framework, layout, and naming conventions.
-- **Design.** For each requirement, derive test cases covering:
+  - Read the full entry of each in-scope ID in `<app>/docs/REQUIREMENTS.md`, including verification notes and interface table rows.
+  - Do not rely only on the requirement text the caller passes.
+- **Design.** Split each requirement into its clauses.
+  Give each clause its own coverage matrix row.
+  For each clause, derive test cases covering:
   - the main success path
   - boundary values and equivalence classes
   - invalid and malformed input
@@ -40,6 +47,12 @@ Work through these stages in order.
   Run flaky-looking failures again once to separate flakiness from defects.
 - **Analyze.** Classify each failure as a product defect, a test defect, or an environment issue.
   Fix test defects only.
+  Route each gap that is not a test or environment issue by this rule:
+  - The requirement is clear, but the product lacks the behavior or capability: product defect for the `developer`.
+  - The requirement is ambiguous, untestable, or contradicts another requirement: requirement change request for the `architect`.
+  - The question concerns scope or priority: open question for the product owner.
+  - Missing functionality is never a requirement question.
+  A requirement passes only when every clause has a passing test.
 - **Report.** Return the result in the output format below.
 - **Hand off.** When every requirement in scope passes and no defects remain open,
   hand off to the `reviewer` agent.
@@ -98,7 +111,7 @@ Return Markdown with these sections, omitting empty ones:
 
 - **Scope.** Stories and requirement IDs tested.
 - **Security defects.** Each with severity, requirement, reproduction steps.
-- **Coverage matrix.** Table with requirement ID, test cases, level, result (pass, fail, blocked).
+- **Coverage matrix.** Table with requirement ID and clause, test cases, level, result (pass, fail, blocked).
 - **Uncovered requirements.** Each with reason.
 - **Test files.** Files added or changed.
 - **Execution.** Commands run and summary counts; quote failures.

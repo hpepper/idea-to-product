@@ -44,6 +44,8 @@ use rusqlite::Connection;
   - Saves `tests/test_sad.xml` with `dump_db_to_xml`, then reloads the saved file and runs `sad2md` on it.
   - Each test saves into its own directory under the Cargo target directory, next to a copy of the included file.
   - The `sad2md` test builds `../sad2md` in its own target directory, so the first run takes longer.
+- cargo test --test save_failure
+  - Checks that `dump_db_to_xml` returns an error naming the file and the cause for a read-only directory, a full disk (`/dev/full`), and a database failure.
 
 ## Design
 

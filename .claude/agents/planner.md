@@ -109,6 +109,7 @@ The architect is the only writer of `<app>/docs/REQUIREMENTS.md`.
 
 - Do not edit `<app>/docs/REQUIREMENTS.md`.
 - A definition of done cites requirement IDs and acceptance criteria, and adds no constraint without an ID.
+- A definition of done never restates a requirement in weaker terms; reference the requirement ID or quote the requirement.
 - When planning needs a new or changed constraint, write a requirement change request for the architect.
   - Name the trigger, the affected IDs, the proposed change, and the source.
   - Quote a product owner answer verbatim.

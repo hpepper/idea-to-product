@@ -122,26 +122,25 @@ pub fn get_vector_of_component_names_sorted(db_conn: &Connection) -> Result<Vec<
     component_names.collect::<Result<Vec<String>, _>>()
 }
 
+/// Returns a database failure as an error, not a panic,
+/// so `dump_db_to_xml` can report it (GEDT-FR-00046).
 pub fn get_vector_of_components_sorted_by_name(db_conn: &Connection) -> Result<Vec<Component>> {
     //println!("Preparing statement to fetch components sorted by name");
     let mut stmt = db_conn
-        .prepare("SELECT file_id, id, name, purpose, summary, team_id, title FROM component ORDER BY name COLLATE NOCASE ASC")
-        .unwrap();
+        .prepare("SELECT file_id, id, name, purpose, summary, team_id, title FROM component ORDER BY name COLLATE NOCASE ASC")?;
     //println!("Statement prepared, querying components...");
-    let component_names = stmt
-        .query_map([], |row| {
-            //println!("Fetched component: id={}, name={}", id, name);
-            Ok(Component {
-                file_id: row.get(0)?,
-                id: row.get(1)?,
-                name: row.get(2)?,
-                purpose: row.get(3)?,
-                summary: row.get(4)?,
-                team_id: row.get(5)?,
-                title: row.get(6)?,
-            })
+    let component_names = stmt.query_map([], |row| {
+        //println!("Fetched component: id={}, name={}", id, name);
+        Ok(Component {
+            file_id: row.get(0)?,
+            id: row.get(1)?,
+            name: row.get(2)?,
+            purpose: row.get(3)?,
+            summary: row.get(4)?,
+            team_id: row.get(5)?,
+            title: row.get(6)?,
         })
-        .unwrap();
+    })?;
     let result = component_names.collect::<Result<Vec<Component>, _>>()?;
     //println!("Total components fetched: {}", result.len());
     Ok(result)

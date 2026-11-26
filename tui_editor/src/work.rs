@@ -36,6 +36,8 @@ use work_viewpacket_render::{
     render_viewpacket_editor_pane,
 };
 
+/// The status line mark of a project with unsaved changes (GEDT-FR-00048).
+pub const MODIFIED_MARK: &str = "[modified]";
 
 /**
  * The work pane is horizontally split into a selector pane and a details/edit pane.
@@ -131,6 +133,14 @@ pub fn render_work(
             selected_index,
             selected_item
         );
+    }
+    // The save error and then the modified mark go first,
+    // so a narrow status line still shows them.
+    if work_state.is_modified() {
+        app_state.status_message = format!("{MODIFIED_MARK} | {}", app_state.status_message);
+    }
+    if let Some(save_error) = &work_state.save_error {
+        app_state.status_message = format!("{save_error} | {}", app_state.status_message);
     }
 
     // ......... Editor pane - right side
@@ -297,33 +307,49 @@ pub fn handle_work_input(
             }
             (KeyModifiers::NONE, KeyCode::Esc) => {
                 work_state.active_pane = work_state.previous_active_pane;
+                work_state.pending_edit = false;
                 true
             }
             (KeyModifiers::NONE, KeyCode::F(7)) => {
-                // TODO have a var that stores the previous active_pane, so we can return to that instead
-                work_state.active_pane = work_state.previous_active_pane;
                 match work_state.selected_tab {
                     TabSubjects::Components => {
-                        let component = work_state
-                            .component_text_areas
-                            .extract_component();
-                        update_component_by_id(
-                            db_conn,
-                            &component,
-                        );
-                        dump_db_to_xml(&db_conn, &work_state.save_path);
+                        let component = work_state.component_text_areas.extract_component();
+                        update_component_by_id(db_conn, &component);
+                        if work_state.pending_edit {
+                            work_state.project_modified = true;
+                            work_state.pending_edit = false;
+                        }
+                        match dump_db_to_xml(db_conn, &work_state.save_path) {
+                            Ok(()) => {
+                                work_state.save_error = None;
+                                work_state.project_modified = false;
+                                work_state.active_pane = work_state.previous_active_pane;
+                            }
+                            // The status line shows the error,
+                            // naming file and cause (GEDT-FR-00047).
+                            // The project stays modified (GEDT-FR-00048).
+                            // The editor pane stays open for another F7 (GEDT-FR-00049).
+                            Err(error) => work_state.save_error = Some(error.to_string()),
+                        }
                         true
                     }
-                    _ => false, // No edit functionality for other tabs yet
+                    _ => {
+                        // No edit functionality for other tabs yet.
+                        work_state.active_pane = work_state.previous_active_pane;
+                        false
+                    }
                 }
             }
             _ => {
                 // Pass input to active text area
                 match work_state.selected_tab {
                     TabSubjects::Components => {
-                        work_state
+                        // The text area reports only a text change as handled.
+                        let text_changed = work_state
                             .component_text_areas
-                            .handle_input(keyevent_to_input(event))
+                            .handle_input(keyevent_to_input(event));
+                        work_state.pending_edit |= text_changed;
+                        text_changed
                         //work_state.component_text_areas.handle_input(Input::from(event))
                     }
                     // Handle other tabs...

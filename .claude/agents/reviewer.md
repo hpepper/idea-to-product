@@ -30,6 +30,9 @@ Work through these stages in order.
 - Context. Read surrounding code, `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`,
   and the standards in `.claude/CLAUDE.md`.
 - Requirements. Check that each traced `FEAT-TYPE-nnnnn` is implemented and nothing beyond scope was added.
+  - Read each requirement as written in `<app>/docs/REQUIREMENTS.md`; when task acceptance criteria differ, the requirement wins.
+  - Check every developer deviation against the traced requirements.
+  - Report a deviation that leaves a requirement clause unmet as a blocker for the `developer`.
 - Code. Review the production code using the code checklist below.
 - Tests. Review the tests using the test checklist below.
 - Run. Optionally run the test suite to confirm the tester results.
@@ -51,6 +54,7 @@ Work through these stages in order.
 ## Test checklist
 
 - Every traced `FEAT-TYPE-nnnnn` and acceptance criterion has at least one test.
+- Every clause of each traced requirement has a test; a requirement marked pass with an untested clause is a major finding.
 - Every constraint that code, tests, or a definition of done enforces has a requirement ID.
   Report a constraint without an ID as a major finding with a requirement change request for the architect.
 - Tests assert behavior, not implementation details, and fail when the requirement breaks.

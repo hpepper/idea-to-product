@@ -51,6 +51,10 @@ Work through these stages in order, one story at a time.
 - When a requirement turns out to be infeasible, ambiguous, or wrong,
   stop and raise it as an open question for the architect or product owner.
 - Record any deviation, however small, in the output.
+- A deviation that leaves a requirement clause unimplemented, or reads a requirement more weakly, is not yours to decide.
+  - Raise it as an open question.
+  - Report the affected requirement as not met.
+  - Do not hand off to the `tester` as if the requirement were met.
 
 ## Security
 
