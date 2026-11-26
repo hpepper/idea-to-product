@@ -60,12 +60,14 @@ After the T-54 implementation, the product owner made the CI cache, test placeme
 During T-54 testing, the product owner made the writable paths, cargo config check, test output folder, cache poisoning, and loop limit decisions in the rows marked "T-54 follow-up" on 2026-11-25.
 After T-54 testing and review, the product owner made the advisory database, accepted risk, `tui_editor` save path, and loop round decisions in the rows marked "T-54 follow-up" on 2026-11-25.
 On 2026-11-25, the product owner also answered open questions 8, 22, and 24 and decided the committed-language guardrail, which adds task T-55.
-Open question 23 stays open: an earlier plan revision recorded "go with user" as a decision, but that reading came from the orchestrator, not from the product owner, so the row "Build user, question 23" is withdrawn.
+An earlier plan revision recorded "go with user" as a decision on open question 23, but that reading came from the orchestrator, not from the product owner, so the row "Build user, question 23" is withdrawn.
 On 2026-11-25, the product owner also answered plan open questions 10 and 19 and requirements open questions 13 and 16, in the rows marked "2026-11-25 answers".
 On 2026-11-25, the product owner also answered plan open questions 25 and 27, in the rows marked "2026-11-25 answers".
 On 2026-11-25, the product owner answered open question 26 with "Q26a", in the row "Duplicate `syn` versions in `tui_editor`, question 26".
 On aligning the plan with that answer, the product owner said "how about you remove line 96 and 97 and suddenly life becomes simpler?", so the two decision rows that allowed `skip` entries outside `gui_editor` and the row that kept them unchanged are removed, and by product owner answer "delete the shit" on 2026-11-25, the row "Skip wording in T-02 and T-43, T-52 follow-up" is removed.
 On 2026-11-25, the product owner requested a Linux-only platform requirement, recorded in the row "Linux-only platform, 2026-11-25 request".
+On 2026-11-25, the product owner requested rootless build containers as the top priority, recorded in the row "Rootless containers, 2026-11-25 request", which answers open question 23 and adds tasks T-56 to T-58 before T-47.
+The split into T-56 to T-58 and open questions 28 to 30 wait for the product owner.
 
 | Question | Decision |
 | --- | --- |
@@ -79,7 +81,7 @@ On 2026-11-25, the product owner requested a Linux-only platform requirement, re
 | Bans check baseline, 5fbeeb3 follow-up | Add task T-52, size S, before T-02, to bring the `cargo deny check` bans state back to the baseline before `5fbeeb3`; T-52 takes the `sad2md` wildcard from T-43. |
 | Bans check deviation, T-52 follow-up | T-52 closes with a recorded deviation: `cargo deny check bans` for `sad2md` and `sad_xml_sql` moves to task T-53, because the remaining `hashbrown` duplicate comes from `simple-xml-builder` 1.1.0, the newest release. |
 | Build container tool image, T-02 follow-up | Decided on 2026-11-25: add task T-54, size M, right after T-02 and before T-47; T-54 builds a tool image FROM the pinned `docker.io/library/rust:1.100.0-trixie` digest with cargo-audit 0.23.0, cargo-deny 0.22.0, rustfmt, and clippy, used by `gui_editor/build.sh`, CI, and the agents instead of installing the tools on each run; not a dev shell, and the GUI does not run in a container; T-54 starts without another approval once T-02 is done; T-44 uses the tool image; CI builds the image on each run with the layer cache and pushes no image, as proposed by the planner and confirmed by the product owner on 2026-11-25; `cargo build` and `cargo test` also run in the tool image, as decided in the row "Tool image requirement, question 21"; revised on 2026-11-25 by the rows "CI cache, T-54 follow-up", "Test placement, T-54 follow-up", "Tool image tag, T-54 follow-up", "Writable paths, T-54 follow-up", "Cargo config check, T-54 follow-up", and "Test output folder, T-54 follow-up". |
-| Build user, question 23 | Withdrawn on 2026-11-25: the answer "go with user" was the orchestrator's interpretation, not a product owner decision; open question 23 is open again, see [Open Questions](#open-questions). |
+| Build user, question 23 | Withdrawn on 2026-11-25: the answer "go with user" was the orchestrator's interpretation, not a product owner decision; open question 23 is closed by the row "Rootless containers, 2026-11-25 request". |
 | Cache poisoning, T-54 follow-up | Decided on 2026-11-25: `.cargo-home/registry/src` stays writable, so a container can poison cached crate sources for later builds, and the poisoned sources pass audit and deny; tester severity Medium, reproduced; accepted for the MVP and documented; an unassigned backlog item fetches dependencies in a separate step, mounts `registry` read-only, and builds with `--offline`. |
 | Cargo config check, T-54 follow-up | Decided on 2026-11-25, T-54 question 2, option A: `tool_image.sh run <dir>` accepts any top-level directory but refuses an untracked `<dir>/.cargo/config.toml` or `<dir>/.cargo/config`, and always refuses `<repo>/.cargo/config.toml`; the check fails closed without git; the git state does not come from the caller's environment, as security defect D-T54-06 requires; open question 22 is closed, see the row "Tracked cargo config files, question 22". |
 | CI cache, T-54 follow-up | Decided on 2026-11-25: no layer cache for now; each CI job builds the tool image without a cache and pushes nothing, with no new action; a CI cache through the GitHub first-party `actions/cache`, pinned by SHA, storing a `docker save` tarball keyed by the tag and followed by the same content check, is an unassigned backlog item for when CI build time matters. |
@@ -121,6 +123,7 @@ On 2026-11-25, the product owner requested a Linux-only platform requirement, re
 | Repository-root `.cargo-home/` ignore, question 25, 2026-11-25 answers | Decided on 2026-11-25, product owner answer "q25 update the .gitignore", option A: T-46 only adds `.cargo-home/` to the repository-root `.gitignore` and confirms that `git status` shows no `.cargo-home/` after a build; T-46 changes no script. |
 | Repository-root findings, question 9 | Add task T-46, size S, after T-45, to fix the three repository-root findings; narrowed on 2026-11-25 by the rows "Repository-root scripts, question 10, 2026-11-25 answers" and "Repository-root `.cargo-home/` ignore, question 25, 2026-11-25 answers". |
 | Repository-root scripts, question 10, 2026-11-25 answers | Decided on 2026-11-25, product owner answer "leave the root scripts alone": T-46 no longer changes the root `build.sh` or `build_in_docker.sh`; the remaining T-46 scope is decided in the row "Repository-root `.cargo-home/` ignore, question 25, 2026-11-25 answers". |
+| Rootless containers, 2026-11-25 request | Decided on 2026-11-25, product owner request "Please create an AR that the docker containers have to run rootless and the create a plan for how to implement it and make that the top priority": the architect added GEDT-AR-00051, Critical, under GEDT-STORY-00019 in the MVP: each build run starts a container only on a container engine that the build run has verified as rootless, rootless docker or rootless podman, locally and in CI, including the tool image build and the CI gitleaks scan; the request answers open question 23, so the fake-engine-only coverage is replaced by a real rootless engine locally and in CI; tasks T-56, local rootless engine, T-57, CI rootless engine, and T-58, rootless engine check, run first in [Delivery Order](#delivery-order), ahead of T-47; the engine choices wait for open questions 28 and 29; the repository-root `build.sh` and `build_in_docker.sh` stay out until requirements open question 21 is answered. |
 | Round-trip scope, question 11 | Shrink both tasks: T-03 becomes a short check of the save gaps left after T-40, and T-12 covers only what T-40 did not. |
 | rustfmt in CI, T-02 follow-up | Decided on 2026-11-25 during T-02 testing: T-44 is extended so CI runs `cargo fmt --check` as well as clippy for all four crates; the pinned image adds rustfmt through `rustup component add rustfmt`, as for clippy; backlog item D-03 goes to T-44. |
 | Save failure in `tui_editor`, requirements open question 10 | Task T-47 under GEDT-STORY-00002 fixes the silent save failure and keeps the `tui_out.xml` target. |
@@ -192,9 +195,16 @@ On 2026-11-25, the product owner requested a Linux-only platform requirement, re
   - The CI `test` job no longer uses `container:` and runs each step through `tool_image.sh`.
   - Code under test writes only to `target/`, `.cargo-home`, and `<crate>/test-output`; `build.sh`, `tool_image.sh run`, and CI mount everything else read-only.
   - `.cargo-home/registry/src` stays writable, an accepted cache poisoning risk, see [Risks](#risks).
-  - Rootless podman and rootless docker are covered by a fake engine only; open question 23 on that coverage is open, see [Risks](#risks).
+  - Rootless podman and rootless docker are covered by a fake engine only; GEDT-AR-00051 replaces that coverage with real rootless engines through T-56 to T-58.
   - On the development machine, the account cannot run docker as root, and `docker info --format '{{json .SecurityOptions}}'` prints `["name=seccomp,profile=builtin","name=cgroupns"]`, as the product owner reported on 2026-11-25.
     - The Docker daemon runs as root, rootful, and the account reaches the daemon without being root, so local runs exercise only the rootful docker path with `--user`.
+    - Unknown: whether podman is installed, whether the account has `/etc/subuid` and `/etc/subgid` entries, and whether a one-time root step is needed for a rootless engine; T-56 checks these.
+- GEDT-AR-00051 gaps in the T-54 code, found by the architect on 2026-11-25:
+  - `select_user_args` in `gui_editor/container/tool_image.sh`, around lines 74 to 96, gives rootful docker `--user uid:gid` and falls back to `--user` when the rootless detection fails; `gui_editor/build.sh` sources that function.
+  - Podman gets `--userns=keep-id` without a rootless check, so rootful podman runs containers.
+  - The CI jobs in `.github/workflows/ci.yml` set `CONTAINER_ENGINE: docker` against the rootful daemon of the `ubuntu-24.04` runner, and the gitleaks step, around line 37, runs `docker run` directly, outside `tool_image.sh`.
+  - `gui_editor/README.md` documents build output ownership under rootful docker with `--user`.
+  - Tests in `gui_editor/tests/pipeline/test_build_pipeline.sh` expect `--user` on rootful docker and as the fallback.
 - CI stays red until T-53 and T-43 land, because `cargo deny check bans` fails for `sad2md`, `sad_xml_sql`, and `tui_editor`.
 - The uncommitted change to `aws2xml/Cargo.lock` predates T-01 and belongs to no planned task.
 - Save findings in shared and `tui_editor` code:
@@ -215,7 +225,7 @@ The build, test, and release pipeline is part of the MVP.
 | GEDT-STORY-00002 | Critical | GEDT-AR-00001, 00002, 00030, GEDT-FR-00004, 00005, 00006, 00009, 00045 to 00048 |
 | GEDT-STORY-00004 | Critical | GEDT-FR-00010, 00011, 00012, 00013 |
 | GEDT-STORY-00005 | Critical | GEDT-FR-00013, 00014, 00015, 00016, 00045 |
-| GEDT-STORY-00019 | Critical | GEDT-AR-00003, 00004, 00032, 00033, 00034, 00037 to 00050, and GEDT-AR-00025, see open question 5 |
+| GEDT-STORY-00019 | Critical | GEDT-AR-00003, 00004, 00032, 00033, 00034, 00037 to 00051, and GEDT-AR-00025, see open question 5 |
 | GEDT-STORY-00021 | Critical | GEDT-AR-00010 to 00016, 00029, 00031; GEDT-AR-00035 is delivered in INC-1 by T-51 under GEDT-STORY-00026, as decided on open question 27 |
 | GEDT-STORY-00022 | Critical | GEDT-AR-00007, 00008, 00009, GEDT-FR-00006 |
 | GEDT-STORY-00025 | Critical | GEDT-AR-00009, 00015, 00023, 00024 |
@@ -231,6 +241,7 @@ The only interface of the native app is the local project file and its included 
 - Authentication and authorization: not needed for a single-user local app.
   OS file permissions protect the project files, as the out-of-scope decision states.
 - Supply chain: shipped crates get no advisory exceptions; T-41 fixes known advisories through upgrades.
+- Build containers: every build run starts containers only on a verified rootless engine, locally and in CI, GEDT-AR-00051, delivered first by T-56 to T-58.
 
 ### MVP Exit Criteria
 
@@ -244,6 +255,7 @@ The only interface of the native app is the local project file and its included 
 - The `sad2md` and `tui_editor` test suites pass.
 - The CI gate passes for `gui_editor`, `sad2md`, `sad_xml_sql`, and `tui_editor`.
 - The app works on Fedora, on Wayland and on X11.
+- No build run, local or in CI, starts a container on a rootful engine or on an engine whose mode the run cannot read (GEDT-AR-00051).
 - `gui_editor/README.md`, `sad2md/README.md`, and `tui_editor/README.md` name x86_64 Linux as the only supported platform, and the tool image and every CI runner are x86_64 Linux (GEDT-AR-00049, GEDT-AR-00050).
 
 ## Increments
@@ -373,10 +385,14 @@ Task T-48 is not scheduled and is listed in [Deferred](#deferred).
 | T-53 | Replace `simple-xml-builder` in `sad_xml_sql` | 00019 | MVP | T-47, T-52 | M | Runs after T-47 and before T-43; size range S to M. `sad_xml_sql` no longer depends on `simple-xml-builder`, and so not on `indexmap` 1 or `hashbrown` 0.12; XML output unchanged, so the T-39 `sad2md` golden tests and the `sad_xml_sql` and `tui_editor` save tests pass unchanged; `cargo deny check bans` passes for `sad2md` and `sad_xml_sql` with an empty `bans.skip`; no crate in `CI_CRATES`, `gui_editor`, `sad2md`, `sad_xml_sql`, and `tui_editor`, has more than one `hashbrown` version, checked with `cargo tree -d` or the cargo-deny bans output; any `hashbrown` duplicate left in `tui_editor` removed through upgrades in T-53, never a `skip` entry; no new crate without product owner approval: a std-only writer is the default, and any replacement crate needs approval; tests cover text escaping in the writer, because the writer emits user-controlled text into XML; `cargo audit` stays green (AR-00025, AR-00030) |
 | T-54 | Build container tool image | 00019 | MVP | T-02 | M | Done: tested, reviewed in two review rounds, and approved with nits R2-T54-01 to R2-T54-04, see [Backlog](#backlog); product owner commit pending. D-T54-01 to D-T54-06 and R-T54-01 fixed and verified. Advisory databases in the ephemeral `/tmp` of the container, as decided in the row "Advisory databases, T-54 follow-up". Runs right after T-02 and before T-47; starts without another approval once T-02 is done. `gui_editor/container/Containerfile` builds the tool image `FROM docker.io/library/rust:1.100.0-trixie@sha256:223cc32ddca8f3ee90c436dbc94b6b5f052ea7f9653c5201e9612f08ad7d21b8`, pinned by version tag and digest; the image installs cargo-audit 0.23.0 and cargo-deny 0.22.0 with `cargo install --locked --version`, and rustfmt and clippy through `rustup component add`; the image is not a dev shell, and the GUI does not run in a container. The new Bash library and CLI `gui_editor/container/tool_image.sh`, with `build` and `run <dir> <cmd…>`, builds the image locally from the Containerfile under the tag `localhost/gui_editor-tools:<sha256 over the Containerfile content and the checked base image reference>`, so another pinned `RUST_IMAGE` builds a new tag; the script rebuilds when the tag is missing and checks the content fail-closed on every use: the base digest recorded as an image label matches the pinned digest, and `cargo audit --version`, `cargo deny --version`, `cargo fmt --version`, and `cargo clippy --version` report the pinned versions; a failed check stops the build. Read-only layout, as decided in the row "Writable paths, T-54 follow-up": code under test writes only to `target/`, `.cargo-home`, and the git-ignored `<crate>/test-output`, and `build.sh`, `tool_image.sh run`, and CI mount everything else read-only. Test output mount, as decided in the row "Test output folder, T-54 follow-up": the 7 `sad_xml_sql` and `tui_editor` tests that wrote into their crate root write under `<crate>/test-output`, mounted writable. Cargo config check, as decided in the row "Cargo config check, T-54 follow-up": `tool_image.sh run <dir>` accepts any top-level directory, refuses an untracked `<dir>/.cargo/config.toml` or `<dir>/.cargo/config`, always refuses `<repo>/.cargo/config.toml`, fails closed without git, and takes no git state from the caller's environment (D-T54-06). The tools run by absolute path, `/usr/local/cargo/bin/cargo-audit` and `/usr/local/cargo/bin/cargo-deny`. The override guard refuses to run when any of these exists: `.cargo-home/bin`, `.cargo-home/config`, `.cargo-home/config.toml`, `.cargo-home/audit.toml`, `.cargo/config`, `rust-toolchain`, or `rust-toolchain.toml`; a symlinked `<dir>`, `target`, `.cargo-home`, or `test-output` is refused too. CI builds the same image from the pinned base in each job without a layer cache, runs the same content check, and runs the audit, deny, and test steps in that image through `tool_image.sh` instead of `cargo install` per job; the CI `test` job no longer uses `container:`; CI pushes no image to a registry and gets no new action or token permission, as decided in the row "CI cache, T-54 follow-up". `build.sh` and CI no longer run `cargo install` for cargo-audit or cargo-deny. Build output stays owned by the invoking user; the rootless podman `--userns=keep-id` and rootless docker detection of `build.sh` kept. `build.sh` runs `cargo build` in the tool image, and not `cargo test`; `cargo test` runs in the tool image through `gui_editor/container/tool_image.sh run` in CI and for agents, because the config tests read sibling directories outside the `build.sh` mount, as GEDT-AR-00034 allows after open question 21 and as decided in the row "Test placement, T-54 follow-up". `gui_editor/tests/test_build_pipeline_config.rs` and `gui_editor/tests/pipeline/test_build_pipeline.sh` updated to check the base pin, the tool pins, `--locked`, the content check, and the user handling; the Containerfile counts as a configuration format for AR-00032 and AR-00033, as decided in the row "Containerfile classification, T-54 follow-up"; backlog items T02-N-01 and T02-N-02 done; no audit, deny, `--locked`, secret-scan, or advisory-ignore check weakened. Bash scripts only, no Python. `gui_editor/README.md` documents the tool image, and agents run the checks through `build.sh` and `cargo test` through `tool_image.sh run` (AR-00025, AR-00032, AR-00033, AR-00034, AR-00043, AR-00044, AR-00045, AR-00046, AR-00048) |
 | T-55 | Committed-language check | 00019 | MVP | T-54 | S | Runs right after T-47. A std-only Rust test or a Bash check, run in CI, fails when a file tracked by git is hand-written program code or a script in a language other than Rust or Bash, detected by file extension and by shebang line; configuration and data formats, such as TOML, YAML, XML, Markdown, Mermaid, and `Containerfile`, and files generated by the Rust toolchain are excepted, as the GEDT-AR-00032 and GEDT-AR-00033 rationale states; the check reads the tracked file list from git, so ignored caches such as `.cargo-home/registry` are out of scope; the check replaces or extends `test_ar_00025_ac6_ci_and_pipeline_tests_use_no_python` in `gui_editor/tests/test_build_pipeline_config.rs`; tests show a planted Python file and a planted script with a non-Bash shebang fail the check; all test suites pass (AR-00032, AR-00033) |
+| T-56 | Local rootless engine, product owner step | 00019 | MVP | T-54 committed, open question 28 | S | First in [Delivery Order](#delivery-order); the product owner runs the setup on the development machine, and a developer may write the step list. Prerequisites checked and reported: `id -u` is not 0; `grep "^$(id -un):" /etc/subuid /etc/subgid` shows a range of at least 65536 ids in each file; `command -v newuidmap newgidmap` finds both tools; `sysctl user.max_user_namespaces` is greater than 0; `XDG_RUNTIME_DIR` is set in the session. For rootless podman: `podman --version` works, and `podman info --format '{{.Host.Security.Rootless}}'` prints `true`. For rootless docker: `dockerd-rootless-setuptool.sh` and `rootlesskit` are installed, the rootless daemon runs as a user service, and `docker info --format '{{json .SecurityOptions}}'` through the chosen context or `DOCKER_HOST` contains `"name=rootless"`. A one-time root step, such as installing the engine package or adding subuid and subgid ranges, is listed before it runs, and is the only root step. With the current scripts, `CONTAINER_ENGINE=<engine> gui_editor/build.sh` passes, the tool image is built in the storage of the rootless engine, and the build output in `gui_editor/target` is owned by the account. `ps -o uid=,comm=` of the engine process shows the account uid, not 0, recorded as the local demonstration of AR-00051. No file in the repository changes (AR-00051) |
+| T-57 | CI rootless engine | 00019 | MVP | T-54 committed, open question 29 | M | Runs with or right after T-56. T-57 first confirms on an `ubuntu-24.04` run whether the chosen engine is preinstalled and runs rootless, and records the result. The `gui-editor-build` and `test` jobs in `.github/workflows/ci.yml` run every `build.sh` and `tool_image.sh` step on the chosen rootless engine, with `CONTAINER_ENGINE` set to that engine, instead of the rootful runner daemon. Any new setup step installs a pinned package version from the Ubuntu archive or a pinned upstream artifact with a checked digest; any new action is pinned by commit SHA; `permissions: contents: read` stays the only token permission. Each job builds the tool image in the rootless engine storage and pushes nothing (AR-00048). One CI step prints the engine mode and `ps -o uid=,comm=` of the engine process, and the CI log shows a non-root uid, recorded as the CI demonstration of AR-00051. When the chosen engine cannot run rootless on the runner, for example when AppArmor blocks unprivileged user namespaces, T-57 stops and reports to the product owner; no AppArmor, sysctl, or other runner hardening is relaxed without a product owner decision. The pipeline tests with the fake engine still run; all CI jobs keep their current result (AR-00048, AR-00049, AR-00051) |
+| T-58 | Rootless engine check in build scripts and CI | 00019 | MVP | T-56, T-57 | M | Runs right after T-56 and T-57, before T-47. `gui_editor/container/tool_image.sh` verifies the engine before every container start, including the tool image build, the content check, and `run`, and `gui_editor/build.sh` uses the same check. Docker counts as rootless only when the `info` security options hold the exact entry `name=rootless`; podman, also behind a `docker` name such as the podman-docker shim, counts as rootless only when `info` reports rootless `true`. A rootful engine, a failing `info`, or output the check cannot parse starts no container and fails with an error naming the engine and its endpoint. The check queries the same engine binary with the same environment that starts the containers, so `DOCKER_HOST`, `DOCKER_CONTEXT`, the active docker context, `CONTAINER_HOST`, and the podman connection apply to both, and no later step changes them. The `--user uid:gid` path for rootful docker and the `--user` fallback are removed; rootless podman keeps `--userns=keep-id`, and rootless docker gets no user flag. Engine output is compared as text, never evaluated. The CI gitleaks step runs through the verified engine, for example through a `tool_image.sh` command or the sourced check, with the same pinned gitleaks digest, `--redact`, `--exit-code 1`, and the read-only mount, and without `--user`. A config test in `gui_editor/tests/test_build_pipeline_config.rs` fails when `.github/workflows/ci.yml` starts a container outside the verified engine path. In `gui_editor/tests/pipeline/test_build_pipeline.sh`, the tests that expect `--user`, among them `AR-00025_docker_runs_as_caller`, `..._rootful_docker_gets_user`, `..._docker_without_options_gets_user`, `..._failing_info_keeps_user`, `..._garbage_info_keeps_user`, `..._rootlessx_keeps_user`, and the other `..._keeps_user` cases, are inverted to expect refusal with the engine named and no container started, and are renamed to AR-00051; new tests cover rootful podman, rootful podman behind a `docker` name, a failing or unreadable podman `info`, a `DOCKER_HOST` or context that points at a rootful daemon, and the check before the tool image build; the tests that info and version output are never evaluated stay. `gui_editor/README.md` drops the rootful docker ownership notes and documents the prerequisite: rootless podman or rootless docker, the check, and the refusal error. The repository-root `build.sh` and `build_in_docker.sh` stay unchanged until requirements open question 21 is answered. One local build run and one CI run show a non-root host uid for the engine process. No audit, deny, `--locked`, secret-scan, read-only mount, or advisory-ignore check weakened; Bash only; all test suites pass (AR-00024, AR-00025, AR-00043, AR-00051) |
 
 ### Delivery Order
 
 The product owner approved the revised order on 2026-11-24, added T-52 before T-02 on 2026-11-24, added T-53 between T-47 and T-43 on 2026-11-24, added T-54 between T-02 and T-47 on 2026-11-25, and added T-55 between T-47 and T-53 on 2026-11-25.
+On 2026-11-25, the product owner asked for rootless build containers as the top priority, so T-56 to T-58 come before T-47; the split and the engine choices wait for open questions 28 to 30.
 The list follows plan order, so the list is not sorted alphabetically.
 
 - T-39, done and committed: CI runs real tests for `sad2md` and `tui_editor`. The product owner sees no app change.
@@ -386,6 +402,9 @@ The list follows plan order, so the list is not sorted alphabetically.
 - T-52, done and committed: bans check baseline. The product owner sees no `unmatched-skip` or `wildcard` finding, `cargo deny` green for `gui_editor`, and the bans test passing; the `sad2md` and `sad_xml_sql` bans checks stay red until T-53, and the `tui_editor` duplicate checks stay red until T-43.
 - T-02, done and committed: first GUI. The product owner sees an egui window on Fedora Wayland and X11, with an open-file dialog and an empty component list.
 - T-54, done, product owner commit pending: build container tool image. The product owner sees `build.sh` and CI run audit, deny, rustfmt, and clippy from one pinned tool image, with no tool install on each run.
+- T-56, product owner step: local rootless engine. The product owner sees `gui_editor/build.sh` pass on a rootless engine, with the engine process under the account uid.
+- T-57: CI rootless engine. The product owner sees every CI build and test step run on a rootless engine, with a non-root engine uid in the CI log.
+- T-58: rootless engine check. The product owner sees `build.sh`, `tool_image.sh`, and the CI secret scan refuse a rootful engine with an error naming the engine.
 - T-47: `tui_editor` reports save failures. The product owner sees an error on the `tui_editor` screen when a save fails, and no debug lines over the screen.
 - T-55: committed-language check. The product owner sees CI fail when a commit adds hand-written program code or a script in a language other than Rust or Bash.
 - T-53: XML writer without `simple-xml-builder`. The product owner sees unchanged `sad2md` and `tui_editor` output, and `cargo deny check bans` green for `sad2md` and `sad_xml_sql`.
@@ -413,6 +432,10 @@ Reasons for the order:
 - T-02 follows T-42, because both edit `deny.toml` and its allow-list test; T-02 keeps the approved position.
 - T-52 runs before T-02, by product owner decision after commit `5fbeeb3`, because `5fbeeb3` left unmatched and non-windows `skip` entries, a failing bans test, and a `sad2md` wildcard; T-02 and T-43 then start from the bans baseline.
 - T-54 follows T-02 and precedes T-47, by product owner decision on 2026-11-25, so every later task and T-44 run their checks in one pinned tool image instead of installing the tools on each run.
+- T-56 to T-58 come first, by product owner request on 2026-11-25, "make that the top priority".
+  - T-56 and T-57 come before T-58, because the T-58 check refuses the rootful engines in use today, so local builds and CI fail until a rootless engine exists in both places.
+  - T-56 and T-57 need no script change, because the T-54 scripts already run on rootless podman and rootless docker.
+  - T-58 starts after the product owner commit of T-54, because T-58 changes the T-54 scripts and tests.
 - T-47 follows T-41, so the save-failure fix does not collide with the `rusqlite` upgrade in `sad_xml_sql` and `tui_editor`.
 - T-47 follows T-02, so the GUI is not delayed, and precedes T-43 and T-44, so the silent data loss in a shipped tool ends before the remaining CI work, and the `tui_editor` upgrades and clippy fixes start from the fixed code.
 - T-55 follows T-47, by product owner decision on 2026-11-25, so the committed-language guardrail of GEDT-AR-00032 and GEDT-AR-00033 guards every later change set, without delaying the `tui_editor` save fix.
@@ -469,7 +492,11 @@ flowchart LR
   T52 -. order .-> T02
   T42 --> T02[T-02 egui skeleton, done]
   T02 --> T54[T-54 tool image, done]
-  T54 -. order .-> T47
+  T54 --> T56[T-56 local rootless engine]
+  T54 --> T57[T-57 CI rootless engine]
+  T56 --> T58[T-58 rootless engine check]
+  T57 --> T58
+  T58 -. order .-> T47
   T54 --> T44
   T54 --> T55[T-55 committed-language check]
   T47 -. order .-> T55
@@ -557,9 +584,10 @@ Items marked Unassigned have no task yet.
 
 | Risk | Inc | Mitigation |
 | --- | --- | --- |
-| Account on the development machine reaches the rootful Docker daemon without being root, which gives every process of that account root-equivalent access to the host through the daemon. | MVP | No plan task; recorded for product owner awareness; `build.sh` and `tool_image.sh run` run containers as the invoking user and mount only the paths of the row "Writable paths, T-54 follow-up" writable. |
+| Account on the development machine reaches the rootful Docker daemon without being root, which gives every process of that account root-equivalent access to the host through the daemon. | MVP | GEDT-AR-00051 covers build runs only: after T-58, no build run uses the rootful daemon; the account keeps its daemon access until the product owner answers open question 30. |
 | `aws2xml` keeps 16 known advisories in `rustls`, `rustls-webpki`, `h2`, `crypto-bigint`, and `ctutils`, and no CI gate checks `aws2xml`. | none | Unassigned, product owner decision: record risk only; see [Security Findings](#security-findings). |
 | Changes to `sad_xml_sql` break `sad2md` or `tui_editor`. | MVP | T-01 runs all their test suites in CI; T-39 adds the tests that `sad2md` and `tui_editor` lacked. |
+| Chosen CI engine cannot run rootless on the `ubuntu-24.04` runner, for example because podman is not preinstalled or AppArmor blocks unprivileged user namespaces. | MVP | T-57 confirms the runner state first and stops for a product owner decision instead of relaxing runner hardening; T-58 waits for T-57. |
 | Clippy with `-D warnings` reports many warnings in legacy crates. | MVP | T-44 fixes the warnings instead of allowing them; split T-44 per crate if the work grows past M. |
 | Component reorder on first save produces large git diffs. | MVP | One reorder commit per existing project before first use. |
 | Copying the other elements of an included file from disk picks up an external change made after load. | INC-1 | Closed on 2026-11-25: requirements open question 13 decided, option a in [DESIGN.md](DESIGN.md#external-change-of-an-included-file); T-51 shows the GEDT-FR-00009 prompt for each changed included file, with an option to overwrite. |
@@ -569,11 +597,12 @@ Items marked Unassigned have no task yet.
 | Git config check of `tool_image.sh` trusts the `PATH` and shell functions of the caller, O-1. | MVP | Accepted and documented in `gui_editor/README.md`, by product owner decision in the row "Accepted risks O-1 and O-2, T-54 follow-up". |
 | Host-side `cargo test` follows symlinks that a container planted in `<crate>/test-output`, O-2. | MVP | Accepted and documented in `gui_editor/README.md`, by product owner decision in the row "Accepted risks O-1 and O-2, T-54 follow-up". |
 | Include path traversal and crashes in the shared reader. | MVP | T-04 to T-07 land before T-10. |
+| Local build runs fail on the development machine once the T-58 check lands, because the machine offers only a rootful Docker daemon today. | MVP | T-56 sets up a rootless engine before T-58; T-56 lists any one-time root step before the product owner runs the step. |
 | Multiple egui windows misbehave on Wayland. | INC-1 | Spike T-23, long before INC-5. |
 | Open, then save, loses data because `sad_xml_sql` drops elements. | MVP | T-40 fixes most drops; check T-03 lists the rest; canonical compare tests in T-12; the product owner accepts the Known save limitations. |
 | Partial T-02 changes from the stopped run enter the code unreviewed. | MVP | T-02 restarts clean from the T-01 commit. |
-| Podman and rootless docker paths of the tool image are tested with a fake engine only. | MVP | Open question 23 decides the coverage; until then the fake-engine tests stay in CI; the development machine runs a rootful Docker daemon, so local runs exercise only the rootful docker path with `--user`. |
 | Replacing `simple-xml-builder` changes the XML output or the escaping of user-controlled text. | MVP | T-53 keeps the T-39 `sad2md` golden tests and the `sad_xml_sql` and `tui_editor` save tests unchanged, and adds escaping tests for the writer. |
+| Rootless engine that neither the development machine nor CI uses keeps fake-engine coverage only, so a change can break that engine path unnoticed. | MVP | Replaces the risk on fake-engine-only coverage, closed by the product owner request on open question 23; T-56 and T-57 run the chosen engines for real; open questions 28 and 29 decide which engine path stays fake-engine only. |
 | Shared `deny.toml` turns a `skip` entry that one crate needs into an `unmatched-skip` failure in the other crates. | MVP | T-52 empties `bans.skip`; the shared `deny.toml` for `sad2md`, `sad_xml_sql`, and `tui_editor` keeps an empty `bans.skip`, with upgrades only, as decided on open question 20; `gui_editor` uses a second policy file that holds its Linux skips, as decided in the T-02 follow-up, so no skip reaches another crate; a drift test keeps both files identical apart from `bans.skip` and `licenses.exceptions`; T-43 removes those skips through upgrades. |
 | Symlink swap between the write-time check and the write redirects an included-file write. | INC-1 | T-51 checks at write time and writes through the checked directory handle; symlink-swap fixture. |
 | T-40 grew past its S size and overlaps T-03 and T-12. | MVP | The T-40 review passed with the `sad2md` and `tui_editor` suites; T-03 and T-12 shrink to the remaining gaps, as decided on question 11. |
@@ -588,7 +617,7 @@ Items marked Unassigned have no task yet.
 
 ## Security Findings
 
-Findings in existing code, found during planning, during T-01, during the T-40 review, during T-41, and during T-54.
+Findings in existing code, found during planning, during T-01, during the T-40 review, during T-41, during T-54, and by the architect for GEDT-AR-00051.
 
 | Finding | Location | Fixed by |
 | --- | --- | --- |
@@ -596,8 +625,10 @@ Findings in existing code, found during planning, during T-01, during the T-40 r
 | A repository-root `.cargo/config.toml` was not refused and cargo applied it, D-T54-05, Low. | `gui_editor/container/tool_image.sh` | T-54, fixed and verified; the file is always refused |
 | Advisory databases in the writable `.cargo-home` could be edited by a test and read by a later local audit or deny, R-T54-01, Minor. | `gui_editor/build.sh`, `gui_editor/deny.toml`, `gui_editor/deny-gui_editor.toml`, CI | T-54, fixed and verified; databases in the container `/tmp`, fetched each run; `advisories.db-path = "$ADVISORY_DB_DIR/cargo-deny"`; row "Advisory databases, T-54 follow-up" |
 | Build pins `rust:1.98` without a digest. | `build_in_docker.sh` at the repository root | Not fixed, product owner answer on question 10: "leave the root scripts alone" |
+| Build runs containers on rootful docker with `--user uid:gid`, falls back to `--user` when the rootless detection fails, and runs podman without a rootless check, against GEDT-AR-00051. | `gui_editor/build.sh`, `gui_editor/container/tool_image.sh` | T-58 |
 | Build uses the unpinned `rust:latest` image, names the `amber-dos` binary, and has a file ownership issue under rootless Docker. | `build.sh` at the repository root | Not fixed, product owner answer on question 10: "leave the root scripts alone" |
 | Build uses the unpinned `rust:latest` image, runs without `--locked`, and names the `amber-dos` binary. | `gui_editor/build.sh` | T-01, done |
+| CI runs every container on the rootful runner daemon, and the gitleaks step runs `docker run` directly, outside `tool_image.sh`, against GEDT-AR-00051. | `.github/workflows/ci.yml` | T-57 for the engine, T-58 for the gitleaks step and the check |
 | Container can poison cached crate sources in the writable `.cargo-home/registry/src`, tester severity Medium. | `gui_editor/build.sh`, `gui_editor/container/tool_image.sh`, CI | Accepted for the MVP, product owner decision; backlog item, unassigned |
 | Container code could rewrite host scripts (`build.sh`, `tool_image.sh`, check scripts, crate scripts) through the writable mounts, D-T54-04, High. | `gui_editor/build.sh`, `gui_editor/container/tool_image.sh`, CI | T-54, fixed and verified; read-only source mounts; only `target/`, `.cargo-home`, `<crate>/test-output` writable; row "Writable paths, T-54 follow-up" |
 | Include path traversal is marked TODO; `sad2md` is affected today. | `sad_xml_sql/src/db_populate_from_xml.rs` | T-07 |
@@ -647,6 +678,8 @@ Questions closed on 2026-11-25 by product owner answers:
   - T-51 shows the GEDT-FR-00009 prompt for each changed included file, option a in [DESIGN.md](DESIGN.md#external-change-of-an-included-file).
 - 19, GEDT-STORY-00002 spans the MVP and INC-1: closed, product owner answer "go with the default".
   - The architect created GEDT-STORY-00026 with GEDT-AR-00035, GEDT-FR-00009, GEDT-FR-00043, and GEDT-FR-00044; T-51 traces to GEDT-STORY-00026.
+- 23, how to test the tool image under rootless podman and rootless docker: closed by product owner request "Please create an AR that the docker containers have to run rootless and the create a plan for how to implement it and make that the top priority".
+  - The architect added GEDT-AR-00051; T-56 and T-57 run real rootless engines locally and in CI, and T-58 refuses every other engine.
 - 25, remaining scope of T-46 after the answer "leave the root scripts alone": closed with option A, product owner answer "q25 update the .gitignore".
   - T-46 only adds `.cargo-home/` to the repository-root `.gitignore` and confirms that `git status` shows no `.cargo-home/` after a build; T-46 changes no script.
 - 26, how to remove the duplicate `syn` versions in `tui_editor`, requirements open question 17: closed with option a, product owner answer "Q26a".
@@ -696,21 +729,41 @@ Requirements open questions decided by the product owner on 2026-11-25:
 
 Questions open on 2026-11-25, not decided:
 
-- 23, how to test the tool image under rootless podman and rootless docker.
-  - Background: `build.sh` and `tool_image.sh` detect rootless podman and rootless docker and then run containers differently, for example with `--userns=keep-id`, so build output stays owned by the invoking user.
-    - Today only tests with a fake engine cover those two paths, so a real rootless engine has never run them.
-    - The development machine runs a rootful Docker daemon, which the account reaches without being root, so a real rootless run needs rootless podman or a separate rootless docker setup.
-    - Reopened on 2026-11-25: the earlier decision "go with user" was the orchestrator's interpretation, not a product owner decision.
-  - Option A: one manual run under rootless podman and rootless docker before T-19.
-    - Consequence: the real paths are checked once before the MVP release, with no CI change; a later change can break the paths unnoticed.
-  - Option B: a CI job under a real rootless engine.
-    - Consequence: every change runs the real paths; needs a new task to set up a rootless engine on the CI runner and adds CI time.
-  - Option C: keep the fake-engine tests and the recorded risk.
-    - Consequence: no extra work; a rootless user can hit wrong file ownership or a failed build that no test catches.
-  - Default: A, proposed by the planner, because A checks the real engines before the release at the lowest cost, and B can follow if the paths break.
-  - Blocks: nothing until T-19, the MVP release; the risk row on the fake engine stays open until answered.
+- 28, which rootless engine runs the build on your development machine?
+  - Background: GEDT-AR-00051 lets a build start containers only on a rootless engine, meaning the engine runs under your own account, not as root.
+    - Your machine has only the rootful Docker daemon today, so local builds stop working once T-58 lands.
+    - Rootless podman and rootless docker both meet GEDT-AR-00051.
+  - Option a: rootless podman.
+    - Consequence: no daemon; Fedora ships podman, and the scripts already pick podman first; `docker` commands keep using the rootful daemon unless you change them.
+  - Option b: rootless docker.
+    - Consequence: a second Docker daemon runs as your user next to the rootful one; you switch with `docker context use` or `DOCKER_HOST`, and the build refuses whenever the active context points at the rootful daemon.
+  - Default: a, because podman is native to Fedora, needs no extra daemon or context switching, and is the engine the scripts select first.
+  - Blocks: T-56, and through T-56 the local demonstration of T-58.
+- 29, which rootless engine runs CI?
+  - Background: the CI jobs use the rootful Docker daemon of the GitHub `ubuntu-24.04` runner today, which GEDT-AR-00051 forbids.
+    - Whether podman is preinstalled on that runner image is not confirmed; T-57 checks before changing CI.
+    - The engine that neither CI nor your machine uses keeps only fake-engine tests.
+  - Option a: rootless podman.
+    - Consequence: few setup steps if the runner has podman; a pinned package install from the Ubuntu archive otherwise.
+  - Option b: rootless docker.
+    - Consequence: CI installs and starts a rootless Docker daemon in each job, with more setup steps and CI time; covers the docker path for real.
+  - Option c: the same engine as your answer to question 28.
+    - Consequence: one engine path is tested the same way locally and in CI; the other path stays fake-engine only.
+  - Default: c, because one engine in both places keeps setup and failure modes to one path, and with the default of question 28 that is podman.
+  - Blocks: T-57, and through T-57 the start of T-58.
+- 30, should your account keep access to the rootful Docker daemon after T-58?
+  - Background: your account reaches the rootful Docker daemon without being root, so any program running as you, not only builds, can gain root on the host through the daemon.
+    - GEDT-AR-00051 covers build runs only, so the plan does not need this change, and the change is a machine decision.
+  - Option a: keep the access.
+    - Consequence: nothing else on the machine breaks; the root-equivalent access stays.
+  - Option b: remove the access once T-58 passes locally, for example by leaving the `docker` group, which needs one root step.
+    - Consequence: the root-equivalent access ends; other tools or projects that use the rootful daemon stop working until they move to the rootless engine.
+  - Default: b, because security has the highest priority and the build no longer needs the rootful daemon after T-58.
+  - Blocks: nothing in the plan; T-56 adds the step only for option b.
+- Requirements open question 21, whether the repository-root `build.sh` and `build_in_docker.sh` fall under GEDT-AR-00051, stays open with the architect, default a, keep the root scripts out; T-58 leaves the root scripts unchanged until the answer.
 
 ## Next Step
 
 T-54, the build container tool image, is done and awaits the product owner commit.
-After the product owner commits T-54 and the docs, hand off to developer with T-47, next in [Delivery Order](#delivery-order), followed by T-55.
+The product owner answers open questions 28 to 30 and approves T-56 to T-58 as the first tasks.
+After that, T-56 runs as the product owner step, and the planner hands off to developer with T-57, then T-58, then T-47.
