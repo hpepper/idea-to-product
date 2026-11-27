@@ -1,7 +1,8 @@
 # CI for the shared SAD core and its consumers.
 # - secret-scan: gitleaks over the full history (GEDT-AR-00024).
-# - gui-editor-build: build pipeline tests, then locked build, cargo audit,
-#   and cargo deny through gui_editor/build.sh (GEDT-AR-00025).
+# - gui-editor-build: build pipeline tests, then gui_editor/build.sh (GEDT-AR-00025):
+#   the shellcheck gate (GEDT-AR-00055, GEDT-AR-00056), cargo audit, cargo deny,
+#   and the locked build.
 # - test: test suites of gui_editor, sad_xml_sql, sad2md, and tui_editor (GEDT-AR-00030),
 #   after gui-editor-build passes.
 #   Each crate first passes two checks (GEDT-AR-00025):

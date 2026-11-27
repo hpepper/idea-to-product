@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
-# Builds, checks, and runs the gui_editor tool image (GEDT-AR-00034, T-54).
+
+
+# TODO what the actual fuck does this script actually do? should we have a script that checks this script......
+
+# Builds, checks, and runs the gui_editor tool image (GEDT-AR-00034, T-54, T-60).
 # The image comes from container/Containerfile:
-# the pinned official Rust image plus cargo-audit, cargo-deny, clippy, and rustfmt.
+# the pinned official Rust image plus cargo-audit, cargo-deny, clippy, rustfmt,
+# and the Debian trixie shellcheck package.
 # build.sh sources this file; CI and agents run it directly.
 #
 #   container/tool_image.sh build
@@ -15,7 +20,8 @@
 #
 # Every use checks the image first, and a failed check stops the caller (fail-closed):
 # the base digest in the image label must match the pinned digest,
-# and the four tools must report the pinned versions.
+# the four Rust tools must report the pinned versions,
+# and shellcheck must be the unchanged file of the Debian shellcheck package.
 
 # Pinned by version and digest so that a retagged upstream image cannot change the build.
 # Update the tag and the digest together with the BASE_IMAGE default in the Containerfile.
@@ -34,18 +40,31 @@ CARGO_DENY_VERSION="0.22.0"
 # clippy and rustfmt follow the toolchain of the pinned base, rustc 1.100.0.
 CLIPPY_VERSION_LINE="clippy 0.1.100 (0ef1bc3860 2026-11-09)"
 RUSTFMT_VERSION_LINE="rustfmt 1.11.0-stable (0ef1bc3860 2026-11-09)"
+# The shellcheck package has no version pin:
+# the image takes the version of the Debian trixie release (GEDT-AR-00034, T-60).
+# The check therefore proves the origin instead of a version:
+# dpkg must name the shellcheck package as the owner of the absolute path.
+# dpkg --verify compares the package files with the checksums recorded at install time;
+# it exits 0 even on a changed file, so the check expects no output from it.
+# check_shellcheck.sh runs shellcheck by the same absolute path.
+SHELLCHECK_PACKAGE_LINE="shellcheck: /usr/bin/shellcheck"
 EXPECTED_TOOL_VERSIONS="cargo-audit ${CARGO_AUDIT_VERSION}
 cargo-deny ${CARGO_DENY_VERSION}
 ${RUSTFMT_VERSION_LINE}
-${CLIPPY_VERSION_LINE}"
+${CLIPPY_VERSION_LINE}
+${SHELLCHECK_PACKAGE_LINE}"
 # One command per line, in the order of EXPECTED_TOOL_VERSIONS.
 # build.sh and CI run cargo-audit and cargo-deny by the same absolute paths,
 # so the check covers the binaries that run and no cargo [alias] can replace them.
+# The last command proves that shellcheck starts, and prints nothing.
 TOOL_VERSION_SCRIPT='set -eu
 /usr/local/cargo/bin/cargo-audit --version
 /usr/local/cargo/bin/cargo-deny --version
 cargo fmt --version
-cargo clippy --version'
+cargo clippy --version
+dpkg-query --search /usr/bin/shellcheck
+dpkg --verify shellcheck
+/usr/bin/shellcheck --version >/dev/null'
 
 TOOL_IMAGE_REPOSITORY="localhost/gui_editor-tools"
 BASE_LABEL="org.opencontainers.image.base.name"

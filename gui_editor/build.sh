@@ -2,6 +2,7 @@
 # Build gui_editor inside the pinned tool image and run the supply-chain checks.
 # The binary ends up in ./target/release/gui_editor, owned by you.
 # The build fails on any unignored `cargo audit` or `cargo deny` finding (GEDT-AR-00025).
+# The shellcheck gate of check_shellcheck.sh runs first (GEDT-AR-00055, GEDT-AR-00056).
 # The tool image comes from container/Containerfile (GEDT-AR-00034);
 # container/tool_image.sh builds it when its tag is missing and checks it before each use.
 #
@@ -14,6 +15,8 @@ cd "$(dirname "$0")"
 
 # shellcheck source=SCRIPTDIR/container/tool_image.sh
 source container/tool_image.sh
+# shellcheck source=SCRIPTDIR/check_shellcheck.sh
+source check_shellcheck.sh
 
 BASE_IMAGE="${RUST_IMAGE:-$PINNED_RUST_IMAGE}"
 require_pinned_base_image "$BASE_IMAGE" || exit 1
@@ -43,6 +46,10 @@ require_no_cargo_overrides .cargo-home . || exit 1
 
 select_user_args
 ensure_tool_image || exit 1
+
+# The shellcheck gate (GEDT-AR-00055, GEDT-AR-00056) runs before the build container,
+# so a script finding stops the build before any dependency code runs.
+run_shellcheck_gate || exit 1
 
 # The container script reads its inputs from the environment,
 # never from interpolated text.

@@ -39,24 +39,3 @@ SixSigmaCardinalObjective Id="" Name="">
 <ObjectiveDirection Id="" Name="">
   <Description></Description>
 </ObjectiveDirection>
-
-## User: Adding support for Diagrams
-
-1. Add 'Diagram' element to itp.xml and ideatoproduct.dtd
-2. Add 'DiagramId' to the 'ViewPacket' element in ideatoproduct.dtd
-3. Add the IncludeDiagramIfExists function to itp2doc.pl
-4. Add the IncludeDiagramIfExists call to function
-    - GenerateSoftwareArchitectureDocumentation
-    - GenerateViewPacketRecusrsively
-    - in itp2doc.pl
-5. Add the GenerateDiagram function to itp2doc.pl
-
-## Implementation of the Diagram support
-
-GenerateSoftwareArchitectureDocumentation()
- -> IncludeDiagramIfExists()
- -> GenerateUmlDiagram()
-   Inserts the diagram, in LaTeX, using the template: LaTeX_componentDiagram.tmpl
-   the .ps file is generated using plantuml.
-
- The Diagram filename is then included in 'LaTeX_ViewPacket.tmpl'

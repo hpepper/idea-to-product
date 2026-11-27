@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# Checks for the build pipeline of GEDT-STORY-00019: T-01, and the T-54 tool image.
-# Covers GEDT-AR-00024, GEDT-AR-00025, GEDT-AR-00030, and GEDT-AR-00034
-# without a container engine:
+# Checks for the build pipeline of GEDT-STORY-00019: T-01, the T-54 tool image,
+# and the T-60 shellcheck gate.
+# Covers GEDT-AR-00024, GEDT-AR-00025, GEDT-AR-00030, GEDT-AR-00034, GEDT-AR-00055,
+# and GEDT-AR-00056 without a container engine:
 # static inspection of build.sh, the Containerfile, and the policy files,
-# plus build.sh and container/tool_image.sh runs against a fake engine,
+# plus build.sh, check_shellcheck.sh,
+# and container/tool_image.sh runs against a fake engine,
 # which records its arguments instead of starting a container.
 # The deny.toml, ci.yml, and Containerfile structure checks are in
 # tests/test_build_pipeline_config.rs.
@@ -11,8 +13,9 @@
 #
 #   gui_editor/tests/pipeline/test_build_pipeline.sh
 
-# Expected container script lines are literal text, so single-quoted '$VAR' is intended.
-# shellcheck disable=SC2016
+# TODO What in xxx is this script for? And what is up with the comments at the top, I read it and I have no clue what this slop does.
+
+# shellcheck disable=SC2016 # Expected lines are literal text, so '$VAR' stays unexpanded.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -35,8 +38,17 @@ fail() { failed=$((failed + 1)); echo "FAIL $1: $2"; }
 # $WORK plays the repository root for container/tool_image.sh.
 SANDBOX="$WORK/gui_editor"
 mkdir -p "$SANDBOX/container"
-cp "$GUI_DIR/build.sh" "$SANDBOX/build.sh"
+cp "$GUI_DIR/build.sh" "$GUI_DIR/check_shellcheck.sh" "$SANDBOX/"
 cp "$GUI_DIR/container/Containerfile" "$GUI_DIR/container/tool_image.sh" "$SANDBOX/container/"
+CHECK_SHELLCHECK_SH="$SANDBOX/check_shellcheck.sh"
+# The shellcheck gate of build.sh reads the tracked scripts from git,
+# so $WORK is a git checkout that tracks the scratch scripts before each build.sh run.
+# Some tests below delete or rebuild $WORK/.git; the next build.sh run restores it.
+SANDBOX_SCRIPTS=(gui_editor/build.sh gui_editor/check_shellcheck.sh gui_editor/container/tool_image.sh)
+track_sandbox_scripts() {
+    git -C "$WORK" init -q
+    git -C "$WORK" add -- "${SANDBOX_SCRIPTS[@]}"
+}
 TOOL_IMAGE_SH="$SANDBOX/container/tool_image.sh"
 # shellcheck source=SCRIPTDIR/../../container/tool_image.sh
 PINNED_DEFAULT="$(source "$TOOL_IMAGE_SH" && echo "$PINNED_RUST_IMAGE")"
@@ -59,6 +71,8 @@ PINNED_TOOL_VERSIONS="$(source "$TOOL_IMAGE_SH" && echo "$EXPECTED_TOOL_VERSIONS
 # Only the main `run` writes $WORK/argv, one argument per line,
 # so tests can assert on exact argv entries;
 # `build` writes $FAKE_STATE/build.argv,
+# the shellcheck run writes $FAKE_STATE/shellcheck.argv, prints shellcheck.out,
+# and exits with shellcheck.rc, 0 when the file is missing,
 # and every request appends its first word to calls.
 # Engine output is compared as text by the scripts under test, never evaluated.
 export FAKE_STATE="$WORK/state"
@@ -103,6 +117,11 @@ case "${1:-}" in
         done
         ;;
     run)
+        if [[ " $* " == *" /usr/bin/shellcheck "* ]]; then
+            printf '%s\n' "$@" >"$FAKE_STATE/shellcheck.argv"
+            cat "$FAKE_STATE/shellcheck.out" 2>/dev/null
+            exit "$(cat "$FAKE_STATE/shellcheck.rc" 2>/dev/null || echo 0)"
+        fi
         if [[ " $* " == *" --network none "* ]]; then
             printf '%s\n' "$@" >"$FAKE_STATE/check.argv"
             cat "$FAKE_STATE/tool.versions"
@@ -130,7 +149,8 @@ remove_fake_image() {
 # Runs the scratch build.sh with the image state left as it is; sets $rc and $out.
 run_build_cached() {
     rm -f "$WORK/argv" "$FAKE_STATE/build.argv" "$FAKE_STATE/check.argv" \
-        "$FAKE_STATE/inspect.argv" "$FAKE_STATE/calls"
+        "$FAKE_STATE/inspect.argv" "$FAKE_STATE/calls" "$FAKE_STATE/shellcheck.argv"
+    track_sandbox_scripts
     set +e
     out="$(env "$@" "$SANDBOX/build.sh" "${BUILD_ARGS[@]}" 2>&1)"
     rc=$?
@@ -195,22 +215,24 @@ else
     fail "AR-00034_T54_tag_hash_includes_base" "tag=$EXPECTED_TOOL_IMAGE"
 fi
 # The Containerfile pins both cargo tools with --locked,
-# and adds clippy and rustfmt through rustup.
+# adds clippy and rustfmt through rustup,
+# and adds the Debian trixie shellcheck package through apt (T-60).
 for expected in \
     'RUN cargo install --locked --version 0.23.0 cargo-audit && rm -rf "$CARGO_HOME/registry"' \
     'RUN cargo install --locked --version 0.22.0 cargo-deny && rm -rf "$CARGO_HOME/registry"' \
     'RUN rustup component add clippy' \
-    'RUN rustup component add rustfmt'; do
+    'RUN rustup component add rustfmt' \
+    'RUN apt-get update && apt-get install --yes --no-install-recommends shellcheck && rm -rf /var/lib/apt/lists/*'; do
     if grep -qxF -- "$expected" "$GUI_DIR/container/Containerfile"; then
         pass "AR-00034_T54_containerfile_pins_tool[$expected]"
     else
         fail "AR-00034_T54_containerfile_pins_tool[$expected]" "missing from the Containerfile"
     fi
 done
-if [[ "$(grep -c '^RUN ' "$GUI_DIR/container/Containerfile")" -eq 4 ]]; then
-    pass "AR-00034_T54_containerfile_adds_only_four_tools"
+if [[ "$(grep -c '^RUN ' "$GUI_DIR/container/Containerfile")" -eq 5 ]]; then
+    pass "AR-00034_T60_containerfile_adds_only_five_tools"
 else
-    fail "AR-00034_T54_containerfile_adds_only_four_tools" "other RUN lines"
+    fail "AR-00034_T60_containerfile_adds_only_five_tools" "other RUN lines"
 fi
 if ! grep -q 'cargo install' "$GUI_DIR/build.sh" "$GUI_DIR/container/tool_image.sh" \
     "$REPO_DIR/.github/workflows/ci.yml"; then
@@ -1665,6 +1687,335 @@ for path in gui_editor/build.sh gui_editor/check_advisory_ignores.sh .github/wor
     fi
 done
 
+# TODO are you insane what the fuck is all this shit good for? are you truing to prove that an application works? The first leason in theoretical computing is was proven that you cannot prove that a program works. What is someone sees this test and then create an evil application that can asnwer these questions correctly? are you indicating that we can't trust the debian releases?????????
+
+# --- T-60 GEDT-AR-00034: the tool check proves that shellcheck is the Debian package ---
+# The shellcheck package has no version pin,
+# so the check expects the package owner of the absolute path,
+# and no output from dpkg --verify, which exits 0 even when a file of the package changed.
+# shellcheck source=SCRIPTDIR/../../container/tool_image.sh
+TOOL_VERSION_SCRIPT_TEXT="$(source "$TOOL_IMAGE_SH" && echo "$TOOL_VERSION_SCRIPT")"
+for expected in "dpkg-query --search /usr/bin/shellcheck" "dpkg --verify shellcheck" \
+    "/usr/bin/shellcheck --version >/dev/null"; do
+    if grep -qxF -- "$expected" <<<"$TOOL_VERSION_SCRIPT_TEXT"; then
+        pass "AR-00034_T60_tool_check_runs[$expected]"
+    else
+        fail "AR-00034_T60_tool_check_runs[$expected]" "script=$TOOL_VERSION_SCRIPT_TEXT"
+    fi
+done
+if [[ "$(tail -n 1 <<<"$PINNED_TOOL_VERSIONS")" == "shellcheck: /usr/bin/shellcheck" ]]; then
+    pass "AR-00034_T60_tool_check_expects_shellcheck_package_owner"
+else
+    fail "AR-00034_T60_tool_check_expects_shellcheck_package_owner" "expected=$PINNED_TOOL_VERSIONS"
+fi
+tamper_and_run tool.versions "$(sed '/^shellcheck: /d' <<<"$PINNED_TOOL_VERSIONS")"
+expect_check_stops "AR-00034_T60_missing_shellcheck_stops" "other tool versions"
+tamper_and_run tool.versions "${PINNED_TOOL_VERSIONS/shellcheck: /planted: }"
+expect_check_stops "AR-00034_T60_shellcheck_from_other_package_stops" "other tool versions"
+tamper_and_run tool.versions "$PINNED_TOOL_VERSIONS"$'\n''??5??????   /usr/bin/shellcheck'
+expect_check_stops "AR-00034_T60_changed_shellcheck_file_stops" "other tool versions"
+tamper_and_run tool.versions \
+    "diversion by planted from: /usr/bin/shellcheck"$'\n'"$PINNED_TOOL_VERSIONS"
+expect_check_stops "AR-00034_T60_diverted_shellcheck_stops" "other tool versions"
+remove_fake_image
+# apt installs the Debian package with no version pin,
+# and with no option that turns off the archive signature check.
+shellcheck_install="$(grep -F 'shellcheck' "$GUI_DIR/container/Containerfile" | grep -v '^#')"
+if [[ "$shellcheck_install" != *"shellcheck="* ]]; then
+    pass "AR-00034_T60_shellcheck_package_not_pinned"
+else
+    fail "AR-00034_T60_shellcheck_package_not_pinned" "$shellcheck_install"
+fi
+weakening_option_found=no
+for option in allow-unauthenticated AllowUnauthenticated allow-insecure-repositories \
+    AllowInsecureRepositories AllowDowngradeToInsecureRepositories trusted=yes \
+    Check-Valid-Until force-yes allow-downgrades sources.list; do
+    if grep -qiF -- "$option" "$GUI_DIR/container/Containerfile"; then
+        weakening_option_found="$option"
+    fi
+done
+if [[ "$weakening_option_found" == no ]]; then
+    pass "AR-00034_T60_apt_keeps_signature_check"
+else
+    fail "AR-00034_T60_apt_keeps_signature_check" "Containerfile holds $weakening_option_found"
+fi
+
+# --- T-60 GEDT-AR-00055 and GEDT-AR-00056: the shellcheck gate ---
+# Planted directive lines spell the directive word through $SC,
+# so the gate does not read these test lines as directives of this script.
+SC=shellcheck
+# Prints the shellcheck command of the last gate run, one argument per line.
+shellcheck_command() {
+    sed -n '\|^/usr/bin/shellcheck$|,$p' "$FAKE_STATE/shellcheck.argv" 2>/dev/null
+}
+# Tracks the file $1 of $WORK with the lines $2...
+plant() {
+    local path="$1"
+    shift
+    mkdir -p "$(dirname "$WORK/$path")"
+    printf '%s\n' "$@" >"$WORK/$path"
+    git -C "$WORK" add -- "$path"
+}
+# Untracks and removes the files $1... of $WORK.
+unplant() {
+    local path
+    for path in "$@"; do
+        git -C "$WORK" rm -q --cached -f -- "$path"
+        rm -f -- "${WORK:?}/${path:?}"
+    done
+}
+expect_gate_stops() {
+    local name="$1" message="$2"
+    if [[ $rc -ne 0 && ! -e "$WORK/argv" && "$out" == *"$message"* && "$out" != *"Built "* ]]; then
+        pass "$name"
+    else
+        fail "$name" "rc=$rc main_run=$([[ -e $WORK/argv ]] && echo yes || echo no) out=$out"
+    fi
+}
+expect_gate_passes() {
+    local name="$1"
+    if [[ $rc -eq 0 && -e "$WORK/argv" && -e "$FAKE_STATE/shellcheck.argv" ]]; then
+        pass "$name"
+    else
+        fail "$name" "rc=$rc out=$out"
+    fi
+}
+
+run_build CONTAINER_ENGINE="$WORK/bin/docker"
+expected_command="/usr/bin/shellcheck
+--norc
+--
+gui_editor/build.sh
+gui_editor/check_shellcheck.sh
+gui_editor/container/tool_image.sh"
+if [[ $rc -eq 0 && "$(shellcheck_command)" == "$expected_command" ]]; then
+    pass "AR-00055_T60_build_runs_shellcheck_at_default_settings_over_tracked_scripts"
+else
+    fail "AR-00055_T60_build_runs_shellcheck_at_default_settings_over_tracked_scripts" "rc=$rc command=$(shellcheck_command | tr '\n' ' ') out=$out"
+fi
+# The shellcheck run sees only the read-only repository, with no network and no -e entry,
+# so it writes nothing to the host (GEDT-AR-00043).
+shellcheck_volumes="$(grep -A1 -xF -- -v "$FAKE_STATE/shellcheck.argv" | grep -vxF -e -v -e -- || true)"
+if [[ "$shellcheck_volumes" == "$WORK:/repo:ro,z" ]] \
+    && grep -qxF -- /repo "$FAKE_STATE/shellcheck.argv" \
+    && grep -A1 -xF -- --network "$FAKE_STATE/shellcheck.argv" | grep -qxF none \
+    && ! grep -qxF -- -e "$FAKE_STATE/shellcheck.argv" \
+    && [[ "$(grep -B1 -xF -- "$EXPECTED_TOOL_IMAGE" "$FAKE_STATE/shellcheck.argv" | head -1)" == "--" ]]; then
+    pass "AR-00043_T60_shellcheck_run_mounts_repository_read_only_without_network"
+else
+    fail "AR-00043_T60_shellcheck_run_mounts_repository_read_only_without_network" "argv=$(tr '\n' ' ' <"$FAKE_STATE/shellcheck.argv")"
+fi
+# The gate runs in the checked image after the image check.
+if [[ -e "$FAKE_STATE/check.argv" ]] && grep -qxF -- "$EXPECTED_TOOL_IMAGE" "$FAKE_STATE/shellcheck.argv"; then
+    pass "AR-00055_T60_gate_runs_in_checked_tool_image"
+else
+    fail "AR-00055_T60_gate_runs_in_checked_tool_image" "argv=$(tr '\n' ' ' <"$FAKE_STATE/shellcheck.argv")"
+fi
+
+# A shellcheck finding stops build.sh before the build container runs.
+plant sad2md/planted.sh '#!/usr/bin/env bash' 'x="a b"' 'echo $x'
+printf '%s\n' 'In sad2md/planted.sh line 3: SC2086 (info): Double quote' >"$FAKE_STATE/shellcheck.out"
+printf '%s\n' 1 >"$FAKE_STATE/shellcheck.rc"
+run_build CONTAINER_ENGINE="$WORK/bin/docker"
+expect_gate_stops "AR-00055_T60_planted_finding_stops_build" "shellcheck reports findings"
+if [[ "$out" == *"sad2md/planted.sh line 3: SC2086"* ]] \
+    && shellcheck_command | grep -qxF sad2md/planted.sh; then
+    pass "AR-00055_T60_planted_finding_reported"
+else
+    fail "AR-00055_T60_planted_finding_reported" "out=$out"
+fi
+rm -f -- "${FAKE_STATE:?}/shellcheck.out" "${FAKE_STATE:?}/shellcheck.rc"
+unplant sad2md/planted.sh
+
+# Scripts are found by extension in any letter case or by a #! first line,
+# under the four checked directories, from the git index only.
+plant gui_editor/sub/upper.SH 'echo upper'
+plant sad_xml_sql/tool.bash 'echo tool'
+plant tui_editor/planted '#!/bin/bash' 'echo planted'
+plant tui_editor/other_shebang '#!/bin/sh' 'echo sh'
+plant gui_editor/src/lib.rs '#![allow(dead_code)]' 'fn f() {}'
+plant gui_editor/notes.md '# Notes'
+plant aws2xml/out_of_scope.sh '#!/bin/bash'
+plant root.sh '#!/bin/bash'
+ln -s build.sh "$WORK/gui_editor/link.sh"
+git -C "$WORK" add -- gui_editor/link.sh
+printf '%s\n' '#!/bin/bash' >"$WORK/gui_editor/untracked.sh"
+run_build CONTAINER_ENGINE="$WORK/bin/docker"
+expected_command="/usr/bin/shellcheck
+--norc
+--
+gui_editor/build.sh
+gui_editor/check_shellcheck.sh
+gui_editor/container/tool_image.sh
+gui_editor/sub/upper.SH
+sad_xml_sql/tool.bash
+tui_editor/other_shebang
+tui_editor/planted"
+if [[ $rc -eq 0 && "$(shellcheck_command)" == "$expected_command" ]]; then
+    pass "AR-00055_T60_gate_selects_tracked_scripts_of_checked_crates"
+else
+    fail "AR-00055_T60_gate_selects_tracked_scripts_of_checked_crates" "rc=$rc command=$(shellcheck_command | tr '\n' ' ') out=$out"
+fi
+unplant gui_editor/sub/upper.SH sad_xml_sql/tool.bash tui_editor/planted tui_editor/other_shebang \
+    gui_editor/src/lib.rs gui_editor/notes.md aws2xml/out_of_scope.sh root.sh gui_editor/link.sh
+rm -f -- "${WORK:?}/gui_editor/untracked.sh"
+
+# A tracked file that is missing or a symlink in the working tree stops the gate.
+plant tui_editor/gone.sh '#!/bin/bash'
+rm -f -- "${WORK:?}/tui_editor/gone.sh"
+run_build CONTAINER_ENGINE="$WORK/bin/docker"
+expect_gate_stops "AR-00055_T60_missing_tracked_file_stops" "tui_editor/gone.sh is tracked"
+ln -s /etc/hostname "$WORK/tui_editor/gone.sh"
+run_build CONTAINER_ENGINE="$WORK/bin/docker"
+expect_gate_stops "AR-00055_T60_symlinked_tracked_file_stops" "tui_editor/gone.sh is tracked"
+unplant tui_editor/gone.sh
+
+# A disable directive needs a reason comment after it on the same line (GEDT-AR-00056).
+# Each case plants one line after the interpreter line, so the directive is line 2.
+reasonless_directives=(
+    "# $SC disable=SC2016"
+    "#$SC disable=SC2016"
+    "    # $SC disable=SC2016"
+    "# $SC disable=SC2016 #"
+    "# $SC disable=SC2016 #   "
+    "# $SC disable=SC2016 ##"
+    "# $SC source=other.sh disable=SC1091"
+    "# $SC disable=SC2016"$'\r'
+    "true; # $SC disable=SC2086"
+    "if true; then # $SC disable=SC2086"
+)
+for directive in "${reasonless_directives[@]}"; do
+    plant gui_editor/planted.sh '#!/usr/bin/env bash' "$directive"
+    run_build CONTAINER_ENGINE="$WORK/bin/docker"
+    label="${directive//$'\r'/\\r}"
+    if [[ $rc -ne 0 && ! -e "$WORK/argv" && ! -e "$FAKE_STATE/shellcheck.argv" \
+        && "$out" == *"gui_editor/planted.sh:2: the disable directive needs a reason"* ]]; then
+        pass "AR-00056_T60_directive_without_reason_stops[$label]"
+    else
+        fail "AR-00056_T60_directive_without_reason_stops[$label]" "rc=$rc out=$out"
+    fi
+done
+reasoned_or_other_lines=(
+    "# $SC disable=SC2016 # Reason text."
+    "# $SC disable=SC2016,SC2086 # Reason text."
+    "# $SC disable=SC2016#Reason"
+    "# $SC source=SCRIPTDIR/other.sh"
+    "echo '# $SC disable=SC2016'"
+    "# ShellCheck disable=SC2016"
+    "# Explains why: $SC disable=SC2016 is used below."
+)
+for line in "${reasoned_or_other_lines[@]}"; do
+    plant gui_editor/planted.sh '#!/usr/bin/env bash' "$line"
+    run_build CONTAINER_ENGINE="$WORK/bin/docker"
+    expect_gate_passes "AR-00056_T60_line_passes[$line]"
+done
+unplant gui_editor/planted.sh
+# The check covers scripts found by their #! line, and skips scripts outside the scope.
+plant tui_editor/planted '#!/bin/bash' "# $SC disable=SC2016"
+run_build CONTAINER_ENGINE="$WORK/bin/docker"
+expect_gate_stops "AR-00056_T60_directive_in_extensionless_script_stops" "tui_editor/planted:2"
+unplant tui_editor/planted
+plant aws2xml/planted.sh '#!/bin/bash' "# $SC disable=SC2016"
+plant planted.sh '#!/bin/bash' "# $SC disable=SC2016"
+run_build CONTAINER_ENGINE="$WORK/bin/docker"
+expect_gate_passes "AR-00056_T60_scripts_outside_checked_crates_unchecked"
+unplant aws2xml/planted.sh planted.sh
+
+# check_shellcheck.sh runs on its own for agents, with the same image check.
+run_check_shellcheck() {
+    rm -f -- "${WORK:?}/argv" "${FAKE_STATE:?}/check.argv" "${FAKE_STATE:?}/shellcheck.argv" \
+        "${FAKE_STATE:?}/calls"
+    set +e
+    out="$(env "$@" 2>&1)"
+    rc=$?
+    set -e
+}
+remove_fake_image
+track_sandbox_scripts
+run_check_shellcheck CONTAINER_ENGINE="$WORK/bin/docker" bash "$CHECK_SHELLCHECK_SH"
+if [[ $rc -eq 0 && -e "$FAKE_STATE/check.argv" && ! -e "$WORK/argv" ]] \
+    && shellcheck_command | grep -qxF gui_editor/check_shellcheck.sh; then
+    pass "AR-00055_T60_standalone_gate_checks_image_then_runs_shellcheck"
+else
+    fail "AR-00055_T60_standalone_gate_checks_image_then_runs_shellcheck" "rc=$rc out=$out"
+fi
+run_check_shellcheck CONTAINER_ENGINE="$WORK/bin/docker" bash "$CHECK_SHELLCHECK_SH" extra
+if [[ $rc -eq 1 && "$out" == *usage* && ! -e "$FAKE_STATE/shellcheck.argv" ]]; then
+    pass "AR-00055_T60_standalone_gate_usage"
+else
+    fail "AR-00055_T60_standalone_gate_usage" "rc=$rc out=$out"
+fi
+printf '%s\n' "wrong" >"$FAKE_STATE/tool.versions"
+run_check_shellcheck CONTAINER_ENGINE="$WORK/bin/docker" bash "$CHECK_SHELLCHECK_SH"
+if [[ $rc -ne 0 && "$out" == *"other tool versions"* && ! -e "$FAKE_STATE/shellcheck.argv" ]]; then
+    pass "AR-00055_T60_standalone_gate_stops_on_failed_image_check"
+else
+    fail "AR-00055_T60_standalone_gate_stops_on_failed_image_check" "rc=$rc out=$out"
+fi
+remove_fake_image
+# The gate fails closed without git and outside a git checkout,
+# and ignores the git environment.
+run_check_shellcheck PATH="$NOGIT_BIN" CONTAINER_ENGINE="$WORK/bin/docker" bash "$CHECK_SHELLCHECK_SH"
+if [[ $rc -ne 0 && "$out" == *"git not found"* && ! -e "$FAKE_STATE/shellcheck.argv" ]]; then
+    pass "AR-00055_T60_gate_without_git_stops"
+else
+    fail "AR-00055_T60_gate_without_git_stops" "rc=$rc out=$out"
+fi
+FOREIGN_GIT="$WORK/foreign-git"
+mkdir -p "$FOREIGN_GIT"
+git -C "$FOREIGN_GIT" init -q
+for git_env in "GIT_DIR=$FOREIGN_GIT/.git" "GIT_INDEX_FILE=$FOREIGN_GIT/.git/index" \
+    "GIT_WORK_TREE=$FOREIGN_GIT"; do
+    run_check_shellcheck "$git_env" CONTAINER_ENGINE="$WORK/bin/docker" bash "$CHECK_SHELLCHECK_SH"
+    if [[ $rc -eq 0 ]] && shellcheck_command | grep -qxF gui_editor/build.sh; then
+        pass "AR-00055_T60_gate_ignores_git_environment[${git_env//$WORK/WORK}]"
+    else
+        fail "AR-00055_T60_gate_ignores_git_environment[${git_env//$WORK/WORK}]" "rc=$rc out=$out"
+    fi
+done
+rm -rf -- "${FOREIGN_GIT:?}" "${WORK:?}/.git"
+run_check_shellcheck CONTAINER_ENGINE="$WORK/bin/docker" bash "$CHECK_SHELLCHECK_SH"
+if [[ $rc -ne 0 && "$out" == *"not the top level of a git checkout"* \
+    && ! -e "$FAKE_STATE/shellcheck.argv" ]]; then
+    pass "AR-00055_T60_gate_outside_git_checkout_stops"
+else
+    fail "AR-00055_T60_gate_outside_git_checkout_stops" "rc=$rc out=$out"
+fi
+track_sandbox_scripts
+# Paths are arguments, never evaluated: a planted name with shell syntax stays a name.
+t60_marker="$WORK/t60-marker"
+plant "gui_editor/\$(touch $t60_marker).sh" '#!/bin/bash'
+run_build CONTAINER_ENGINE="$WORK/bin/docker"
+if [[ $rc -eq 0 && ! -e "$t60_marker" ]] \
+    && shellcheck_command | grep -qxF "gui_editor/\$(touch $t60_marker).sh"; then
+    pass "AR-00055_T60_script_path_not_evaluated"
+else
+    fail "AR-00055_T60_script_path_not_evaluated" "rc=$rc out=$out"
+fi
+unplant "gui_editor/\$(touch $t60_marker).sh"
+# The real gate covers this script; the T-60 reason sits on the directive line.
+if grep -qxF "# $SC disable=SC2016 # Expected lines are literal text, so '\$VAR' stays unexpanded." \
+    "$SCRIPT_DIR/test_build_pipeline.sh"; then
+    pass "AR-00056_T60_pipeline_test_directive_has_reason"
+else
+    fail "AR-00056_T60_pipeline_test_directive_has_reason" "line missing"
+fi
+# build.sh runs the gate after the image check and before the build container.
+gate_line="$(grep -n -xF 'run_shellcheck_gate || exit 1' "$GUI_DIR/build.sh" | cut -d: -f1)"
+ensure_line="$(grep -n -xF 'ensure_tool_image || exit 1' "$GUI_DIR/build.sh" | cut -d: -f1)"
+run_line="$(grep -n '^"\$ENGINE" run --rm' "$GUI_DIR/build.sh" | cut -d: -f1)"
+if [[ -n "$gate_line" && -n "$ensure_line" && -n "$run_line" ]] \
+    && (( ensure_line < gate_line && gate_line < run_line )); then
+    pass "AR-00055_T60_build_sh_runs_gate_between_image_check_and_build"
+else
+    fail "AR-00055_T60_build_sh_runs_gate_between_image_check_and_build" "ensure=$ensure_line gate=$gate_line run=$run_line"
+fi
+# No .shellcheckrc is committed, and the run reads none (--norc).
+if [[ -z "$(git -C "$REPO_DIR" ls-files -- '*shellcheckrc')" ]]; then
+    pass "AR-00055_T60_no_committed_shellcheckrc"
+else
+    fail "AR-00055_T60_no_committed_shellcheckrc" "$(git -C "$REPO_DIR" ls-files -- '*shellcheckrc')"
+fi
 echo
 echo "passed=$passed failed=$failed"
 [[ $failed -eq 0 ]]

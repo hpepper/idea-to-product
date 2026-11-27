@@ -1,7 +1,9 @@
-//! Static checks of the build pipeline configuration for GEDT-STORY-00019: T-01 and T-54.
+//! Static checks of the build pipeline configuration for GEDT-STORY-00019:
+//! T-01, T-54, T-55, and T-60.
 //! Covers GEDT-AR-00024, GEDT-AR-00025, GEDT-AR-00030, GEDT-AR-00032, GEDT-AR-00033,
-//! and GEDT-AR-00034, by inspecting `deny.toml`, `deny-gui_editor.toml`,
-//! `.github/workflows/ci.yml`, and the tool image files in `container/`.
+//! GEDT-AR-00034, and GEDT-AR-00055, by inspecting `deny.toml`, `deny-gui_editor.toml`,
+//! `.github/workflows/ci.yml`, the tool image files in `container/`,
+//! and the languages of all files that git tracks in the repository.
 //! The pipeline script tests the behaviour of `build.sh`, `container/tool_image.sh`,
 //! and `check_advisory_ignores.sh`:
 //! `tests/pipeline/test_build_pipeline.sh` runs them against a fake container engine.
@@ -17,7 +19,9 @@
 //! instead of hiding a setting.
 
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 
 const CI_CRATES: [&str; 4] = ["gui_editor", "sad2md", "sad_xml_sql", "tui_editor"];
 // Crates outside the CI gate whose path dependencies still carry a version,
@@ -1705,9 +1709,10 @@ fn containerfile_instructions() -> Vec<String> {
 }
 
 /// The whole tool image definition.
-/// The exact list keeps the image to the pinned base plus the four pinned tools:
+/// The exact list keeps the image to the pinned base plus the four pinned tools
+/// plus the unpinned Debian trixie shellcheck package (T-60):
 /// no other package, no other source, and no other instruction.
-const CONTAINERFILE_INSTRUCTIONS: [&str; 8] = [
+const CONTAINERFILE_INSTRUCTIONS: [&str; 9] = [
     "ARG BASE_IMAGE=docker.io/library/rust:1.100.0-trixie@sha256:223cc32ddca8f3ee90c436dbc94b6b5f052ea7f9653c5201e9612f08ad7d21b8",
     "FROM ${BASE_IMAGE}",
     "ARG BASE_IMAGE",
@@ -1716,9 +1721,12 @@ const CONTAINERFILE_INSTRUCTIONS: [&str; 8] = [
     "RUN cargo install --locked --version 0.22.0 cargo-deny && rm -rf \"$CARGO_HOME/registry\"",
     "RUN rustup component add clippy",
     "RUN rustup component add rustfmt",
+    "RUN apt-get update && apt-get install --yes --no-install-recommends shellcheck && rm -rf /var/lib/apt/lists/*",
 ];
 
-// GEDT-AR-00034: the tool image adds only the four pinned tools to the pinned base.
+// GEDT-AR-00034, T-54 and T-60:
+// the tool image adds to the pinned base only the four pinned tools
+// plus the unpinned Debian trixie shellcheck package.
 #[test]
 fn test_ar_00034_t54_containerfile_adds_only_pinned_tools() {
     assert_eq!(
@@ -1726,6 +1734,150 @@ fn test_ar_00034_t54_containerfile_adds_only_pinned_tools() {
         CONTAINERFILE_INSTRUCTIONS,
         "Containerfile instructions"
     );
+}
+
+/// Options and settings that turn off or weaken the apt archive signature check,
+/// or add a package source next to the signature-checked Debian archive of the base.
+/// The test compares them in lowercase.
+const APT_UNSIGNED_SOURCE_MARKERS: [&str; 10] = [
+    "allow-unauthenticated",
+    "allowunauthenticated",
+    "allow-insecure-repositories",
+    "allowinsecurerepositories",
+    "allowdowngradetoinsecurerepositories",
+    "trusted=yes",
+    "check-valid-until",
+    "force-yes",
+    "allow-downgrades",
+    "sources.list",
+];
+
+// GEDT-AR-00034, T-60: one instruction installs the Debian trixie shellcheck package,
+// with no version pin and with no option that turns off the archive signature check.
+#[test]
+fn test_ar_00034_t60_shellcheck_package_unpinned_and_signature_checked() {
+    let instructions = containerfile_instructions();
+    let shellcheck_instructions: Vec<&String> = instructions
+        .iter()
+        .filter(|l| l.contains("shellcheck"))
+        .collect();
+    assert_eq!(
+        shellcheck_instructions.len(),
+        1,
+        "Containerfile instructions naming shellcheck: {shellcheck_instructions:?}"
+    );
+    let install = shellcheck_instructions[0];
+    assert!(
+        install.contains("apt-get install") && !install.contains("shellcheck="),
+        "shellcheck is not installed through apt without a version pin: {install}"
+    );
+    let text = containerfile_text().to_lowercase();
+    for marker in APT_UNSIGNED_SOURCE_MARKERS {
+        assert!(!text.contains(marker), "Containerfile contains {marker}");
+    }
+}
+
+// GEDT-AR-00034, T-60:
+// the tool check proves that /usr/bin/shellcheck is the unchanged file of the Debian shellcheck package and starts, since the package has no version to compare.
+#[test]
+fn test_ar_00034_t60_tool_check_covers_shellcheck_package() {
+    assert_eq!(
+        tool_image_sh_assignment("SHELLCHECK_PACKAGE_LINE"),
+        "shellcheck: /usr/bin/shellcheck"
+    );
+    let script = read(&gui_dir().join("container/tool_image.sh"));
+    for line in [
+        "dpkg-query --search /usr/bin/shellcheck",
+        "dpkg --verify shellcheck",
+        "/usr/bin/shellcheck --version >/dev/null'",
+    ] {
+        assert!(
+            script.lines().any(|l| l == line),
+            "tool_image.sh has no tool check line {line}"
+        );
+    }
+    let expected_versions = script
+        .split_once("EXPECTED_TOOL_VERSIONS=\"")
+        .and_then(|(_, rest)| rest.split_once("\"\n"))
+        .map(|(value, _)| value)
+        .expect("tool_image.sh has an EXPECTED_TOOL_VERSIONS assignment");
+    assert_eq!(
+        expected_versions.lines().last(),
+        Some("${SHELLCHECK_PACKAGE_LINE}"),
+        "EXPECTED_TOOL_VERSIONS does not end with the shellcheck package line"
+    );
+}
+
+/// A directory under the system temp directory, removed on drop.
+struct ScratchDir(PathBuf);
+
+impl ScratchDir {
+    fn new(test: &str) -> Self {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("clock after 1970")
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("{test}-{}-{nanos}", std::process::id()));
+        // create_dir fails on an existing path,
+        // so no planted directory or symlink is reused.
+        fs::create_dir(&dir).unwrap_or_else(|err| panic!("cannot create {}: {err}", dir.display()));
+        ScratchDir(dir)
+    }
+}
+
+impl Drop for ScratchDir {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.0);
+    }
+}
+
+/// The shellcheck command of run_shellcheck_gate in check_shellcheck.sh.
+const GATE_SHELLCHECK_BIN: &str = "/usr/bin/shellcheck";
+const GATE_SHELLCHECK_OPTIONS: [&str; 2] = ["--norc", "--"];
+
+// GEDT-AR-00055, T-60:
+// a planted script with one finding fails the shellcheck command of the gate,
+// and a clean script passes it.
+// The test runs in the tool image,
+// which check_tool_image proves holds the Debian package,
+// so a missing /usr/bin/shellcheck fails the test instead of skipping it.
+#[test]
+fn test_ar_00055_t60_image_shellcheck_fails_planted_finding() {
+    assert!(
+        Path::new(GATE_SHELLCHECK_BIN).is_file(),
+        "{GATE_SHELLCHECK_BIN} is missing; run the tests in the tool image"
+    );
+    let gate_script = read(&gui_dir().join("check_shellcheck.sh"));
+    assert!(
+        gate_script.contains("\"$SHELLCHECK_BIN\" --norc -- \"${CHECKED_SCRIPTS[@]}\""),
+        "the gate command in check_shellcheck.sh differs from the command this test runs"
+    );
+    let scratch = ScratchDir::new("ar_00055_t60_planted_finding");
+    let run_gate_command = |name: &str, content: &str| {
+        let script = scratch.0.join(name);
+        fs::write(&script, content).expect("write planted script");
+        Command::new(GATE_SHELLCHECK_BIN)
+            .args(GATE_SHELLCHECK_OPTIONS)
+            .arg(&script)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .unwrap_or_else(|err| panic!("cannot run {GATE_SHELLCHECK_BIN}: {err}"))
+    };
+    // SC2086: the unquoted expansion is the single finding.
+    let finding = run_gate_command(
+        "one_finding.sh",
+        "#!/usr/bin/env bash\nname=\"$1\"\necho $name\n",
+    );
+    assert!(
+        !finding.success(),
+        "shellcheck passes a script with one SC2086 finding"
+    );
+    let clean = run_gate_command(
+        "clean.sh",
+        "#!/usr/bin/env bash\nname=\"$1\"\necho \"$name\"\n",
+    );
+    assert!(clean.success(), "shellcheck fails a clean script: {clean}");
 }
 
 // GEDT-AR-00034: the base is the official Rust image, pinned by version tag and digest,
@@ -1765,17 +1917,20 @@ fn test_ar_00034_t54_base_and_tool_pins_agree() {
     );
 }
 
-// GEDT-AR-00034, T-54: build.sh and CI use the tool image and install no tool per run;
+// GEDT-AR-00034, T-54 and T-60:
+// build.sh, the shellcheck gate, and CI use the tool image and install no tool per run;
 // CI pushes no image and logs in to no registry.
 #[test]
 fn test_ar_00034_t54_no_tool_install_and_no_image_push() {
     let files = [
         ("build.sh", read(&gui_dir().join("build.sh"))),
         ("tool_image.sh", read(&gui_dir().join("container/tool_image.sh"))),
+        ("check_shellcheck.sh", read(&gui_dir().join("check_shellcheck.sh"))),
         ("ci.yml", workflow_text()),
     ];
     for (file, text) in &files {
         assert!(!text.contains("cargo install"), "{file} runs cargo install");
+        assert!(!text.contains("apt-get"), "{file} runs apt-get");
     }
     let ci = workflow_text();
     for needle in ["docker push", "podman push", "docker login", "podman login", "packages:"] {
@@ -1880,5 +2035,1298 @@ fn test_ar_00025_ar_00034_t54_gui_editor_build_job_commands() {
             "CONTAINER_ENGINE=docker ./gui_editor/build.sh",
         ],
         "gui-editor-build commands"
+    );
+}
+
+// --- Committed-language check, GEDT-AR-00032 and GEDT-AR-00033, T-55 ---
+//
+// Every file that git tracks in the whole repository must be Rust, Bash,
+// or a data or configuration format, as the rationale of both requirements states.
+// The check reads the index, not the working tree,
+// so it sees the content and mode that a commit records,
+// and ignored caches such as `.cargo-home/registry` stay out of scope.
+// The lists below are allowlists, so an unknown format fails the check (fail-closed);
+// a maintainer adds a new data or configuration format to the lists in review.
+
+/// Extensions of data and configuration formats, which are not program code or scripts.
+/// `lock` is `Cargo.lock`, generated by cargo.
+/// `uml` is a PlantUML diagram, a diagram format like Mermaid.
+/// No Rust toolchain output such as `wasm-bindgen` JavaScript glue is committed,
+/// so the list has no entry for it
+/// (GEDT-AR-00053, PLAN row "Generated code, T-55 follow-up").
+/// `doxygen` stays out of the list, because a Doxygen configuration runs shell commands
+/// through `INPUT_FILTER` and `FILTER_PATTERNS`.
+const DATA_EXTENSIONS: [&str; 12] = [
+    "dtd", "lock", "lyx", "md", "mmd", "pdf", "toml", "txt", "uml", "xml", "yaml", "yml",
+];
+/// `.mm` is also the Objective-C++ extension, so only a FreeMind XML map counts as data.
+const FREEMIND_EXTENSION: &str = "mm";
+const FREEMIND_PREFIX: &[u8] = b"<map ";
+/// File names without an extension that hold data or configuration.
+/// A `Containerfile` is a configuration format, per requirements open question 15;
+/// `Dockerfile` and a lowercase `containerfile` are the same format.
+/// The git and editor files hold settings, not commands.
+/// `.gitmodules` passes, but a submodule gitlink still fails on its git mode.
+/// `Makefile` stays out of the list, because its recipes are shell scripts.
+const DATA_FILE_NAMES: [&str; 10] = [
+    ".editorconfig",
+    ".gitattributes",
+    ".gitignore",
+    ".gitmodules",
+    "ChangeLog",
+    "Containerfile",
+    "Dockerfile",
+    "LICENSE",
+    "TODO",
+    "containerfile",
+];
+const BASH_EXTENSIONS: [&str; 2] = ["bash", "sh"];
+const RUST_EXTENSION: &str = "rs";
+const GIT_MODE_EXECUTABLE: &str = "100755";
+const GIT_MODE_FILE: &str = "100644";
+const GIT_MODE_SYMLINK: &str = "120000";
+
+/// One entry of the git index.
+struct TrackedFile {
+    path: String,
+    mode: String,
+    content: Vec<u8>,
+}
+
+/// Builds a git command for `repo` that sees no caller environment (D-T54-06),
+/// as `container/tool_image.sh` does:
+/// a GIT_* variable could make git answer for another checkout or index,
+/// and system or user configuration could start a monitor command.
+fn git(repo: &Path) -> Command {
+    let mut command = Command::new("git");
+    command
+        .env_clear()
+        .env("PATH", "/usr/bin:/bin")
+        .env("GIT_CONFIG_NOSYSTEM", "1")
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .args(["-c", "core.fsmonitor=false", "-C"])
+        .arg(repo)
+        .stdin(Stdio::null());
+    command
+}
+
+/// Runs git and returns its standard output; panics when git is missing or fails,
+/// so the check never passes without a file list (fail-closed).
+fn git_output(mut command: Command) -> Vec<u8> {
+    let output = command
+        .output()
+        .unwrap_or_else(|err| panic!("cannot run git: {err}"));
+    assert!(
+        output.status.success(),
+        "git failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    output.stdout
+}
+
+/// Reads every index entry of `repo`,
+/// with the blob content of each regular file and symlink.
+/// Panics unless `repo` is the top level of a git checkout.
+fn tracked_files(repo: &Path) -> Vec<TrackedFile> {
+    let mut top_level = git(repo);
+    top_level.args(["rev-parse", "--show-toplevel"]);
+    let top_level = String::from_utf8(git_output(top_level)).expect("git prints a UTF-8 path");
+    let repo_real = fs::canonicalize(repo).expect("repository path resolves");
+    assert_eq!(
+        Path::new(top_level.trim_end_matches('\n')),
+        repo_real,
+        "{} is not the top level of a git checkout",
+        repo.display()
+    );
+
+    let mut list = git(repo);
+    list.args(["ls-files", "--stage", "-z"]);
+    let listing = git_output(list);
+    // Each entry reads "<mode> <object> <stage>\t<path>\0".
+    let mut entries: Vec<(String, String, String)> = Vec::new();
+    for entry in listing.split(|&b| b == 0).filter(|e| !e.is_empty()) {
+        let entry = String::from_utf8_lossy(entry);
+        let (meta, path) = entry.split_once('\t').expect("ls-files entry has a path");
+        let mut fields = meta.split(' ');
+        let mode = fields.next().expect("mode").to_string();
+        let object = fields.next().expect("object").to_string();
+        entries.push((path.to_string(), mode, object));
+    }
+
+    // Gitlinks name a commit of another repository, which has no blob to read here.
+    let has_blob =
+        |mode: &str| [GIT_MODE_EXECUTABLE, GIT_MODE_FILE, GIT_MODE_SYMLINK].contains(&mode);
+    let blob_entries: Vec<&(String, String, String)> = entries
+        .iter()
+        .filter(|(_, mode, _)| has_blob(mode))
+        .collect();
+    let mut cat = git(repo);
+    cat.args(["cat-file", "--batch"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut child = cat
+        .spawn()
+        .unwrap_or_else(|err| panic!("cannot run git: {err}"));
+    let request: String = blob_entries
+        .iter()
+        .map(|(_, _, object)| format!("{object}\n"))
+        .collect();
+    let mut stdin = child.stdin.take().expect("git stdin");
+    // A thread writes the request, so a full output pipe cannot block both processes.
+    let writer = std::thread::spawn(move || stdin.write_all(request.as_bytes()));
+    let output = child.wait_with_output().expect("git cat-file finishes");
+    writer
+        .join()
+        .expect("writer thread")
+        .expect("git cat-file reads the request");
+    assert!(
+        output.status.success(),
+        "git cat-file failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    // Each blob reads "<object> blob <size>\n<content>\n".
+    let mut blobs = output.stdout.as_slice();
+    let mut files = Vec::new();
+    for (path, mode, object) in &entries {
+        // The same predicate selected the requested blobs, so the output stays in step.
+        if !has_blob(mode) {
+            files.push(TrackedFile {
+                path: path.clone(),
+                mode: mode.clone(),
+                content: Vec::new(),
+            });
+            continue;
+        }
+        let header_end = blobs.iter().position(|&b| b == b'\n').expect("blob header");
+        let header = String::from_utf8_lossy(&blobs[..header_end]).into_owned();
+        let mut fields = header.split(' ');
+        assert_eq!(
+            fields.next(),
+            Some(object.as_str()),
+            "blob header of {path}: {header}"
+        );
+        assert_eq!(
+            fields.next(),
+            Some("blob"),
+            "blob header of {path}: {header}"
+        );
+        let size: usize = fields
+            .next()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or_else(|| panic!("blob header of {path}: {header}"));
+        let content_start = header_end + 1;
+        let content_end = content_start + size;
+        assert_eq!(
+            blobs.get(content_end),
+            Some(&b'\n'),
+            "blob of {path} ends early"
+        );
+        files.push(TrackedFile {
+            path: path.clone(),
+            mode: mode.clone(),
+            content: blobs[content_start..content_end].to_vec(),
+        });
+        blobs = &blobs[content_end + 1..];
+    }
+    assert!(
+        blobs.is_empty(),
+        "git cat-file printed more blobs than requested"
+    );
+    files
+}
+
+/// The only interpreter lines that a committed script may hold, each spelled exactly,
+/// with no further character before the line end (GEDT-AR-00054, amended).
+/// The product owner chose "a: three exact lines", so flags, `env` options, `-S`,
+/// assignments, other paths, extra whitespace, and a CRLF line end all fail.
+/// Scripts set bash options in the body instead.
+const BASH_SHEBANG_LINES: [&str; 3] = ["#!/bin/bash", "#!/usr/bin/bash", "#!/usr/bin/env bash"];
+/// What `shebang_interpreter` returns for an accepted interpreter line.
+const BASH_COMMAND: &str = "bash";
+
+/// Returns `bash` when the first line equals one of `BASH_SHEBANG_LINES` (GEDT-AR-00054),
+/// and otherwise the reason, which is never `bash`.
+/// Returns `None` without a shebang,
+/// and for a Rust inner attribute such as `#![allow(...)]`,
+/// which rustc never reads as a shebang.
+fn shebang_interpreter(content: &[u8]) -> Option<String> {
+    let rest = content.strip_prefix(b"#!")?;
+    let line_end = rest.iter().position(|&b| b == b'\n').unwrap_or(rest.len());
+    let line = &content[..2 + line_end];
+    if String::from_utf8_lossy(&rest[..line_end])
+        .trim_start()
+        .starts_with('[')
+    {
+        return None;
+    }
+    if BASH_SHEBANG_LINES
+        .iter()
+        .any(|accepted| accepted.as_bytes() == line)
+    {
+        return Some(BASH_COMMAND.to_string());
+    }
+    Some(format!(
+        "interpreter line {:?} is not exactly #!/bin/bash, #!/usr/bin/bash, or #!/usr/bin/env bash",
+        String::from_utf8_lossy(line)
+    ))
+}
+
+/// Returns why the file is not Rust, Bash, or a data or configuration format,
+/// or `None` when the file passes.
+fn language_violation(file: &TrackedFile) -> Option<String> {
+    let name = file.path.rsplit('/').next().unwrap_or(&file.path);
+    let extension = Path::new(name)
+        .extension()
+        .map(|e| e.to_string_lossy().to_lowercase());
+    let extension = extension.as_deref();
+    if file.mode != GIT_MODE_FILE
+        && file.mode != GIT_MODE_EXECUTABLE
+        && file.mode != GIT_MODE_SYMLINK
+    {
+        return Some(format!(
+            "git mode {} is not a file, so its language is unknown",
+            file.mode
+        ));
+    }
+    // A symlink blob holds the target path; the target is checked as its own entry.
+    let is_symlink = file.mode == GIT_MODE_SYMLINK;
+    let shebang = if is_symlink {
+        None
+    } else {
+        shebang_interpreter(&file.content)
+    };
+    match shebang.as_deref() {
+        Some("bash") => {}
+        Some(interpreter) => {
+            return Some(format!(
+                "shebang is not an accepted bash shebang: {interpreter}"
+            ));
+        }
+        // Without a shebang, a shell runs an executable file with /bin/sh,
+        // so the file is a script in a language other than Bash.
+        None if file.mode == GIT_MODE_EXECUTABLE => {
+            return Some("executable without a shebang line runs as a /bin/sh script".to_string());
+        }
+        None => {}
+    }
+    if DATA_FILE_NAMES.contains(&name) {
+        return None;
+    }
+    let passes = match extension {
+        Some(ext) if BASH_EXTENSIONS.contains(&ext) => shebang.is_some() || is_symlink,
+        Some(RUST_EXTENSION) => true,
+        Some(FREEMIND_EXTENSION) => is_symlink || file.content.starts_with(FREEMIND_PREFIX),
+        Some(ext) => DATA_EXTENSIONS.contains(&ext),
+        // A Bash shebang makes an extensionless file a Bash script.
+        None => shebang.is_some(),
+    };
+    if passes {
+        return None;
+    }
+    Some(match extension {
+        Some(ext) if BASH_EXTENSIONS.contains(&ext) => {
+            "shell script without a bash shebang line".to_string()
+        }
+        Some(ext) => format!("extension .{ext} is not Rust, Bash, or a listed data format"),
+        None => "name is not a listed data file and has no bash shebang line".to_string(),
+    })
+}
+
+/// Lists each tracked file of `repo` that breaks GEDT-AR-00032 or GEDT-AR-00033,
+/// as "<path>: <reason>".
+fn committed_language_violations(repo: &Path) -> Vec<String> {
+    tracked_files(repo)
+        .iter()
+        .filter_map(|file| {
+            language_violation(file).map(|reason| format!("{}: {reason}", file.path))
+        })
+        .collect()
+}
+
+// GEDT-AR-00032 and GEDT-AR-00033, T-55:
+// every file that git tracks in the repository is Rust, Bash, or data or configuration.
+#[test]
+fn test_ar_00032_ar_00033_t55_committed_files_are_rust_bash_or_data() {
+    let violations = committed_language_violations(&repo_dir());
+    assert!(
+        violations.is_empty(),
+        "{} tracked files are not Rust, Bash, or data or configuration:\n{}",
+        violations.len(),
+        violations.join("\n")
+    );
+}
+
+fn file(path: &str, mode: &str, content: &str) -> TrackedFile {
+    TrackedFile {
+        path: path.to_string(),
+        mode: mode.to_string(),
+        content: content.as_bytes().to_vec(),
+    }
+}
+
+// GEDT-AR-00032 and GEDT-AR-00033, T-55: the classification of single files.
+#[test]
+fn test_ar_00032_ar_00033_t55_language_classification() {
+    let passing = [
+        file("src/main.rs", GIT_MODE_FILE, "fn main() {}\n"),
+        file("src/lib.rs", GIT_MODE_FILE, "#![forbid(unsafe_code)]\n"),
+        file(
+            "build.sh",
+            GIT_MODE_EXECUTABLE,
+            "#!/usr/bin/env bash\nset -eu\n",
+        ),
+        file("lib.sh", GIT_MODE_FILE, "#!/bin/bash\n"),
+        file("container/Containerfile", GIT_MODE_FILE, "FROM x\n"),
+        file("Cargo.lock", GIT_MODE_FILE, "version = 4\n"),
+        file(".github/workflows/ci.yml", GIT_MODE_FILE, "on: push\n"),
+        file("docs/README.MD", GIT_MODE_FILE, "# Title\n"),
+        file("docs/map.mm", GIT_MODE_FILE, "<map version=\"0.9.0\">\n"),
+        file("link.sh", GIT_MODE_SYMLINK, "build.sh"),
+    ];
+    for f in &passing {
+        assert_eq!(language_violation(f), None, "{} fails", f.path);
+    }
+    let failing = [
+        file("tool.py", GIT_MODE_FILE, "print(1)\n"),
+        file("tool.js", GIT_MODE_FILE, "x()\n"),
+        file("src/main.cpp", GIT_MODE_FILE, "int main() {}\n"),
+        file("Makefile", GIT_MODE_FILE, "all:\n"),
+        file("run", GIT_MODE_EXECUTABLE, "#!/bin/sh\n"),
+        file("run.sh", GIT_MODE_EXECUTABLE, "#!/usr/bin/env sh\n"),
+        file("lib.sh", GIT_MODE_FILE, "echo sourced\n"),
+        file("notes.txt", GIT_MODE_FILE, "#!/usr/bin/perl -w\n"),
+        file("main.rs", GIT_MODE_FILE, "#!/usr/bin/env python3\n"),
+        // A flag after the interpreter fails (GEDT-AR-00054).
+        file(
+            "tools/run",
+            GIT_MODE_EXECUTABLE,
+            "#!/usr/bin/env -S bash -eu\n",
+        ),
+        file("data.toml", GIT_MODE_EXECUTABLE, "a = 1\n"),
+        file(
+            "view.mm",
+            GIT_MODE_FILE,
+            "#import <Foundation/Foundation.h>\n",
+        ),
+        file("unknown", GIT_MODE_FILE, "text\n"),
+        file("vendor", "160000", ""),
+    ];
+    for f in &failing {
+        assert!(language_violation(f).is_some(), "{} passes", f.path);
+    }
+}
+
+// GEDT-AR-00033 and GEDT-AR-00054, T-55, D-T55-01:
+// every `env` option fails the check, including options that still run bash.
+#[test]
+fn test_ar_00033_t55_env_shebang_options() {
+    // These lines run bash, but each holds an `env` option or `-S` (GEDT-AR-00054).
+    let failing_env_options_running_bash = [
+        "#!/usr/bin/env -u PYTHONPATH bash\n",
+        "#!/usr/bin/env -uPYTHONPATH bash\n",
+        "#!/usr/bin/env --unset PYTHONPATH bash\n",
+        "#!/usr/bin/env --unset=PYTHONPATH bash\n",
+        "#!/usr/bin/env -S -a sh bash\n",
+        "#!/usr/bin/env -iS LC_ALL=C bash\n",
+        "#!/usr/bin/env -Sbash -e\n",
+        "#!/usr/bin/env --split-string=bash -e\n",
+        "#!/usr/bin/env -S -- bash\n",
+        "#!/usr/bin/env -S --default-signal=PIPE bash\n",
+    ];
+    let passing_as_bash = shebangs_passing_the_check(&failing_env_options_running_bash);
+    assert!(
+        passing_as_bash.is_empty(),
+        "pass as bash: {passing_as_bash:#?}"
+    );
+    let failing = [
+        "#!/usr/bin/env -S -C bash python3\n",
+        "#!/usr/bin/env -S --chdir bash python3\n",
+        "#!/usr/bin/env -S -a bash python3\n",
+        "#!/usr/bin/env -S --argv0 bash python3\n",
+        "#!/usr/bin/env -S -iu bash python3\n",
+        "#!/usr/bin/env -S -u PYTHONPATH -u bash python3\n",
+        "#!/usr/bin/env -S-u bash python3\n",
+        "#!/usr/bin/env --split-string=-u bash python3\n",
+        "#!/usr/bin/env -S --uns bash python3\n",
+        "#!/usr/bin/env -S -x bash\n",
+        "#!/usr/bin/env -S --help bash\n",
+        "#!/usr/bin/env -S -u\n",
+        "#!/usr/bin/env -S -- -u bash\n",
+        // A change of directory makes a relative script path name another file
+        // (review R-02).
+        "#!/usr/bin/env -S -C /tmp bash -e\n",
+        "#!/usr/bin/env -S --chdir=/tmp bash\n",
+    ];
+    for content in failing {
+        let f = file("tools/run", GIT_MODE_EXECUTABLE, content);
+        assert!(language_violation(&f).is_some(), "{content:?} passes");
+    }
+}
+
+// GEDT-AR-00033 and GEDT-AR-00054, T-55, D-T55-03 and D-T55-04:
+// only the three exact interpreter lines pass, so env quoting and expansion,
+// bash options, environment assignments, and a CRLF line end all fail the check.
+#[test]
+fn test_ar_00033_t55_shebang_grammar_allowlist() {
+    // These lines run bash, but each holds more than an exact line (GEDT-AR-00054).
+    let failing_flags_and_assignments = [
+        "#!/usr/bin/env -S bash -eu -x\n",
+        "#!/usr/bin/env -S bash --norc --noprofile -x --\n",
+        "#!/usr/bin/env -S LANG=C.UTF-8 LC_CTYPE=C TZ=UTC bash\n",
+        "#!/bin/bash -e\r\n",
+    ];
+    let failing = [
+        // Characters that env -S interprets, and whitespace that is not a space or a tab.
+        "#!/usr/bin/env -S bash -e #python3\n",
+        "#!/usr/bin/env -S bash `python3`\n",
+        "#!/usr/bin/env -S -u\tNAME\x0bbash python3\n",
+        "#!/usr/bin/env -S -u NAME\u{2003}bash python3\n",
+        "#!/usr/bin/env -S -u NAME\rbash python3\n",
+        // Bash options that run a command, read commands from elsewhere, or take a value.
+        "#!/usr/bin/env -S bash -c exit\n",
+        "#!/bin/bash -xc\n",
+        "#!/usr/bin/env -S bash -s\n",
+        "#!/usr/bin/env -S bash -i\n",
+        "#!/usr/bin/env -S bash -l\n",
+        "#!/usr/bin/env -S bash --login\n",
+        "#!/usr/bin/env -S bash --rcfile /tmp/rc\n",
+        "#!/usr/bin/env -S bash --init-file=/tmp/rc\n",
+        "#!/usr/bin/env -S bash -O extglob\n",
+        "#!/usr/bin/env -S bash +O extglob\n",
+        "#!/usr/bin/env -S bash -o posix\n",
+        "#!/usr/bin/env -S bash -\n",
+        "#!/usr/bin/env -S bash tool.py\n",
+        "#!/usr/bin/env -S bash -- tool.py\n",
+        // Assignments outside the locale and time zone names.
+        "#!/usr/bin/env -S BASH_ENV=/tmp/rc bash\n",
+        "#!/usr/bin/env -S ENV=/tmp/rc bash\n",
+        "#!/usr/bin/env -S SHELLOPTS=xtrace PS4=x bash\n",
+        "#!/usr/bin/env -S PATH=/tmp bash\n",
+        "#!/usr/bin/env -S BASH_FUNC_x%%=x bash\n",
+        "#!/usr/bin/env -S lc_all=C bash\n",
+    ];
+    let passing_as_bash = shebangs_passing_the_check(&failing_flags_and_assignments);
+    assert!(
+        passing_as_bash.is_empty(),
+        "pass as bash: {passing_as_bash:#?}"
+    );
+    let passing_as_bash = shebangs_passing_the_check(&failing);
+    assert!(
+        passing_as_bash.is_empty(),
+        "pass as bash: {passing_as_bash:#?}"
+    );
+}
+
+// GEDT-AR-00033 and GEDT-AR-00054, T-55, product owner answers "a: restrict paths"
+// and "a: three exact lines", and round 4 tester observation:
+// /usr/bin/env runs only `bash`, so env with a bash path or an argv0 value fails,
+// as does every other interpreter path.
+#[test]
+fn test_ar_00033_t55_shebang_paths_and_argv0() {
+    // These lines run bash, but none is one of the three exact lines (GEDT-AR-00054).
+    let passing_as_bash = shebangs_passing_the_check(&[
+        "#!/usr/bin/env /bin/bash\n",
+        "#!/usr/bin/env -S /usr/bin/bash -e\n",
+        "#!/usr/bin/env -S -a bash bash\n",
+        "#!/usr/bin/env -S --argv0=tool bash\n",
+        "#!/usr/bin/env -S -- - LANG=C bash\n",
+    ]);
+    assert!(
+        passing_as_bash.is_empty(),
+        "pass as bash: {passing_as_bash:#?}"
+    );
+    let passing_as_bash = shebangs_passing_the_check(&[
+        "#!bash\n",
+        "#!./bash\n",
+        "#!/opt/x/bash\n",
+        "#!/usr/local/bin/bash\n",
+        "#!/bin/env bash\n",
+        "#!/usr/bin/env ./bash\n",
+        "#!/usr/bin/env /opt/x/bash\n",
+        "#!/usr/bin/env -S /usr/bin/env bash\n",
+        "#!/usr/bin/env -S -a -bash bash\n",
+        "#!/usr/bin/env -S -a-bash bash\n",
+        "#!/usr/bin/env -S -ia-bash bash\n",
+        "#!/usr/bin/env -S --argv0=-bash bash\n",
+        "#!/usr/bin/env -S --argv0 -bash bash\n",
+        "#!/usr/bin/env -S LANG=C - bash\n",
+    ]);
+    assert!(
+        passing_as_bash.is_empty(),
+        "pass as bash: {passing_as_bash:#?}"
+    );
+}
+
+/// A fresh git repository in the temporary directory, removed on drop.
+struct PlantedRepo(PathBuf);
+
+impl PlantedRepo {
+    fn new(test: &str) -> Self {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("clock after 1970")
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("{test}-{}-{nanos}", std::process::id()));
+        fs::create_dir(&dir).unwrap_or_else(|err| panic!("cannot create {}: {err}", dir.display()));
+        let mut init = git(&dir);
+        init.args(["init", "--quiet"]);
+        git_output(init);
+        PlantedRepo(dir)
+    }
+
+    /// Writes the file and stages it, with the executable bit when `executable` holds.
+    fn add(&self, path: &str, content: &str, executable: bool) {
+        let target = self.0.join(path);
+        if let Some(parent) = target.parent() {
+            fs::create_dir_all(parent).expect("create planted directory");
+        }
+        fs::write(&target, content).expect("write planted file");
+        let mut add = git(&self.0);
+        let chmod = if executable {
+            "--chmod=+x"
+        } else {
+            "--chmod=-x"
+        };
+        add.args(["add", chmod, "--", path]);
+        git_output(add);
+    }
+}
+
+impl Drop for PlantedRepo {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.0);
+    }
+}
+
+// GEDT-AR-00032 and GEDT-AR-00033, T-55:
+// the check over a git repository flags only two planted files:
+// a Python file and a script with a non-Bash shebang.
+#[test]
+fn test_ar_00032_ar_00033_t55_planted_files_fail_the_check() {
+    let repo = PlantedRepo::new("t55-planted");
+    repo.add("src/main.rs", "fn main() {}\n", false);
+    repo.add("build.sh", "#!/usr/bin/env bash\n", true);
+    repo.add("Cargo.toml", "[package]\n", false);
+    repo.add("tools/report.py", "print('report')\n", false);
+    repo.add("tools/deploy", "#!/bin/sh\necho deploy\n", true);
+    fs::write(repo.0.join("ignored.py"), "print('untracked')\n").expect("write untracked file");
+    let violations = committed_language_violations(&repo.0);
+    let flagged: Vec<&str> = violations
+        .iter()
+        .map(|v| v.split(':').next().unwrap_or_default())
+        .collect();
+    assert_eq!(
+        flagged,
+        ["tools/deploy", "tools/report.py"],
+        "violations: {violations:?}"
+    );
+}
+
+// GEDT-AR-00054, T-55, product owner answer "a: three exact lines":
+// the planted cases of the GEDT-AR-00054 verification.
+// Planted tracked scripts with the three exact interpreter lines pass,
+// and every other line fails, as an executable and as a `.sh` file.
+#[test]
+fn test_ar_00054_t55_planted_interpreter_lines() {
+    let accepted = ["#!/bin/bash", "#!/usr/bin/bash", "#!/usr/bin/env bash"];
+    let rejected = [
+        "#!./bash",
+        "#!/opt/x/bash",
+        "#!/usr/bin/env /opt/x/bash",
+        "#!/bin/bash -e",
+        "#!/usr/bin/env bash -e",
+        "#!/usr/bin/env -S bash",
+        "#!/usr/bin/env /bin/bash",
+        "#! /bin/bash",
+        "#!/bin/bash ",
+        "#!/bin/bash\r",
+    ];
+    let repo = PlantedRepo::new("t55-ar-00054");
+    let mut expected = Vec::new();
+    for (index, line) in accepted.iter().chain(&rejected).enumerate() {
+        let content = format!("{line}\necho run\n");
+        let executable = format!("tools/run{index:02}");
+        let sourced = format!("tools/lib{index:02}.sh");
+        repo.add(&executable, &content, true);
+        repo.add(&sourced, &content, false);
+        if index >= accepted.len() {
+            expected.push(sourced);
+            expected.push(executable);
+        }
+    }
+    expected.sort();
+    let violations = committed_language_violations(&repo.0);
+    let flagged: Vec<&str> = violations
+        .iter()
+        .map(|v| v.split(':').next().unwrap_or_default())
+        .collect();
+    assert_eq!(flagged, expected, "violations: {violations:?}");
+}
+
+// GEDT-AR-00053, T-55, tester, review R-01:
+// the GEDT-AR-00032 and GEDT-AR-00033 check, with no exception for generated code,
+// fails planted tracked files that the Rust toolchain generates for WebAssembly,
+// including `.js` glue with a generator marker and glue under `pkg/` and `target/`.
+#[test]
+fn test_ar_00053_t55_tester_planted_generated_js_fails() {
+    let glue =
+        "// @generated by wasm-bindgen\nlet wasm;\nexport function start() { wasm.start(); }\n";
+    let repo = PlantedRepo::new("t55-tester-ar-00053");
+    repo.add("src/lib.rs", "pub fn start() {}\n", false);
+    repo.add("Cargo.toml", "[package]\n", false);
+    repo.add("pkg/gui_editor.js", glue, false);
+    repo.add(
+        "pkg/gui_editor.d.ts",
+        "export function start(): void;\n",
+        false,
+    );
+    repo.add("pkg/gui_editor_bg.wasm", "\0asm\u{1}\0\0\0", false);
+    repo.add("pkg/package.json", "{\"name\": \"gui_editor\"}\n", false);
+    repo.add(
+        "target/wasm32-unknown-unknown/release/gui_editor.js",
+        glue,
+        false,
+    );
+    repo.add("web/snippets/inline0.js", "export function f() {}\n", true);
+    repo.add("web/boot.js", "#!/usr/bin/env bash\nnode glue.js\n", true);
+    repo.add(
+        "web/attr.js",
+        "#![generated]\nexport function g() {}\n",
+        false,
+    );
+    let violations = committed_language_violations(&repo.0);
+    let flagged: Vec<&str> = violations
+        .iter()
+        .map(|v| v.split(':').next().unwrap_or_default())
+        .collect();
+    assert_eq!(
+        flagged,
+        [
+            "pkg/gui_editor.d.ts",
+            "pkg/gui_editor.js",
+            "pkg/gui_editor_bg.wasm",
+            "pkg/package.json",
+            "target/wasm32-unknown-unknown/release/gui_editor.js",
+            "web/attr.js",
+            "web/boot.js",
+            "web/snippets/inline0.js",
+        ],
+        "violations: {violations:?}"
+    );
+}
+
+// GEDT-AR-00054, T-55, tester:
+// line end, end of file, and prefix cases of the three exact interpreter lines,
+// planted in a git index as an executable and as a `.sh` file.
+// The end of the file ends the first line, as for the kernel.
+#[test]
+fn test_ar_00054_t55_tester_planted_line_end_and_prefix_cases() {
+    let accepted = [
+        "#!/bin/bash",
+        "#!/usr/bin/bash",
+        "#!/usr/bin/env bash",
+        "#!/bin/bash\n",
+        "#!/usr/bin/env bash\n\r\n",
+    ];
+    let rejected = [
+        "#!/bin/bash\r\necho run\r\n",
+        "#!/bin/bash\r",
+        "#!/usr/bin/env bash\r\n",
+        "\u{feff}#!/bin/bash\necho run\n",
+        " #!/bin/bash\necho run\n",
+        "\t#!/bin/bash\necho run\n",
+        "\n#!/bin/bash\necho run\n",
+        "#!/usr/bin/env bash\t\necho run\n",
+        "#!/usr/bin/env bash\t",
+        "#!/usr/bin/env\tbash\n",
+        "#!/usr/bin/env bash \n",
+        "#!/usr/bin/bash\u{b}\n",
+        "#!/usr/bin/bash\u{c}\n",
+        "#!/bin/bash\0\n",
+        "#!/bin/bash\u{a0}\n",
+        "#!/bin/bash\u{2028}\n",
+        "#!/bin/bash#\n",
+        "#!/bin/bashx\n",
+        "#!/bin/bas\n",
+        "#!/usr/bin/env bash;python3\n",
+        "#!/usr/bin/env bash\u{feff}\n",
+    ];
+    let repo = PlantedRepo::new("t55-tester-ar-00054-ends");
+    let mut expected = Vec::new();
+    for (index, content) in accepted.iter().chain(&rejected).enumerate() {
+        let executable = format!("tools/run{index:02}");
+        let sourced = format!("tools/lib{index:02}.sh");
+        repo.add(&executable, content, true);
+        repo.add(&sourced, content, false);
+        if index >= accepted.len() {
+            expected.push(sourced);
+            expected.push(executable);
+        }
+    }
+    expected.sort();
+    let violations = committed_language_violations(&repo.0);
+    let flagged: Vec<&str> = violations
+        .iter()
+        .map(|v| v.split(':').next().unwrap_or_default())
+        .collect();
+    assert_eq!(flagged, expected, "violations: {violations:?}");
+}
+
+// GEDT-AR-00032, GEDT-AR-00033, and GEDT-AR-00054, T-55, tester, security:
+// the Rust inner attribute exemption `#![` cannot make a runnable non-Rust file pass.
+// The kernel reads `#![...]` of an executable file as the interpreter path `[...]`,
+// so every executable with such a first line fails, whatever its extension.
+#[test]
+fn test_ar_00054_t55_tester_rust_attribute_exemption_cannot_smuggle() {
+    let passing = [file(
+        "src/lib.rs",
+        GIT_MODE_FILE,
+        "#![forbid(unsafe_code)]\n",
+    )];
+    for f in &passing {
+        assert_eq!(language_violation(f), None, "{} fails", f.path);
+    }
+    let failing = [
+        file("tools/run", GIT_MODE_EXECUTABLE, "#![allow(x)]\nprint(1)\n"),
+        file("tools/run", GIT_MODE_EXECUTABLE, "#! [x]\nprint(1)\n"),
+        file("tools/run", GIT_MODE_EXECUTABLE, "#!\t[x]\nprint(1)\n"),
+        file("tools/run", GIT_MODE_EXECUTABLE, "#![\n"),
+        file("tools/run.sh", GIT_MODE_EXECUTABLE, "#![x]\necho run\n"),
+        file("tools/run.sh", GIT_MODE_FILE, "#![x]\necho run\n"),
+        file("tools/run.py", GIT_MODE_FILE, "#![x]\nprint(1)\n"),
+        file("tools/run.py", GIT_MODE_EXECUTABLE, "#![x]\nprint(1)\n"),
+        file(
+            "tools/run.rs",
+            GIT_MODE_EXECUTABLE,
+            "#![allow(dead_code)]\nfn main() {}\n",
+        ),
+        file("tools/run.toml", GIT_MODE_EXECUTABLE, "#![x]\na = 1\n"),
+        file("tools/notes", GIT_MODE_FILE, "#![x]\nprint(1)\n"),
+        file("Makefile", GIT_MODE_FILE, "#![x]\nall:\n"),
+    ];
+    for f in &failing {
+        assert!(
+            language_violation(f).is_some(),
+            "{} passes: {:?}",
+            f.path,
+            String::from_utf8_lossy(&f.content)
+        );
+    }
+}
+
+// GEDT-AR-00032, GEDT-AR-00033, and GEDT-AR-00054, T-55, tester, security:
+// an accepted interpreter line does not make a file of another language pass
+// when its extension names that language.
+#[test]
+fn test_ar_00054_t55_tester_exact_line_does_not_pass_other_extensions() {
+    for path in [
+        "tool.py",
+        "tool.js",
+        "tool.pl",
+        "tool.ps1",
+        "rules.mk",
+        "tool.tmpl",
+    ] {
+        for line in BASH_SHEBANG_LINES {
+            let content = format!("{line}\necho run\n");
+            for mode in [GIT_MODE_EXECUTABLE, GIT_MODE_FILE] {
+                let f = file(path, mode, &content);
+                assert!(
+                    language_violation(&f).is_some(),
+                    "{path} {mode} {line:?} passes"
+                );
+            }
+        }
+    }
+}
+
+// GEDT-AR-00032 and GEDT-AR-00033, T-55, tester:
+// a listed container configuration name passes in a subdirectory
+// and with an accepted interpreter line on the first line.
+#[test]
+fn test_ar_00032_ar_00033_t55_tester_container_file_names_pass() {
+    let passing = [
+        file("sub/Containerfile", GIT_MODE_FILE, "#!/bin/bash\nFROM x\n"),
+        file("Dockerfile", GIT_MODE_FILE, "FROM x\n"),
+    ];
+    for f in &passing {
+        assert_eq!(language_violation(f), None, "{} fails", f.path);
+    }
+}
+
+// GEDT-AR-00032 and GEDT-AR-00033, T-55, product owner answer to tester question 1:
+// git, editor, and container configuration names pass,
+// and build, template, and manifest files with embedded code or recipes still fail.
+#[test]
+fn test_ar_00032_ar_00033_t55_configuration_file_names() {
+    let passing = [
+        file(".gitattributes", GIT_MODE_FILE, "*.sh text eol=lf\n"),
+        file(".gitmodules", GIT_MODE_FILE, "[submodule \"x\"]\n"),
+        file("a/.editorconfig", GIT_MODE_FILE, "root = true\n"),
+        file("container/Dockerfile", GIT_MODE_FILE, "FROM x\n"),
+        file("container/containerfile", GIT_MODE_FILE, "FROM x\n"),
+    ];
+    for f in &passing {
+        assert_eq!(language_violation(f), None, "{} fails", f.path);
+    }
+    let failing = [
+        file("Makefile", GIT_MODE_FILE, "all:\n\techo x\n"),
+        file("GNUmakefile", GIT_MODE_FILE, "all:\n"),
+        file("makefile", GIT_MODE_FILE, "all:\n"),
+        file("rules.mk", GIT_MODE_FILE, "all:\n"),
+        file("view.tmpl", GIT_MODE_FILE, "{ $OUT .= 1 }\n"),
+        file("site.pp", GIT_MODE_FILE, "class x {}\n"),
+        file("lib.sh", GIT_MODE_FILE, "echo sourced\n"),
+        file("view.mm", GIT_MODE_FILE, "<?xml version=\"1.0\"?>\n"),
+        file("DOCKERFILE", GIT_MODE_FILE, "FROM x\n"),
+        file("Dockerfile.py", GIT_MODE_FILE, "print(1)\n"),
+        file(".gitattributes", GIT_MODE_EXECUTABLE, "*.sh text\n"),
+        file("Dockerfile", GIT_MODE_FILE, "#!/usr/bin/env python3\n"),
+    ];
+    for f in &failing {
+        assert!(language_violation(f).is_some(), "{} passes", f.path);
+    }
+}
+
+// GEDT-AR-00032, T-55: with `.gitmodules` allowed, a submodule gitlink still fails,
+// because its code is another repository whose language the check cannot read.
+#[test]
+fn test_ar_00032_t55_gitmodules_passes_and_submodule_gitlink_fails() {
+    let repo = PlantedRepo::new("t55-gitlink");
+    repo.add(
+        ".gitmodules",
+        "[submodule \"vendor\"]\n\tpath = vendor\n\turl = https://example.invalid/v.git\n",
+        false,
+    );
+    let mut gitlink = git(&repo.0);
+    gitlink.args([
+        "update-index",
+        "--add",
+        "--cacheinfo",
+        "160000,1111111111111111111111111111111111111111,vendor",
+    ]);
+    git_output(gitlink);
+    let violations = committed_language_violations(&repo.0);
+    let flagged: Vec<&str> = violations
+        .iter()
+        .map(|v| v.split(':').next().unwrap_or_default())
+        .collect();
+    assert_eq!(flagged, ["vendor"], "violations: {violations:?}");
+}
+
+// --- Tester cases for T-55, GEDT-AR-00032 and GEDT-AR-00033 ---
+
+// GEDT-AR-00032 and GEDT-AR-00033, T-55, tester:
+// edge cases of extension and shebang detection.
+#[test]
+fn test_ar_00032_ar_00033_t55_tester_detection_edge_cases() {
+    let passing = [
+        file("run.sh", GIT_MODE_EXECUTABLE, "#!/usr/bin/bash\n"),
+        file("run.Sh", GIT_MODE_EXECUTABLE, "#!/usr/bin/env bash\n"),
+        file("lib.BASH", GIT_MODE_FILE, "#!/usr/bin/env bash\n"),
+        file("gui_editor/build.rs", GIT_MODE_FILE, "fn main() {}\n"),
+        file("src/Main.RS", GIT_MODE_FILE, "fn main() {}\n"),
+        file("a/b/.gitignore", GIT_MODE_FILE, "target\n"),
+        file("LICENSE", GIT_MODE_FILE, "text\n"),
+        file("docs/flow.mmd", GIT_MODE_FILE, "graph LR\n"),
+    ];
+    for f in &passing {
+        assert_eq!(language_violation(f), None, "{} fails", f.path);
+    }
+    let failing = [
+        // Bash lines that are not exactly one of the three lines (GEDT-AR-00054).
+        file("run.sh", GIT_MODE_EXECUTABLE, "#!/bin/bash\r\necho x\r\n"),
+        file("run.sh", GIT_MODE_EXECUTABLE, "#! /bin/bash\n"),
+        file("run.Sh", GIT_MODE_EXECUTABLE, "#!/usr/bin/env -S bash -e\n"),
+        file("run.sh", GIT_MODE_FILE, "#!/bin/sh\n"),
+        file("run.sh", GIT_MODE_EXECUTABLE, "#!/bin/sh\r\n"),
+        file("run.sh", GIT_MODE_EXECUTABLE, "#!/bin/dash\n"),
+        file("run.sh", GIT_MODE_EXECUTABLE, "#!/usr/bin/env zsh\n"),
+        file("a/b/c/tool.py", GIT_MODE_FILE, "print(1)\n"),
+        file("TOOL.PY", GIT_MODE_FILE, "print(1)\n"),
+        file("tool.Py", GIT_MODE_FILE, "print(1)\n"),
+        file("tool.py", GIT_MODE_EXECUTABLE, "#!/usr/bin/env bash\n"),
+        file("app.js", GIT_MODE_FILE, "x()\n"),
+        file("app.ts", GIT_MODE_FILE, "x()\n"),
+        file("main.c", GIT_MODE_FILE, "int main(){}\n"),
+        file("main.go", GIT_MODE_FILE, "package main\n"),
+        file("gen.pl", GIT_MODE_FILE, "print 1;\n"),
+        file("gen.rb", GIT_MODE_FILE, "puts 1\n"),
+        file("rules.mk", GIT_MODE_FILE, "all:\n"),
+        file("view.tmpl", GIT_MODE_FILE, "{ $OUT }\n"),
+        file("site.pp", GIT_MODE_FILE, "class x {}\n"),
+        file("x.ps1", GIT_MODE_FILE, "Write-Host 1\n"),
+        file("tool", GIT_MODE_FILE, "#!/usr/bin/perl\n"),
+        file("tool", GIT_MODE_FILE, "#!/usr/bin/env -S python3 -u\n"),
+        file(
+            "tool",
+            GIT_MODE_FILE,
+            "#!/usr/bin/env -i PATH=/usr/bin perl\n",
+        ),
+        file("tool", GIT_MODE_FILE, "#!/usr/bin/env\n"),
+        file("tool", GIT_MODE_FILE, "#!\n"),
+        file("notes", GIT_MODE_FILE, "text\n"),
+        file("data.xml", GIT_MODE_FILE, "#!/usr/bin/env node\n"),
+    ];
+    for f in &failing {
+        assert!(
+            language_violation(f).is_some(),
+            "{} passes: {:?}",
+            f.path,
+            f.content
+        );
+    }
+}
+
+// GEDT-AR-00033, T-55, tester:
+// an `env` option that takes a value must not hide the real interpreter.
+// With `-S`, env splits the line, unsets the variable `bash`, and runs python3.
+#[test]
+fn test_ar_00033_t55_tester_env_option_value_does_not_hide_interpreter() {
+    for content in [
+        "#!/usr/bin/env -S -u bash python3\n",
+        "#!/usr/bin/env -S --unset bash python3\n",
+    ] {
+        let f = file("tools/report", GIT_MODE_EXECUTABLE, content);
+        assert!(
+            language_violation(&f).is_some(),
+            "{content:?} passes as bash"
+        );
+    }
+}
+
+// GEDT-AR-00033 and GEDT-AR-00054, T-55, tester, round 2:
+// shebang spellings that the kernel and GNU env run with bash,
+// but that are not one of the three exact lines, fail the check.
+// The test name predates the amended GEDT-AR-00054 and is kept for traceability.
+#[test]
+fn test_ar_00033_t55_tester_bash_shebang_spellings_pass() {
+    let passing_as_bash = shebangs_passing_the_check(&[
+        "#!/usr/bin/env  bash\n",
+        "#!/usr/bin/env\tbash\n",
+        "#!/bin/bash -x\n",
+        "#!/bin/bash -eu\n",
+        "#!/usr/bin/env -S bash -e\n",
+        "#!/usr/bin/env -S\tbash -e\n",
+    ]);
+    assert!(
+        passing_as_bash.is_empty(),
+        "pass as bash: {passing_as_bash:#?}"
+    );
+}
+
+// GEDT-AR-00033, T-55, tester, round 2 (D-T55-03):
+// GNU `env -S` removes quotes, expands `${NAME}`, splits at `\_`,
+// and splits only at ASCII whitespace.
+// Each line below makes env run `python3`, with `bash` only as an option value,
+// so the check must flag every line.
+// Verified with GNU coreutils env 9.10: `env --debug -S "-u'' bash echo"` runs echo.
+#[test]
+fn test_ar_00033_t55_tester_env_split_string_syntax_does_not_hide_interpreter() {
+    let passing_as_bash = shebangs_passing_the_check(&[
+        "#!/usr/bin/env -S -u'' bash python3\n",
+        "#!/usr/bin/env -S -u\"\" bash python3\n",
+        "#!/usr/bin/env -S -u${T55_UNSET} bash python3\n",
+        "#!/usr/bin/env -S A=1\\_python3 bash\n",
+        "#!/usr/bin/env -S -u NAME\u{a0}bash python3\n",
+    ]);
+    assert!(
+        passing_as_bash.is_empty(),
+        "pass as bash: {passing_as_bash:#?}"
+    );
+}
+
+/// Returns the shebang lines that `language_violation` lets pass,
+/// so a failing tester case lists every bypass, not only the first.
+fn shebangs_passing_the_check<'a>(contents: &[&'a str]) -> Vec<&'a str> {
+    contents
+        .iter()
+        .copied()
+        .filter(|content| {
+            let f = file("tools/report", GIT_MODE_EXECUTABLE, content);
+            language_violation(&f).is_none()
+        })
+        .collect()
+}
+
+// GEDT-AR-00033, T-55, tester, round 2 (D-T55-04):
+// `bash -c` runs its argument as the program, so a script body in another language
+// runs through bash; the shebang line shows the real interpreter.
+#[test]
+fn test_ar_00033_t55_tester_bash_command_option_does_not_hide_interpreter() {
+    let passing_as_bash = shebangs_passing_the_check(&[
+        "#!/usr/bin/env -S bash -c 'exec python3 \"$0\" \"$@\"'\nprint(1)\n",
+        "#!/usr/bin/env -S bash -ec 'exec python3 \"$0\"'\nprint(1)\n",
+    ]);
+    assert!(
+        passing_as_bash.is_empty(),
+        "pass as bash: {passing_as_bash:#?}"
+    );
+}
+
+// GEDT-AR-00032, T-55, tester:
+// the scope is what git tracks, so an ignored file that is force-added is checked,
+// and an ignored untracked cache is not.
+#[test]
+fn test_ar_00032_t55_tester_tracked_scope_includes_force_added_ignored_files() {
+    let repo = PlantedRepo::new("t55-tester-scope");
+    repo.add(".gitignore", "*.py\n.cargo-home/\n", false);
+    fs::create_dir_all(repo.0.join(".cargo-home/registry")).expect("create cache");
+    fs::write(repo.0.join(".cargo-home/registry/dep.c"), "int x;\n").expect("write cache");
+    fs::write(repo.0.join("cache.py"), "print(1)\n").expect("write ignored file");
+    fs::write(repo.0.join("forced.py"), "print(1)\n").expect("write forced file");
+    let mut add = git(&repo.0);
+    add.args(["add", "-f", "--", "forced.py"]);
+    git_output(add);
+    let violations = committed_language_violations(&repo.0);
+    let flagged: Vec<&str> = violations
+        .iter()
+        .map(|v| v.split(':').next().unwrap_or_default())
+        .collect();
+    assert_eq!(flagged, ["forced.py"], "violations: {violations:?}");
+}
+
+// GEDT-AR-00032 and GEDT-AR-00033, T-55, tester:
+// the check fails closed outside the top level of a git checkout.
+#[test]
+#[should_panic(expected = "git")]
+fn test_ar_00032_ar_00033_t55_tester_non_repository_fails_closed() {
+    let repo = PlantedRepo::new("t55-tester-norepo");
+    fs::remove_dir_all(repo.0.join(".git")).expect("remove .git");
+    committed_language_violations(&repo.0);
+}
+
+#[test]
+#[should_panic(expected = "is not the top level of a git checkout")]
+fn test_ar_00032_ar_00033_t55_tester_subdirectory_fails_closed() {
+    let repo = PlantedRepo::new("t55-tester-subdir");
+    repo.add("sub/x.rs", "fn f() {}\n", false);
+    committed_language_violations(&repo.0.join("sub"));
+}
+
+// GEDT-AR-00032 and GEDT-AR-00033, T-55, tester, security:
+// a command in the repository configuration of the checked checkout never runs.
+#[test]
+fn test_ar_00032_ar_00033_t55_tester_repo_config_fsmonitor_does_not_run() {
+    let repo = PlantedRepo::new("t55-tester-fsmonitor");
+    repo.add("src/main.rs", "fn main() {}\n", false);
+    let marker = repo.0.join("FSMONITOR_RAN");
+    let hook = repo.0.join("hook.sh");
+    fs::write(&hook, format!("#!/bin/sh\ntouch '{}'\n", marker.display())).expect("hook");
+    let mut chmod = Command::new("chmod");
+    chmod.arg("755").arg(&hook);
+    assert!(chmod.status().expect("chmod runs").success());
+    let mut config = git(&repo.0);
+    config.args(["config", "core.fsmonitor"]).arg(&hook);
+    git_output(config);
+    let violations = committed_language_violations(&repo.0);
+    assert!(violations.is_empty(), "violations: {violations:?}");
+    assert!(!marker.exists(), "core.fsmonitor of the repository ran");
+}
+
+// GEDT-AR-00033, T-55, tester:
+// the CI definitions are in the rationale scope, and their run steps are scripts,
+// so every run step must run in Bash: no `shell` other than bash,
+// and a Linux runner, whose default shell is bash.
+#[test]
+fn test_ar_00033_t55_tester_ci_run_steps_run_in_bash() {
+    let wf = workflow();
+    let allowed = |shell: &Yaml| match shell.as_str() {
+        None => true,
+        Some(s) => s == "bash" || s.starts_with("bash "),
+    };
+    assert!(
+        allowed(wf.at("defaults").at("run").at("shell")),
+        "workflow default shell"
+    );
+    for (name, job) in jobs(&wf) {
+        let runner = job.at("runs-on").as_str().unwrap_or_default();
+        assert!(runner.starts_with("ubuntu-"), "{name} runs on {runner}");
+        assert!(
+            allowed(job.at("defaults").at("run").at("shell")),
+            "{name} default shell"
+        );
+        for step in steps(job) {
+            assert!(allowed(step.at("shell")), "{name} step shell");
+        }
+    }
+}
+
+// GEDT-AR-00033 and GEDT-AR-00054, T-55, tester, round 3:
+// attempts to break the shebang check with env option forms, flag clusters,
+// separators, and first-line rules.
+// Only the first line counts, so a second shebang line is body text.
+#[test]
+fn test_ar_00033_t55_tester_shebang_allowlist_edge_cases() {
+    let f = file(
+        "tools/run",
+        GIT_MODE_EXECUTABLE,
+        "#!/bin/bash\n#!/usr/bin/env python3\n",
+    );
+    assert_eq!(language_violation(&f), None, "second shebang line fails");
+    // These lines run bash under GNU coreutils env 9.7 and bash 5.2 in the tool image,
+    // but none is one of the three exact lines (GEDT-AR-00054).
+    let passing_as_bash = shebangs_passing_the_check(&[
+        "#!/usr/bin/env\t-S\tbash\t-x\n",
+        "#!/usr/bin/env -S -i -- bash -nvT\n",
+        "#!/usr/bin/env -S -vS bash\n",
+        "#!/usr/bin/env -S -uS bash\n",
+        "#!/usr/bin/env -S -i bash --noprofile --norc --\n",
+        "#!/bin/bash -BCEHPTabefhnpuvx\n",
+    ]);
+    assert!(
+        passing_as_bash.is_empty(),
+        "pass as bash: {passing_as_bash:#?}"
+    );
+    let passing_as_bash = shebangs_passing_the_check(&[
+        "#!/usr/bin/env -S -u=bash python3\n",
+        "#!/usr/bin/env -S -Su bash\n",
+        "#!/usr/bin/env -S -C bash -- python3\n",
+        "#!/usr/bin/env --split-string=-ubash python3\n",
+        "#!/usr/bin/env -S --split-string=-a bash python3\n",
+        "#!/usr/bin/env -S LC_=C bash\n",
+        "#!/usr/bin/env -S LC_ALL1=C bash\n",
+        "#!/usr/bin/env -S lang=C bash\n",
+        "#!/usr/bin/env -i\n",
+        "#!/usr/bin/env -S -C\n",
+        "#!/bin/bash -nc x\n",
+        "#!/bin/bash -vs\n",
+        "#!/bin/bash -xi\n",
+        "#!/bin/bash +x\n",
+        "#!/usr/bin/env -S bash --norc=x\n",
+        "#!/usr/bin/env -S bash --noprofil\n",
+        "#!/usr/bin/env python3\n#!/bin/bash\n",
+        "\u{feff}#!/bin/bash\n",
+        "#!\u{feff}/bin/bash\n",
+        "#! [x]\n",
+        // A change of directory makes a relative script path name another file
+        // (review R-02).
+        "#!/usr/bin/env -S -C tools bash\n",
+        "#!/usr/bin/env -S --chdir=tools bash\n",
+    ]);
+    assert!(
+        passing_as_bash.is_empty(),
+        "pass as bash: {passing_as_bash:#?}"
+    );
+}
+
+// GEDT-AR-00033, T-55, tester, round 3 (D-T55-05):
+// a word that ends the options is an operand, not a flag.
+// After `--`, bash runs the next word as the script and passes the committed file as $1.
+// After an assignment or a lone `-`, GNU env stops reading options
+// and runs the next word as the command.
+// Verified in the tool image: `#!/usr/bin/env -S bash -- -x` runs a `-x` file from PATH,
+// and `#!/usr/bin/env -S LANG=C -a python3 bash` runs a `-a` file from PATH.
+#[test]
+fn test_ar_00033_t55_tester_operand_after_option_end_does_not_hide_interpreter() {
+    let passing_as_bash = shebangs_passing_the_check(&[
+        "#!/usr/bin/env -S bash -- -x\nprint(1)\n",
+        "#!/usr/bin/env -S bash -e -- --norc\nprint(1)\n",
+        "#!/usr/bin/env -S LANG=C -a python3 bash\nprint(1)\n",
+        "#!/usr/bin/env -S - -a python3 bash\nprint(1)\n",
+        "#!/usr/bin/env -S LANG=C -i bash\nprint(1)\n",
+    ]);
+    assert!(
+        passing_as_bash.is_empty(),
+        "pass as bash: {passing_as_bash:#?}"
+    );
+}
+
+// GEDT-AR-00033 and GEDT-AR-00054, T-55, tester, round 4,
+// product owner answers "a: restrict paths" and "a: three exact lines":
+// only #!/bin/bash, #!/usr/bin/bash, and #!/usr/bin/env bash pass, spelled exactly.
+#[test]
+fn test_ar_00033_t55_tester_interpreter_paths_are_restricted() {
+    let passing = [
+        "#!/bin/bash\n",
+        "#!/usr/bin/bash\n",
+        "#!/usr/bin/env bash\n",
+    ];
+    for content in passing {
+        let f = file("tools/run", GIT_MODE_EXECUTABLE, content);
+        assert_eq!(language_violation(&f), None, "{content:?} fails");
+    }
+    // These lines run bash, not as a login shell,
+    // under GNU coreutils env 9.7 and bash 5.2.37 in the tool image,
+    // but none is one of the three exact lines (GEDT-AR-00054).
+    let passing_as_bash = shebangs_passing_the_check(&[
+        "#! /bin/bash\n",
+        "#!\t/usr/bin/bash\n",
+        "#!/usr/bin/env /bin/bash\n",
+        "#!/usr/bin/env /usr/bin/bash\n",
+        "#!/usr/bin/env -S /bin/bash\n",
+        "#!/usr/bin/env -S /usr/bin/bash -e\n",
+        "#!/usr/bin/env -S -i - bash\n",
+        "#!/usr/bin/env -S -a x bash\n",
+    ]);
+    assert!(
+        passing_as_bash.is_empty(),
+        "pass as bash: {passing_as_bash:#?}"
+    );
+    let passing_as_bash = shebangs_passing_the_check(&[
+        "#!/bin/env bash\n",
+        "#!/usr/local/bin/bash\n",
+        "#!/bin//bash\n",
+        "#!/bin/./bash\n",
+        "#!//bin/bash\n",
+        "#!/usr/bin/../bin/bash\n",
+        "#!/bin/bash/\n",
+        "#!/BIN/BASH\n",
+        "#!/bin/Bash\n",
+        "#!/bin/bash5\n",
+        "#!/bin/sh\n",
+        "#!/usr/bin//env bash\n",
+        "#!/usr/bin/./env bash\n",
+        "#!/usr/local/bin/env bash\n",
+        "#!env bash\n",
+        "#!/usr/bin/env -S /bin//bash\n",
+        "#!/usr/bin/env -S /bin/./bash\n",
+        "#!/usr/bin/env -S /usr/local/bin/bash\n",
+        "#!/usr/bin/env -S bin/bash\n",
+        "#!/usr/bin/env -S ./bash\n",
+        "#!/usr/bin/env -S ../bash\n",
+        "#!/usr/bin/env -S BASH\n",
+        "#!/usr/bin/env -S bash5\n",
+        "#!/usr/bin/env -S /bin/env bash\n",
+        "#!/usr/bin/env -S /usr/bin/env -S bash\n",
+        "#!/usr/bin/env -S /bin/sh\n",
+    ]);
+    assert!(
+        passing_as_bash.is_empty(),
+        "pass as bash: {passing_as_bash:#?}"
+    );
+}
+
+// GEDT-AR-00033, T-55, tester, round 4 (D-T55-05 follow-up):
+// an argv0 value starting with `-` makes bash a login shell, which sources startup files,
+// and a second `-`, a second `--`, or `--` after an assignment is the env command.
+#[test]
+fn test_ar_00033_t55_tester_argv0_and_option_end_variants() {
+    let passing_as_bash = shebangs_passing_the_check(&[
+        "#!/usr/bin/env -S -a -x bash\n",
+        "#!/usr/bin/env -S -a -- bash\n",
+        "#!/usr/bin/env -S -a - bash\n",
+        "#!/usr/bin/env -S -va -bash bash\n",
+        "#!/usr/bin/env -S -iva-bash bash\n",
+        "#!/usr/bin/env -S --argv0=--login bash\n",
+        "#!/usr/bin/env -S --argv0=- bash\n",
+        "#!/usr/bin/env -S --argv0 - bash\n",
+        "#!/usr/bin/env -S -S -a -bash bash\n",
+        "#!/usr/bin/env -S --split-string=-a-bash bash\n",
+        "#!/usr/bin/env -S - - bash\n",
+        "#!/usr/bin/env -S -- -- bash\n",
+        "#!/usr/bin/env -S LANG=C -- bash\n",
+        "#!/usr/bin/env -S - LANG=C - bash\n",
+        "#!/usr/bin/env -S LANG=C -u X bash\n",
+        "#!/bin/bash -- --\n",
+        "#!/bin/bash -- -x\n",
+        "#!/usr/bin/env -S bash -- --\n",
+        "#!/usr/bin/env -S bash -x -- -e\n",
+    ]);
+    assert!(
+        passing_as_bash.is_empty(),
+        "pass as bash: {passing_as_bash:#?}"
     );
 }

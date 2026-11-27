@@ -498,7 +498,10 @@ Proposed measurable outcomes, pending confirmation, see open question 1:
 - 7: Gemba gaps.
   The assessment has empty gemba entries for adding a viewpacket and a deployment diagram.
   Proposed default: use the steps in the repository `README.md` as the current process.
+  On 2026-11-26 the Perl-specific steps were removed from the repository `README.md`; the steps for adding a component and a ContextModel remain.
 - 8: Common DTD.
-  The repository has `cpp_cli/ideatoproduct.dtd` and
-  `sad_xml_sql/tests/software_architecture_documentation.dtd`.
-  Proposed default: `software_architecture_documentation.dtd`, as referenced by `template_sad.xml`.
+  On 2026-11-26 the product owner had the `cpp_cli/`, `cpp_gui_wt/`, and `perl/` directories deleted, which removed the second DTD from the repository.
+  The only DTD left in the repository is `sad_xml_sql/tests/software_architecture_documentation.dtd`.
+  Options: adopt `software_architecture_documentation.dtd` as the common DTD, or define a new common DTD.
+  Answered on 2026-11-26 by the product owner: "a: adopt existing DTD".
+  The GUI editor validates saved files against `sad_xml_sql/tests/software_architecture_documentation.dtd`, as referenced by `template_sad.xml`.

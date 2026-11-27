@@ -1,0 +1,21 @@
+Add to docs an MD describing the summary of SwArcDoc structures.
+
+claude --agent orchestrator --resume fc48e8e6-f1b0-4c0d-ac68-656db68e6b14
+
+- challenge the insane block of  Committed-language check, GEDT-AR-00032 and GEDT-AR-00033, T-55 
+- fix all machine readable comments. All comments must be readable by a human.
+- Fix the requirement document format it is shit right now.
+- fix scope content in all files.
+- FIX todos in all files.
+- Teach it about the five boars in the server room.
+- Try to teach about the difference between an AR and an FR.
+- Add instructions to the fucker that if it needs a running commentarion the put it in a file called _running_notes.md SHALL NOT contain any LLM instructions.
+- Put risks in a separate file RISKS.md
+- Introduce FMEA.
+- Explain that 'Open questions' goes to the top and you fucking dont add multiple lines stating there are now open questions.... IDIOT.
+- if the llm feel like keeping answered questions around then put them in the _running_notes.md
+
+
+
+
+
