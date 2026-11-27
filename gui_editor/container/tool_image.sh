@@ -21,7 +21,7 @@
 # Every use checks the image first, and a failed check stops the caller (fail-closed):
 # the base digest in the image label must match the pinned digest,
 # the four Rust tools must report the pinned versions,
-# and shellcheck must be the unchanged file of the Debian shellcheck package.
+# and shellcheck must start.
 
 # Pinned by version and digest so that a retagged upstream image cannot change the build.
 # Update the tag and the digest together with the BASE_IMAGE default in the Containerfile.
@@ -40,23 +40,15 @@ CARGO_DENY_VERSION="0.22.0"
 # clippy and rustfmt follow the toolchain of the pinned base, rustc 1.100.0.
 CLIPPY_VERSION_LINE="clippy 0.1.100 (0ef1bc3860 2026-11-09)"
 RUSTFMT_VERSION_LINE="rustfmt 1.11.0-stable (0ef1bc3860 2026-11-09)"
-# The shellcheck package has no version pin:
-# the image takes the version of the Debian trixie release (GEDT-AR-00034, T-60).
-# The check therefore proves the origin instead of a version:
-# dpkg must name the shellcheck package as the owner of the absolute path.
-# dpkg --verify compares the package files with the checksums recorded at install time;
-# it exits 0 even on a changed file, so the check expects no output from it.
-# check_shellcheck.sh runs shellcheck by the same absolute path.
-SHELLCHECK_PACKAGE_LINE="shellcheck: /usr/bin/shellcheck"
 EXPECTED_TOOL_VERSIONS="cargo-audit ${CARGO_AUDIT_VERSION}
 cargo-deny ${CARGO_DENY_VERSION}
 ${RUSTFMT_VERSION_LINE}
-${CLIPPY_VERSION_LINE}
-${SHELLCHECK_PACKAGE_LINE}"
+${CLIPPY_VERSION_LINE}"
 # One command per line, in the order of EXPECTED_TOOL_VERSIONS.
 # build.sh and CI run cargo-audit and cargo-deny by the same absolute paths,
 # so the check covers the binaries that run and no cargo [alias] can replace them.
-# The last command proves that shellcheck starts, and prints nothing.
+# The shellcheck package has no version pin (GEDT-AR-00034),
+# so the last command only proves that it starts, and prints nothing.
 TOOL_VERSION_SCRIPT='set -eu
 /usr/local/cargo/bin/cargo-audit --version
 /usr/local/cargo/bin/cargo-deny --version

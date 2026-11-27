@@ -1777,37 +1777,6 @@ fn test_ar_00034_t60_shellcheck_package_unpinned_and_signature_checked() {
     }
 }
 
-// GEDT-AR-00034, T-60:
-// the tool check proves that /usr/bin/shellcheck is the unchanged file of the Debian shellcheck package and starts, since the package has no version to compare.
-#[test]
-fn test_ar_00034_t60_tool_check_covers_shellcheck_package() {
-    assert_eq!(
-        tool_image_sh_assignment("SHELLCHECK_PACKAGE_LINE"),
-        "shellcheck: /usr/bin/shellcheck"
-    );
-    let script = read(&gui_dir().join("container/tool_image.sh"));
-    for line in [
-        "dpkg-query --search /usr/bin/shellcheck",
-        "dpkg --verify shellcheck",
-        "/usr/bin/shellcheck --version >/dev/null'",
-    ] {
-        assert!(
-            script.lines().any(|l| l == line),
-            "tool_image.sh has no tool check line {line}"
-        );
-    }
-    let expected_versions = script
-        .split_once("EXPECTED_TOOL_VERSIONS=\"")
-        .and_then(|(_, rest)| rest.split_once("\"\n"))
-        .map(|(value, _)| value)
-        .expect("tool_image.sh has an EXPECTED_TOOL_VERSIONS assignment");
-    assert_eq!(
-        expected_versions.lines().last(),
-        Some("${SHELLCHECK_PACKAGE_LINE}"),
-        "EXPECTED_TOOL_VERSIONS does not end with the shellcheck package line"
-    );
-}
-
 /// A directory under the system temp directory, removed on drop.
 struct ScratchDir(PathBuf);
 
@@ -1839,7 +1808,7 @@ const GATE_SHELLCHECK_OPTIONS: [&str; 2] = ["--norc", "--"];
 // a planted script with one finding fails the shellcheck command of the gate,
 // and a clean script passes it.
 // The test runs in the tool image,
-// which check_tool_image proves holds the Debian package,
+// where check_tool_image proves that shellcheck starts,
 // so a missing /usr/bin/shellcheck fails the test instead of skipping it.
 #[test]
 fn test_ar_00055_t60_image_shellcheck_fails_planted_finding() {
@@ -1849,7 +1818,7 @@ fn test_ar_00055_t60_image_shellcheck_fails_planted_finding() {
     );
     let gate_script = read(&gui_dir().join("check_shellcheck.sh"));
     assert!(
-        gate_script.contains("\"$SHELLCHECK_BIN\" --norc -- \"${CHECKED_SCRIPTS[@]}\""),
+        gate_script.contains("/usr/bin/shellcheck --norc -- \"${CHECKED_SCRIPTS[@]}\""),
         "the gate command in check_shellcheck.sh differs from the command this test runs"
     );
     let scratch = ScratchDir::new("ar_00055_t60_planted_finding");

@@ -1,6 +1,6 @@
 ---
 name: requirements-writing
-description: Write, classify, identify, and trace technical requirements. Use when deriving architectural or functional requirements from business requirements, assigning FEAT-TYPE-nnnnn identifiers and priorities, checking requirement quality, or verifying traceability.
+description: Write, classify, identify, and trace technical requirements. Use when deriving architectural or functional requirements from user stories (FEAT-STORY-nnnnn), assigning FEAT-TYPE-nnnnn identifiers and priorities, checking requirement quality, or verifying traceability.
 ---
 
 # Requirements writing
@@ -49,7 +49,16 @@ Example: "Move people between Los Angeles and New York at a cruising speed of 25
   - FR: Functional Requirement.
 - nnnnn: Five digit number, unique within FEAT and TYPE.
 
-Change the ID when a requirement changes from one project version to the next.
+## Identifier changes
+
+A changed ID makes every stale reference visible; an unchanged ID hides the change from stories, tasks, and tests that cite it.
+
+- A requirement is committed when its ID appears in `<app>/docs/REQUIREMENTS.md` at git `HEAD`.
+- Change an uncommitted requirement in place and keep its ID.
+- Never change a committed requirement under its existing ID.
+  - Retire the old ID and write the changed requirement under a new ID.
+  - Record the replaced ID with the new requirement, so readers can follow the history.
+- Never reuse a retired ID.
 
 ## Priority
 
@@ -86,12 +95,17 @@ Verb meanings:
 - Abstract: States the purpose or outcome, never the how.
   The implementation team decides the how.
   A constraint may bound the outcome, for example a limit or a mandated interface, but does not prescribe a design.
+  Names of products, distributions, releases, versions, packages, tools, files, commands, or options are implementation details unless the product owner states them as the need itself.
+  Implementation details go in `<app>/docs/DESIGN.md`.
+  A requirement must not depend on an implementation choice indirectly, for example by naming the release of a base image that another requirement or decision selected.
 - Single: One requirement per ID.
   Split a statement that covers two needs, for example two languages or two platforms, into two IDs.
 - Clear: One interpretation, one function, one sentence, one verb.
   "And", "or", "also", "unless", and "except" signal combined requirements; never use "and/or".
 - Complete: No TBD.
-  Add a rationale when the reason is not obvious.
+  Add a rationale only when the reason is not obvious from the source quote.
+  Keep it to one line per requirement.
+  Do not explain the choice of ID, the decomposition, or the editing steps.
 - Consistent: No contradiction with other requirements or the parent; same term for the same item.
 - Feasible: When reachability is unknown, propose a prototype and record a Goal.
 - Granular: A small number of related test cases verifies the requirement.
@@ -114,6 +128,10 @@ Style:
 - Other agents send a requirement change request to the architect instead of editing requirements.
   - A change request names the trigger, the affected IDs, the proposed change, and the source.
   - A product owner answer used as source is quoted verbatim.
+
+## Running notes
+
+Follow the `running-notes` skill.
 
 ## Untagged constraints
 
@@ -144,6 +162,7 @@ A constraint without an ID escapes traceability, verification, and review.
 | improved, better, faster, superior | Quantify the improvement. |
 | including, etc., such as | List all possibilities. |
 | maximize, minimize, optimize | State acceptable maximum and minimum values. |
+| next week, next month | Write the absolute date, counted from the instruction date. |
 | normally, ideally | Also describe abnormal behavior. |
 | optionally | State whose choice: system, user, or developer. |
 | reasonable, when necessary, where appropriate | Explain how to judge. |

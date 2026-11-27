@@ -44,8 +44,7 @@ The tool image is a build and check environment, not a dev shell, and the GUI do
   - The digest in the `org.opencontainers.image.base.name` label must match the pinned base digest.
   - `cargo-audit --version`, `cargo-deny --version`, `cargo fmt --version`, and `cargo clippy --version` must report the pinned versions, without network.
   - `build.sh` and CI run `cargo-audit` and `cargo-deny` by the checked absolute paths in `/usr/local/cargo/bin`, so no cargo `[alias]` replaces them.
-  - `dpkg-query --search /usr/bin/shellcheck` must name the `shellcheck` package, `dpkg --verify shellcheck` must print nothing, and `/usr/bin/shellcheck --version` must succeed.
-  - The gate runs `shellcheck` by the checked absolute path `/usr/bin/shellcheck`.
+  - `/usr/bin/shellcheck --version` must succeed, and the gate runs `shellcheck` by that absolute path.
 - Base override: `RUST_IMAGE` with another pinned reference gets its own tag, so the first build with the override builds a new image.
   - An image whose label does not match the configured base digest still fails the label check.
   - Remove such an image with `docker image rm <tag>` or `podman image rm <tag>`, as the error message shows, and run the build again.
@@ -131,10 +130,9 @@ The editor makes no network connections.
 `build.sh` runs `check_shellcheck.sh` after the tool image check and before any cargo step (GEDT-AR-00055, GEDT-AR-00056).
 To run the gate alone, run `./check_shellcheck.sh`; `CONTAINER_ENGINE` and `RUST_IMAGE` work as for `build.sh`.
 
-- Scope: every file that git tracks under `gui_editor`, `sad2md`, `sad_xml_sql`, and `tui_editor` with the extension `.sh` or `.bash`, in any letter case, or with a `#!` first line.
+- Scope: every file that git tracks under `gui_editor`, `sad2md`, `sad_xml_sql`, and `tui_editor` with the extension `.sh` or `.bash`, or with a bash interpreter line such as `#!/usr/bin/env bash`.
   - A new script needs no list change; the gate checks it once git tracks it.
   - The repository-root scripts and `aws2xml` stay unchecked.
-  - A tracked file that is missing or a symlink in the working tree stops the gate, because the gate cannot classify it.
 - Findings: the tool image runs `shellcheck --norc` over all scripts in one run, and any finding stops the build.
   - No option changes the checks or the severity, and `--norc` keeps any `.shellcheckrc` from changing them.
   - One run lets `shellcheck` follow `source container/tool_image.sh` without `-x`, so a sourced script must be tracked too.
